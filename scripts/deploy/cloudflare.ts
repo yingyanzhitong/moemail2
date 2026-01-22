@@ -1,6 +1,7 @@
 import Cloudflare from "cloudflare";
 import "dotenv/config";
 
+const EMAIL = process.env.CLOUDFLARE_API_EMAIL!;
 const CF_ACCOUNT_ID = process.env.CLOUDFLARE_ACCOUNT_ID!;
 const CF_API_TOKEN = process.env.CLOUDFLARE_API_TOKEN;
 const CUSTOM_DOMAIN = process.env.CUSTOM_DOMAIN;
@@ -10,7 +11,7 @@ const KV_NAMESPACE_NAME = process.env.KV_NAMESPACE_NAME || "moemail-kv";
 const DATABASE_ID = process.env.DATABASE_ID;
 
 const client = new Cloudflare({
-  apiKey: CF_API_TOKEN,
+  apiToken: 'O1k9WtlpmWZN0eDw4f1Fy-Pxk7qzrjnk8ZGirJH8',
 });
 
 export const getPages = async () => {
