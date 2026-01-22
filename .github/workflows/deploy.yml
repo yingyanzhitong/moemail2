@@ -9,6 +9,8 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    # 部署到 moemail 环境
+    environment: moemail
     steps:
       - uses: actions/checkout@v4
         with:
