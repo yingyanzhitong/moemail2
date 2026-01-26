@@ -36,7 +36,7 @@
 </p>
 
 ## Live Demo
-[https://moemail.app](https://moemail.app)
+[https://xyyamsz.cn](https://xyyamsz.cn)
 
 ![Home](https://pic.otaku.ren/20241209/AQADwsUxG9k1uVZ-.jpg "Home")
 
@@ -45,7 +45,7 @@
 ![Profile](https://pic.otaku.ren/20241227/AQADVsIxG7OzcFd-.jpg "Profile")
 
 ## Documentation
-**Full Documentation**: [https://docs.moemail.app](https://docs.moemail.app)
+**Full Documentation**: [https://docs.xyyamsz.cn](https://docs.xyyamsz.cn)
 
 The documentation site contains detailed usage guides, API documentation, deployment tutorials, and other complete information.
 
@@ -388,7 +388,7 @@ X-Webhook-Event: new_message
   "content": "Email Text Content",
   "html": "Email HTML Content",
   "receivedAt": "2024-01-01T12:00:00.000Z",
-  "toAddress": "your-email@moemail.app"
+  "toAddress": "your-email@xyyamsz.cn"
 }
 ```
 
@@ -439,7 +439,7 @@ Response:
 ```json
 {
   "defaultRole": "CIVILIAN",
-  "emailDomains": "moemail.app,example.com",
+  "emailDomains": "xyyamsz.cn,example.com",
   "adminContact": "admin@example.com",
   "maxEmails": "10"
 }
@@ -453,7 +453,7 @@ Content-Type: application/json
 {
   "name": "test",
   "expiryTime": 3600000,
-  "domain": "moemail.app"
+  "domain": "xyyamsz.cn"
 }
 ```
 Params:
@@ -465,7 +465,7 @@ Response:
 ```json
 {
   "id": "email-uuid-123",
-  "email": "test@moemail.app"
+  "email": "test@xyyamsz.cn"
 }
 ```
 
