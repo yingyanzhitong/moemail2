@@ -36,7 +36,7 @@
 </p>
 
 ## Live Demo
-[https://xyyamsz.cn](https://xyyamsz.cn)
+[https://moemail.xyyamsz.cn](https://moemail.xyyamsz.cn)
 
 ![Home](https://pic.otaku.ren/20241209/AQADwsUxG9k1uVZ-.jpg "Home")
 

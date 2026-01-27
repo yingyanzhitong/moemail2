@@ -35,7 +35,7 @@
 </p>
 
 ## 在线演示
-[https://xyyamsz.cn](https://xyyamsz.cn)
+[https://moemail.xyyamsz.cn](https://moemail.xyyamsz.cn)
 
 ![首页](https://pic.otaku.ren/20241209/AQADwsUxG9k1uVZ-.jpg "首页")
 
