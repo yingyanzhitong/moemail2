@@ -445,6 +445,28 @@ Response:
 }
 ```
 
+#### Generate TinyPNG API Key
+```http
+POST /api/tinypng/generate
+Content-Type: application/json
+
+{
+  "domain": "example.com"
+}
+```
+Params:
+- `domain`: Email domain for TinyPNG registration (optional)
+
+Response:
+```json
+{
+  "success": true,
+  "apiKey": "xxxxxxxxxxxxxxxxxxxxxx",
+  "email": "abc123@example.com",
+  "message": "TinyPNG API Key generated successfully"
+}
+```
+
 #### Generate Temp Email
 ```http
 POST /api/emails/generate

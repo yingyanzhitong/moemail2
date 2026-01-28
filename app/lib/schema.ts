@@ -152,6 +152,22 @@ export const messageShares = sqliteTable('message_share', {
   tokenIdx: index('message_share_token_idx').on(table.token),
 }));
 
+// TinyPNG API Keys 表 - 存储用户生成的 TinyPNG API Key
+export const tinypngKeys = sqliteTable('tinypng_keys', {
+  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  userId: text('user_id')
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  apiKey: text('api_key').notNull(),
+  email: text('email').notNull(), // 注册 TinyPNG 时使用的临时邮箱
+  createdAt: integer('created_at', { mode: 'timestamp_ms' })
+    .notNull()
+    .$defaultFn(() => new Date()),
+}, (table) => ({
+  userIdIdx: index('tinypng_keys_user_id_idx').on(table.userId),
+  apiKeyIdx: index('tinypng_keys_api_key_idx').on(table.apiKey),
+}));
+
 
 
 export const apiKeysRelations = relations(apiKeys, ({ one }) => ({
@@ -175,6 +191,7 @@ export const userRolesRelations = relations(userRoles, ({ one }) => ({
 export const usersRelations = relations(users, ({ many }) => ({
   userRoles: many(userRoles),
   apiKeys: many(apiKeys),
+  tinypngKeys: many(tinypngKeys),
 }));
 
 export const rolesRelations = relations(roles, ({ many }) => ({
@@ -192,5 +209,12 @@ export const messageSharesRelations = relations(messageShares, ({ one }) => ({
   message: one(messages, {
     fields: [messageShares.messageId],
     references: [messages.id],
+  }),
+}));
+
+export const tinypngKeysRelations = relations(tinypngKeys, ({ one }) => ({
+  user: one(users, {
+    fields: [tinypngKeys.userId],
+    references: [users.id],
   }),
 }));

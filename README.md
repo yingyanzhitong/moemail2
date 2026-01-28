@@ -449,6 +449,33 @@ GET /api/config
 - `adminContact`: 管理员联系方式
 - `maxEmails`: 每个用户可创建的最大邮箱数量
 
+#### 生成 TinyPNG API Key
+```http
+POST /api/tinypng/generate
+Content-Type: application/json
+
+{
+  "domain": "example.com"
+}
+```
+参数说明：
+- `domain`: 用于注册 TinyPNG 的临时邮箱域名，可选
+
+返回响应：
+```json
+{
+  "success": true,
+  "apiKey": "xxxxxxxxxxxxxxxxxxxxxx",
+  "email": "abc123@example.com",
+  "message": "TinyPNG API Key 生成成功"
+}
+```
+响应字段说明：
+- `success`: 是否成功
+- `apiKey`: 生成的 TinyPNG API Key
+- `email`: 注册使用的临时邮箱
+- `message`: 结果消息
+
 #### 创建临时邮箱
 ```http
 POST /api/emails/generate

@@ -290,61 +290,153 @@ export async function waitForMagicLinkEmail(
 }
 
 /**
+ * 生成步骤枚举
+ */
+export enum GenerateStep {
+  CREATE_EMAIL = "创建临时邮箱",
+  REGISTER_TINYPNG = "注册 TinyPNG 账号",
+  WAIT_MAGIC_LINK = "等待 magic link 邮件",
+  EXTRACT_TOKEN = "提取 magic link token",
+  GET_BEARER_TOKEN = "获取 Bearer Token",
+  GET_API_KEY = "获取 API Key",
+}
+
+/**
+ * 生成结果接口
+ */
+export interface GenerateResult {
+  success: boolean
+  apiKey?: string
+  email?: string
+  steps: {
+    step: GenerateStep
+    success: boolean
+    message?: string
+    duration?: number
+  }[]
+  error?: {
+    step: GenerateStep
+    message: string
+  }
+}
+
+/**
  * 生成 TinyPNG API Key 的完整流程
  * @param db 数据库实例
  * @param userId 用户 ID
  * @param domain 邮箱域名
- * @returns API Key 和使用的邮箱地址
+ * @returns 包含详细步骤信息的生成结果
  */
 export async function generateTinyPngApiKey(
   db: DrizzleD1Database<Record<string, unknown>>,
   userId: string,
   domain: string
-): Promise<{ apiKey: string; email: string }> {
+): Promise<GenerateResult> {
+  const steps: GenerateResult['steps'] = []
+  let currentStep: GenerateStep = GenerateStep.CREATE_EMAIL
+  let stepStartTime = Date.now()
+  
+  const recordStep = (success: boolean, message?: string) => {
+    steps.push({
+      step: currentStep,
+      success,
+      message,
+      duration: Date.now() - stepStartTime,
+    })
+    stepStartTime = Date.now()
+  }
+
   // 1. 生成临时邮箱
+  currentStep = GenerateStep.CREATE_EMAIL
   const emailAddress = `tinypng-${nanoid(8)}@${domain}`
   const now = new Date()
   const expiresAt = new Date(now.getTime() + 24 * 60 * 60 * 1000) // 24小时后过期
   
-  const [createdEmail] = await db
-    .insert(emails)
-    .values({
-      address: emailAddress,
-      userId: userId,
-      createdAt: now,
-      expiresAt: expiresAt,
-    })
-    .returning()
+  let createdEmail: { id: string; address: string }
   
-  console.log(`[TinyPNG] 创建临时邮箱: ${emailAddress}`)
+  try {
+    const [result] = await db
+      .insert(emails)
+      .values({
+        address: emailAddress,
+        userId: userId,
+        createdAt: now,
+        expiresAt: expiresAt,
+      })
+      .returning()
+    
+    createdEmail = result
+    recordStep(true, `邮箱: ${emailAddress}`)
+    console.log(`[TinyPNG] 创建临时邮箱: ${emailAddress}`)
+  } catch (error) {
+    const errorMsg = error instanceof Error ? error.message : String(error)
+    recordStep(false, errorMsg)
+    return {
+      success: false,
+      steps,
+      error: {
+        step: currentStep,
+        message: errorMsg,
+      }
+    }
+  }
   
   try {
     // 2. 在 TinyPNG 注册
+    currentStep = GenerateStep.REGISTER_TINYPNG
     console.log(`[TinyPNG] 发送注册请求...`)
     await registerTinyPng(emailAddress)
+    recordStep(true, "注册请求已发送")
     
     // 3. 等待 magic link 邮件
+    currentStep = GenerateStep.WAIT_MAGIC_LINK
     console.log(`[TinyPNG] 等待 magic link 邮件...`)
     const magicLink = await waitForMagicLinkEmail(db, createdEmail.id, now)
+    recordStep(true, `收到 magic link`)
     console.log(`[TinyPNG] 收到 magic link: ${magicLink}`)
     
-    // 4. 提取 token 并获取 Bearer Token
+    // 4. 提取 token
+    currentStep = GenerateStep.EXTRACT_TOKEN
     const token = extractTokenFromMagicLink(magicLink)
+    recordStep(true, "Token 提取成功")
+    
+    // 5. 获取 Bearer Token
+    currentStep = GenerateStep.GET_BEARER_TOKEN
     console.log(`[TinyPNG] 获取 Bearer Token...`)
     const bearerToken = await getBearerToken(token)
+    recordStep(true, "Bearer Token 获取成功")
     
-    // 5. 获取并启用 API Key
-    console.log(`[TinyPNG] 获取并启用 API Key...`)
+    // 6. 获取 API Key
+    currentStep = GenerateStep.GET_API_KEY
+    console.log(`[TinyPNG] 获取 API Key...`)
     const apiKey = await getAndEnableApiKey(bearerToken)
+    recordStep(true, `API Key: ${apiKey.substring(0, 8)}...`)
     console.log(`[TinyPNG] API Key 生成成功: ${apiKey.substring(0, 8)}...`)
     
     return {
+      success: true,
       apiKey,
       email: emailAddress,
+      steps,
     }
   } catch (error) {
+    const errorMsg = error instanceof Error ? error.message : String(error)
+    recordStep(false, errorMsg)
+    
     // 如果失败，删除创建的临时邮箱
-    await db.delete(emails).where(eq(emails.id, createdEmail.id))
-    throw error
+    try {
+      await db.delete(emails).where(eq(emails.id, createdEmail.id))
+    } catch (deleteError) {
+      console.error('[TinyPNG] 删除临时邮箱失败:', deleteError)
+    }
+    
+    return {
+      success: false,
+      steps,
+      error: {
+        step: currentStep,
+        message: errorMsg,
+      }
+    }
   }
 }

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { createDb } from "@/lib/db"
+import { tinypngKeys } from "@/lib/schema"
 import { getRequestContext } from "@cloudflare/next-on-pages"
 import { getUserId } from "@/lib/apiKey"
 import { getUserRole } from "@/lib/auth"
@@ -50,11 +51,31 @@ export async function POST(request: Request) {
     const db = createDb()
     const result = await generateTinyPngApiKey(db, userId, domain)
 
+    // 检查生成结果
+    if (!result.success || !result.apiKey || !result.email) {
+      // 生成失败，返回详细的步骤信息
+      return NextResponse.json({
+        success: false,
+        error: result.error ? `${result.error.step}: ${result.error.message}` : "生成失败",
+        failedStep: result.error?.step,
+        failedMessage: result.error?.message,
+        steps: result.steps,
+      }, { status: 500 })
+    }
+
+    // 保存生成的 TinyPNG API Key 到数据库
+    await db.insert(tinypngKeys).values({
+      userId,
+      apiKey: result.apiKey,
+      email: result.email,
+    })
+
     return NextResponse.json({
       success: true,
       apiKey: result.apiKey,
       email: result.email,
-      message: "TinyPNG API Key 生成成功"
+      message: "TinyPNG API Key 生成成功",
+      steps: result.steps,
     })
   } catch (error) {
     console.error('[TinyPNG API] 生成失败:', error)
@@ -64,7 +85,9 @@ export async function POST(request: Request) {
     return NextResponse.json(
       { 
         success: false,
-        error: `生成 TinyPNG API Key 失败: ${errorMessage}` 
+        error: `生成 TinyPNG API Key 失败: ${errorMessage}`,
+        failedStep: "未知步骤",
+        failedMessage: errorMessage,
       },
       { status: 500 }
     )
