@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { useToast } from "@/components/ui/use-toast"
-import { ImageIcon, Loader2, Copy, Check } from "lucide-react"
+import { ImageIcon, Loader2, Copy } from "lucide-react"
 import { useCopy } from "@/hooks/use-copy"
 
 interface GeneratedApiKey {
@@ -22,7 +22,7 @@ export function TinyPngDialog() {
   const [results, setResults] = useState<GeneratedApiKey[]>([])
   const [error, setError] = useState<string | null>(null)
   const { toast } = useToast()
-  const { copyToClipboard, copied } = useCopy()
+  const { copyToClipboard } = useCopy()
 
   const handleCountChange = (value: string) => {
     const num = parseInt(value) || 1
@@ -35,41 +35,59 @@ export function TinyPngDialog() {
     setResults([])
     setError(null)
 
-    const generated: GeneratedApiKey[] = []
-
-    for (let i = 0; i < count; i++) {
-      try {
-        setProgress(i + 1)
-        const response = await fetch("/api/tinypng/generate", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-        })
-
-        if (!response.ok) {
-          const data = await response.json()
-          throw new Error((data as { error: string }).error || "生成失败")
-        }
-
-        const data = await response.json() as { apiKey: string; email: string }
-        generated.push({
-          email: data.email,
-          apiKey: data.apiKey,
-        })
-      } catch (err) {
-        const message = err instanceof Error ? err.message : "未知错误"
-        setError(`第 ${i + 1} 个生成失败: ${message}`)
-        break
+    try {
+      // 1. 首先获取或创建 "tinypng" 专用 API Key
+      const apiKeyResponse = await fetch("/api/api-keys/tinypng")
+      if (!apiKeyResponse.ok) {
+        const data = await apiKeyResponse.json()
+        throw new Error((data as { error: string }).error || "获取 API Key 失败")
       }
-    }
+      const { apiKey: moEmailApiKey } = await apiKeyResponse.json() as { apiKey: string }
 
-    setResults(generated)
-    setLoading(false)
+      // 2. 使用获取到的 API Key 进行 TinyPNG 生成
+      const generated: GeneratedApiKey[] = []
 
-    if (generated.length > 0) {
-      toast({
-        title: "生成完成",
-        description: `成功生成 ${generated.length} 个 TinyPNG API Key`,
-      })
+      for (let i = 0; i < count; i++) {
+        try {
+          setProgress(i + 1)
+          const response = await fetch("/api/tinypng/generate", {
+            method: "POST",
+            headers: { 
+              "Content-Type": "application/json",
+              "X-API-Key": moEmailApiKey,
+            },
+          })
+
+          if (!response.ok) {
+            const data = await response.json()
+            throw new Error((data as { error: string }).error || "生成失败")
+          }
+
+          const data = await response.json() as { apiKey: string; email: string }
+          generated.push({
+            email: data.email,
+            apiKey: data.apiKey,
+          })
+        } catch (err) {
+          const message = err instanceof Error ? err.message : "未知错误"
+          setError(`第 ${i + 1} 个生成失败: ${message}`)
+          break
+        }
+      }
+
+      setResults(generated)
+
+      if (generated.length > 0) {
+        toast({
+          title: "生成完成",
+          description: `成功生成 ${generated.length} 个 TinyPNG API Key`,
+        })
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "未知错误"
+      setError(message)
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -175,7 +193,7 @@ export function TinyPngDialog() {
                     onClick={copyAllKeys}
                     className="gap-1"
                   >
-                    {copied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+                    <Copy className="w-3 h-3" />
                     复制所有 Key
                   </Button>
                   <Button
@@ -184,7 +202,7 @@ export function TinyPngDialog() {
                     onClick={copyAllResults}
                     className="gap-1"
                   >
-                    {copied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+                    <Copy className="w-3 h-3" />
                     复制全部
                   </Button>
                 </div>
