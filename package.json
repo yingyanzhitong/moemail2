@@ -14,6 +14,7 @@
     "generate-test-data": "wrangler dev scripts/generate-test-data.ts",
     "dev:cleanup": "wrangler dev --config wrangler.cleanup.json --test-scheduled",
     "test:cleanup": "curl http://localhost:8787/__scheduled",
+    "deploy": "pnpm dlx tsx ./scripts/deploy/index.ts",
     "deploy:email": "wrangler deploy --config wrangler.email.json",
     "deploy:cleanup": "wrangler deploy --config wrangler.cleanup.json",
     "deploy:pages": "npm run build:pages && wrangler pages deploy .vercel/output/static --branch main --no-bundle",

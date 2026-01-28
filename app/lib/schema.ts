@@ -153,7 +153,7 @@ export const messageShares = sqliteTable('message_share', {
 }));
 
 // TinyPNG API Keys 表 - 存储用户生成的 TinyPNG API Key
-export const tinypngKeys = sqliteTable('tinypng_keys', {
+export const tinypngKeys = sqliteTable('moemail_tinypng_keys', {
   id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
   userId: text('user_id')
     .notNull()
@@ -164,8 +164,8 @@ export const tinypngKeys = sqliteTable('tinypng_keys', {
     .notNull()
     .$defaultFn(() => new Date()),
 }, (table) => ({
-  userIdIdx: index('tinypng_keys_user_id_idx').on(table.userId),
-  apiKeyIdx: index('tinypng_keys_api_key_idx').on(table.apiKey),
+  userIdIdx: index('moemail_tinypng_keys_user_id_idx').on(table.userId),
+  apiKeyIdx: index('moemail_tinypng_keys_api_key_idx').on(table.apiKey),
 }));
 
 

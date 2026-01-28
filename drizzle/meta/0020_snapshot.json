@@ -1,7 +1,7 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "8a177745-46a0-4d32-9181-dfa9d993f508",
+  "id": "aa298168-eb75-45fb-a41a-9ce030406872",
   "prevId": "8e6fb19f-5f10-4055-a118-9c6708eac3fc",
   "tables": {
     "account": {
@@ -624,8 +624,8 @@
       "uniqueConstraints": {},
       "checkConstraints": {}
     },
-    "tinypng_keys": {
-      "name": "tinypng_keys",
+    "moemail_tinypng_keys": {
+      "name": "moemail_tinypng_keys",
       "columns": {
         "id": {
           "name": "id",
@@ -664,15 +664,15 @@
         }
       },
       "indexes": {
-        "tinypng_keys_user_id_idx": {
-          "name": "tinypng_keys_user_id_idx",
+        "moemail_tinypng_keys_user_id_idx": {
+          "name": "moemail_tinypng_keys_user_id_idx",
           "columns": [
             "user_id"
           ],
           "isUnique": false
         },
-        "tinypng_keys_api_key_idx": {
-          "name": "tinypng_keys_api_key_idx",
+        "moemail_tinypng_keys_api_key_idx": {
+          "name": "moemail_tinypng_keys_api_key_idx",
           "columns": [
             "api_key"
           ],
@@ -680,9 +680,9 @@
         }
       },
       "foreignKeys": {
-        "tinypng_keys_user_id_user_id_fk": {
-          "name": "tinypng_keys_user_id_user_id_fk",
-          "tableFrom": "tinypng_keys",
+        "moemail_tinypng_keys_user_id_user_id_fk": {
+          "name": "moemail_tinypng_keys_user_id_user_id_fk",
+          "tableFrom": "moemail_tinypng_keys",
           "tableTo": "user",
           "columnsFrom": [
             "user_id"

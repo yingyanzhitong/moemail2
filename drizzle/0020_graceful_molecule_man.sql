@@ -1,4 +1,4 @@
-CREATE TABLE `tinypng_keys` (
+CREATE TABLE `moemail_tinypng_keys` (
 	`id` text PRIMARY KEY NOT NULL,
 	`user_id` text NOT NULL,
 	`api_key` text NOT NULL,
@@ -7,5 +7,5 @@ CREATE TABLE `tinypng_keys` (
 	FOREIGN KEY (`user_id`) REFERENCES `user`(`id`) ON UPDATE no action ON DELETE cascade
 );
 --> statement-breakpoint
-CREATE INDEX `tinypng_keys_user_id_idx` ON `tinypng_keys` (`user_id`);--> statement-breakpoint
-CREATE INDEX `tinypng_keys_api_key_idx` ON `tinypng_keys` (`api_key`);
+CREATE INDEX `moemail_tinypng_keys_user_id_idx` ON `moemail_tinypng_keys` (`user_id`);--> statement-breakpoint
+CREATE INDEX `moemail_tinypng_keys_api_key_idx` ON `moemail_tinypng_keys` (`api_key`);
