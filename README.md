@@ -35,7 +35,7 @@
 </p>
 
 ## 在线演示
-[https://moemail.xyyamsz.cn](https://moemail.xyyamsz.cn)
+[https://moemail.tinypng-token.site](https://moemail.tinypng-token.site)
 
 ![首页](https://pic.otaku.ren/20241209/AQADwsUxG9k1uVZ-.jpg "首页")
 
@@ -45,7 +45,7 @@
 ![个人中心](https://pic.otaku.ren/20241227/AQADVsIxG7OzcFd-.jpg "个人中心")
 
 ## 文档
-**完整文档**: [https://docs.xyyamsz.cn](https://docs.xyyamsz.cn)
+**完整文档**: [https://docs.tinypng-token.site](https://docs.tinypng-token.site)
 
 文档站点包含详细的使用指南、API 文档、部署教程等完整信息。
 
@@ -387,7 +387,7 @@ X-Webhook-Event: new_message
   "content": "邮件文本内容",
   "html": "邮件HTML内容",
   "receivedAt": "2024-01-01T12:00:00.000Z",
-  "toAddress": "your-email@xyyamsz.cn"
+  "toAddress": "your-email@tinypng-token.site"
 }
 ```
 
@@ -438,7 +438,7 @@ GET /api/config
 ```json
 {
   "defaultRole": "CIVILIAN",
-  "emailDomains": "xyyamsz.cn,example.com",
+  "emailDomains": "tinypng-token.site,example.com",
   "adminContact": "admin@example.com",
   "maxEmails": "10"
 }
@@ -457,7 +457,7 @@ Content-Type: application/json
 {
   "name": "test",
   "expiryTime": 3600000,
-  "domain": "xyyamsz.cn"
+  "domain": "tinypng-token.site"
 }
 ```
 参数说明：
@@ -469,7 +469,7 @@ Content-Type: application/json
 ```json
 {
   "id": "email-uuid-123",
-  "email": "test@xyyamsz.cn"
+  "email": "test@tinypng-token.site"
 }
 ```
 响应字段说明：
@@ -489,7 +489,7 @@ GET /api/emails?cursor=xxx
   "emails": [
     {
       "id": "email-uuid-123",
-      "address": "test@xyyamsz.cn",
+      "address": "test@tinypng-token.site",
       "createdAt": "2024-01-01T12:00:00.000Z",
       "expiresAt": "2024-01-02T12:00:00.000Z",
       "userId": "user-uuid-456"
@@ -741,7 +741,7 @@ curl -X POST https://your-domain.com/api/emails/generate \
   -d '{
     "name": "test",
     "expiryTime": 3600000,
-    "domain": "xyyamsz.cn"
+    "domain": "tinypng-token.site"
   }'
 ```
 
@@ -799,7 +799,7 @@ console.log('分享链接:', `https://your-domain.com/shared/message/${data.toke
 - `DATABASE_ID`: D1 数据库 ID (可选, 如果不填, 则会自动通过 Cloudflare API 获取)
 - `KV_NAMESPACE_NAME`: Cloudflare KV namespace 名称，用于存储网站配置
 - `KV_NAMESPACE_ID`: Cloudflare KV namespace ID，用于存储网站配置 （可选， 如果不填, 则会自动通过 Cloudflare API 获取）
-- `CUSTOM_DOMAIN`: 网站自定义域名, 如：xyyamsz.cn (可选， 如果不填, 则会使用 Cloudflare Pages 默认域名)
+- `CUSTOM_DOMAIN`: 网站自定义域名, 如：tinypng-token.site (可选， 如果不填, 则会使用 Cloudflare Pages 默认域名)
 - `PROJECT_NAME`: Pages 项目名 （可选，如果不填，则为 moemail） 
 
 ## Github OAuth App 配置

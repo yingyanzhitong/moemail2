@@ -20,8 +20,18 @@ export async function POST(request: Request) {
   const userRole = await getUserRole(userId!)
 
   try {
+    // 统一获取配置，避免不同角色路径导致的 KV 访问问题
+    const [maxEmails, domainString] = await Promise.all([
+      env.SITE_CONFIG.get("MAX_EMAILS"),
+      env.SITE_CONFIG.get("EMAIL_DOMAINS")
+    ])
+    
+    const domains = domainString 
+      ? domainString.split(',') 
+      : [process.env.DEFAULT_EMAIL_DOMAIN!]
+
     if (userRole !== ROLES.EMPEROR) {
-      const maxEmails = await env.SITE_CONFIG.get("MAX_EMAILS") || EMAIL_CONFIG.MAX_ACTIVE_EMAILS.toString()
+      const maxEmailsValue = maxEmails || EMAIL_CONFIG.MAX_ACTIVE_EMAILS.toString()
       const activeEmailsCount = await db
         .select({ count: sql<number>`count(*)` })
         .from(emails)
@@ -32,9 +42,9 @@ export async function POST(request: Request) {
           )
         )
       
-      if (Number(activeEmailsCount[0].count) >= Number(maxEmails)) {
+      if (Number(activeEmailsCount[0].count) >= Number(maxEmailsValue)) {
         return NextResponse.json(
-          { error: `已达到最大邮箱数量限制 (${maxEmails})` },
+          { error: `已达到最大邮箱数量限制 (${maxEmailsValue})` },
           { status: 403 }
         )
       }
@@ -52,9 +62,6 @@ export async function POST(request: Request) {
         { status: 400 }
       )
     }
-
-    const domainString = await env.SITE_CONFIG.get("EMAIL_DOMAINS")
-    const domains = domainString ? domainString.split(',') : ["xyyamsz.cn"]
 
     if (!domains || !domains.includes(domain)) {
       return NextResponse.json(

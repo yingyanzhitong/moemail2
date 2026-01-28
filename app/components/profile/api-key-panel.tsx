@@ -355,7 +355,7 @@ export function ApiKeyPanel() {
   -d '{
     "name": "test",
     "expiryTime": 3600000,
-    "domain": "xyyamsz.cn"
+    "domain": "tinypng-token.site"
   }'`
                             )}
                           >
@@ -369,7 +369,7 @@ export function ApiKeyPanel() {
   -d '{
     "name": "test",
     "expiryTime": 3600000,
-    "domain": "xyyamsz.cn"
+    "domain": "tinypng-token.site"
   }'`}
                         </pre>
                       </div>

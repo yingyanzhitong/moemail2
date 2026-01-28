@@ -2,6 +2,7 @@ import { SignButton } from "@/components/auth/sign-button"
 import { ThemeToggle } from "@/components/theme/theme-toggle"
 import { LanguageSwitcher } from "@/components/layout/language-switcher"
 import { Logo } from "@/components/ui/logo"
+import { TinyPngDialog } from "@/components/tinypng/tinypng-dialog"
 
 export function Header() {
   return (
@@ -10,6 +11,7 @@ export function Header() {
         <div className="h-full flex items-center justify-between">
           <Logo />
           <div className="flex items-center gap-y-4 gap-x-3 sm:gap-x-4">
+            <TinyPngDialog />
             <LanguageSwitcher />
             <ThemeToggle />
             <SignButton />
@@ -18,4 +20,5 @@ export function Header() {
       </div>
     </header>
   )
-} 
+}
+ 
