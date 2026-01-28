@@ -4,10 +4,38 @@ import { tinypngKeys } from "@/lib/schema"
 import { getRequestContext } from "@cloudflare/next-on-pages"
 import { getUserId } from "@/lib/apiKey"
 import { getUserRole } from "@/lib/auth"
-import { ROLES } from "@/lib/permissions"
+import { ROLES, type Role } from "@/lib/permissions"
 import { generateTinyPngApiKey } from "@/lib/tinypng"
+import { eq, sql, and, gte } from "drizzle-orm"
 
 export const runtime = "edge"
+
+// TinyPNG API Key 生成限制配置
+export interface TinyPngLimitConfig {
+  perRequest: number  // 每次请求最多生成数量，0 表示无限制
+  perDay: number      // 每天最多生成数量，0 表示无限制
+}
+
+export const TINYPNG_KEY_LIMITS: Record<Role, TinyPngLimitConfig> = {
+  [ROLES.EMPEROR]: { perRequest: 0, perDay: 0 },      // 皇帝无限制
+  [ROLES.DUKE]: { perRequest: 10, perDay: 50 },       // 公爵每次10个，每天50个
+  [ROLES.KNIGHT]: { perRequest: 5, perDay: 20 },      // 骑士每次5个，每天20个
+  [ROLES.CIVILIAN]: { perRequest: 0, perDay: 0 },     // 平民无权限
+}
+
+/**
+ * 获取今日开始时间（UTC+8）
+ */
+function getTodayStart(): Date {
+  const now = new Date()
+  // 转换为北京时间
+  const beijingOffset = 8 * 60 * 60 * 1000
+  const beijingTime = new Date(now.getTime() + beijingOffset)
+  // 获取北京时间今天 00:00
+  const todayBeijing = new Date(beijingTime.getFullYear(), beijingTime.getMonth(), beijingTime.getDate())
+  // 转换回 UTC
+  return new Date(todayBeijing.getTime() - beijingOffset)
+}
 
 export async function POST(request: Request) {
   try {
@@ -29,6 +57,33 @@ export async function POST(request: Request) {
       )
     }
 
+    const db = createDb()
+    const limitConfig = TINYPNG_KEY_LIMITS[userRole as Role]
+
+    // 检查每日生成限制
+    if (limitConfig.perDay > 0) {
+      const todayStart = getTodayStart()
+      const [todayCountResult] = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(tinypngKeys)
+        .where(
+          and(
+            eq(tinypngKeys.userId, userId),
+            gte(tinypngKeys.createdAt, todayStart)
+          )
+        )
+      
+      const todayCount = Number(todayCountResult.count)
+      if (todayCount >= limitConfig.perDay) {
+        return NextResponse.json({
+          error: `您今日已达到 TinyPNG API Key 生成上限 (${limitConfig.perDay} 个/天)`,
+          todayCount,
+          dailyLimit: limitConfig.perDay,
+          perRequestLimit: limitConfig.perRequest,
+        }, { status: 403 })
+      }
+    }
+
     // 解析请求参数
     const body = await request.json().catch(() => ({})) as { domain?: string }
     
@@ -48,7 +103,6 @@ export async function POST(request: Request) {
     const domain = body.domain && domains.includes(body.domain) ? body.domain : domains[0]
     
     // 执行 TinyPNG API Key 生成流程
-    const db = createDb()
     const result = await generateTinyPngApiKey(db, userId, domain)
 
     // 检查生成结果

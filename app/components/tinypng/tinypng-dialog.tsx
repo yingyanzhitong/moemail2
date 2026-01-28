@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog"
@@ -8,11 +8,20 @@ import { Label } from "@/components/ui/label"
 import { useToast } from "@/components/ui/use-toast"
 import { ImageIcon, Loader2, Copy } from "lucide-react"
 import { useCopy } from "@/hooks/use-copy"
+import { useRolePermission } from "@/hooks/use-role-permission"
 
 interface GeneratedApiKey {
   email: string
   apiKey: string
 }
+
+// 每次请求的限制配置（需要与后端保持一致）
+const PER_REQUEST_LIMITS = {
+  emperor: 0,  // 0 表示无限制，但 UI 上限制为 50
+  duke: 10,
+  knight: 5,
+  civilian: 0,
+} as const
 
 export function TinyPngDialog() {
   const [open, setOpen] = useState(false)
@@ -23,10 +32,30 @@ export function TinyPngDialog() {
   const [error, setError] = useState<string | null>(null)
   const { toast } = useToast()
   const { copyToClipboard } = useCopy()
+  const { roles } = useRolePermission()
+
+  // 获取用户最高角色
+  const highestRole = useMemo(() => {
+    if (!roles?.length) return null
+    // 角色优先级：emperor > duke > knight > civilian
+    const priority = ['emperor', 'duke', 'knight', 'civilian']
+    for (const role of priority) {
+      if (roles.some(r => r.name === role)) return role
+    }
+    return null
+  }, [roles])
+
+  // 根据用户角色计算最大生成数量
+  const maxCount = useMemo(() => {
+    if (!highestRole) return 0
+    const limit = PER_REQUEST_LIMITS[highestRole as keyof typeof PER_REQUEST_LIMITS]
+    if (limit === 0) return 50  // 皇帝无限制，UI 上限为 50
+    return limit
+  }, [highestRole])
 
   const handleCountChange = (value: string) => {
     const num = parseInt(value) || 1
-    setCount(Math.min(10, Math.max(1, num)))
+    setCount(Math.min(maxCount, Math.max(1, num)))
   }
 
   const generateApiKeys = async () => {
@@ -141,14 +170,14 @@ export function TinyPngDialog() {
                 id="count"
                 type="number"
                 min={1}
-                max={10}
+                max={maxCount}
                 value={count}
                 onChange={(e) => handleCountChange(e.target.value)}
                 className="w-24"
-                disabled={loading}
+                disabled={loading || maxCount === 0}
               />
               <span className="text-sm text-muted-foreground">
-                (1-10 个)
+                (1-{maxCount} 个/次)
               </span>
             </div>
           )}
