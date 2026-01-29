@@ -65,7 +65,7 @@ git push origin --tags
 ### 6. 执行部署（可选）
 
 ```bash
-pnpm run deploy:local
+pnpm run deploy
 ```
 
 ## 完整命令示例
@@ -87,7 +87,7 @@ git push origin master
 git push origin --tags
 
 # 5. 部署
-pnpm run deploy:local
+pnpm run deploy
 ```
 
 ## CHANGELOG 格式示例
