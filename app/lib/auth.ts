@@ -230,6 +230,13 @@ export const {
         })
 
         session.user.providers = userAccounts.map(account => account.provider)
+        
+        const dbUser = await db.query.users.findFirst({
+            where: eq(users.id, session.user.id),
+            columns: { password: true }
+        })
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        ;(session.user as any).hasPassword = !!dbUser?.password
       }
 
       return session

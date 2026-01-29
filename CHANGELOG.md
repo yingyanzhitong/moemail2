@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.8.0] - 2026-01-29
+
+### Features
+
+- 新增前端辅助 TinyPNG 注册流程，绕过 IP 限制
+- 新增修改密码功能 (个人中心)
+- 优化修改密码入口为高亮按钮
+
+
 ## [1.7.0] - 2026-01-29
 
 ### Features

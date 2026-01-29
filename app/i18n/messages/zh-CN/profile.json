@@ -135,5 +135,16 @@
     "loading": "加载中...",
     "updateSuccess": "用户角色更新成功",
     "updateFailed": "更新用户角色失败"
+  },
+  "password": {
+    "title": "修改密码",
+    "description": "修改您的登录密码",
+    "current": "当前密码",
+    "new": "新密码",
+    "confirm": "确认新密码",
+    "save": "更新密码",
+    "saving": "更新中...",
+    "success": "密码修改成功",
+    "failed": "密码修改失败"
   }
 }

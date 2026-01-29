@@ -15,9 +15,14 @@ import { PERMISSIONS } from "@/lib/permissions"
 import { WebsiteConfigPanel } from "./website-config-panel"
 import { ApiKeyPanel } from "./api-key-panel"
 import { TinyPngKeysPanel } from "./tinypng-keys-panel"
+import { ChangePasswordDialog } from "./change-password-dialog"
+
+interface ExtendedUser extends User {
+  hasPassword?: boolean
+}
 
 interface ProfileCardProps {
-  user: User
+  user: ExtendedUser
 }
 
 const roleConfigs = {
@@ -89,6 +94,7 @@ export function ProfileCard({ user }: ProfileCardProps) {
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
               <h2 className="text-xl font-bold truncate">{user.name}</h2>
+              {user.hasPassword && <ChangePasswordDialog />}
               {!!user?.providers?.length && (
                 <div className="flex gap-2">
                   {user.providers.map((provider) => {

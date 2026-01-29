@@ -135,5 +135,16 @@
     "loading": "Loading...",
     "updateSuccess": "User role updated successfully",
     "updateFailed": "Failed to update user role"
+  },
+  "password": {
+    "title": "Change Password",
+    "description": "Change your login password",
+    "current": "Current Password",
+    "new": "New Password",
+    "confirm": "Confirm New Password",
+    "save": "Update Password",
+    "saving": "Updating...",
+    "success": "Password updated successfully",
+    "failed": "Failed to update password"
   }
 }
