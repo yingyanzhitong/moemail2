@@ -17,7 +17,8 @@
     "deploy:local": "pnpm dlx tsx ./scripts/deploy/index.ts",
     "deploy:email": "wrangler deploy --config wrangler.email.json",
     "deploy:cleanup": "wrangler deploy --config wrangler.cleanup.json",
-    "deploy:pages": "npm run build:pages && wrangler pages deploy .vercel/output/static --branch main --no-bundle"
+    "deploy:pages": "npm run build:pages && wrangler pages deploy .vercel/output/static --branch main --no-bundle",
+    "deploy": "git push origin master && git push -u origin --tags"
   },
   "type": "module",
   "dependencies": {
