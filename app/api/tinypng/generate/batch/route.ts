@@ -5,7 +5,7 @@ import { getRequestContext } from "@cloudflare/next-on-pages"
 import { getUserId } from "@/lib/apiKey"
 import { getUserRole } from "@/lib/auth"
 import { ROLES, type Role } from "@/lib/permissions"
-import { generateTinyPngApiKey } from "@/lib/tinypng"
+import { generateTinyPngApiKeysBatch } from "@/lib/tinypng"
 import { TINYPNG_KEY_LIMITS } from "@/lib/tinypng-limits"
 import { eq, sql, and, gte } from "drizzle-orm"
 
@@ -25,6 +25,10 @@ function getTodayStart(): Date {
   return new Date(todayBeijing.getTime() - beijingOffset)
 }
 
+/**
+ * POST: 批量生成 TinyPNG API Key
+ * 优化流程：先并行创建邮箱和注册，再逐个获取 API Key
+ */
 export async function POST(request: Request) {
   try {
     // 验证用户登录
@@ -48,6 +52,26 @@ export async function POST(request: Request) {
     const db = createDb()
     const limitConfig = TINYPNG_KEY_LIMITS[userRole as Role]
 
+    // 解析请求参数
+    const body = await request.json().catch(() => ({})) as { count?: number; domain?: string }
+    const requestedCount = body.count || 1
+
+    // 验证请求数量
+    if (requestedCount < 1) {
+      return NextResponse.json(
+        { error: "生成数量必须大于 0" },
+        { status: 400 }
+      )
+    }
+
+    // 检查每次请求数量限制
+    if (limitConfig.perRequest > 0 && requestedCount > limitConfig.perRequest) {
+      return NextResponse.json({
+        error: `每次最多生成 ${limitConfig.perRequest} 个 API Key`,
+        perRequestLimit: limitConfig.perRequest,
+      }, { status: 400 })
+    }
+
     // 检查每日生成限制
     if (limitConfig.perDay > 0) {
       const todayStart = getTodayStart()
@@ -62,7 +86,9 @@ export async function POST(request: Request) {
         )
       
       const todayCount = Number(todayCountResult.count)
-      if (todayCount >= limitConfig.perDay) {
+      const remainingToday = limitConfig.perDay - todayCount
+      
+      if (remainingToday <= 0) {
         return NextResponse.json({
           error: `您今日已达到 TinyPNG API Key 生成上限 (${limitConfig.perDay} 个/天)`,
           todayCount,
@@ -70,11 +96,18 @@ export async function POST(request: Request) {
           perRequestLimit: limitConfig.perRequest,
         }, { status: 403 })
       }
+
+      // 如果请求数量超过今日剩余额度，调整为剩余额度
+      if (requestedCount > remainingToday) {
+        return NextResponse.json({
+          error: `今日剩余额度 ${remainingToday} 个，请求数量超出限制`,
+          todayCount,
+          dailyLimit: limitConfig.perDay,
+          remainingToday,
+        }, { status: 400 })
+      }
     }
 
-    // 解析请求参数
-    const body = await request.json().catch(() => ({})) as { domain?: string }
-    
     // 获取可用的邮箱域名
     const env = getRequestContext().env
     const domainString = await env.SITE_CONFIG.get("EMAIL_DOMAINS")
@@ -90,46 +123,36 @@ export async function POST(request: Request) {
     // 使用请求中的域名或默认使用第一个
     const domain = body.domain && domains.includes(body.domain) ? body.domain : domains[0]
     
-    // 执行 TinyPNG API Key 生成流程
-    const result = await generateTinyPngApiKey(db, userId, domain)
+    // 执行批量 TinyPNG API Key 生成流程
+    const result = await generateTinyPngApiKeysBatch(db, userId, domain, requestedCount)
 
-    // 检查生成结果
-    if (!result.success || !result.apiKey || !result.email) {
-      // 生成失败，返回详细的步骤信息
-      return NextResponse.json({
-        success: false,
-        error: result.error ? `${result.error.step}: ${result.error.message}` : "生成失败",
-        failedStep: result.error?.step,
-        failedMessage: result.error?.message,
-        steps: result.steps,
-      }, { status: 500 })
+    // 保存成功生成的 TinyPNG API Key 到数据库
+    const successfulResults = result.results.filter(r => r.apiKey)
+    for (const item of successfulResults) {
+      await db.insert(tinypngKeys).values({
+        userId,
+        apiKey: item.apiKey!,
+        email: item.email,
+      })
     }
 
-    // 保存生成的 TinyPNG API Key 到数据库
-    await db.insert(tinypngKeys).values({
-      userId,
-      apiKey: result.apiKey,
-      email: result.email,
-    })
-
     return NextResponse.json({
-      success: true,
-      apiKey: result.apiKey,
-      email: result.email,
-      message: "TinyPNG API Key 生成成功",
-      steps: result.steps,
+      success: result.success,
+      results: result.results,
+      totalRequested: result.totalRequested,
+      totalSuccess: result.totalSuccess,
+      totalFailed: result.totalFailed,
+      message: `批量生成完成: 成功 ${result.totalSuccess} 个, 失败 ${result.totalFailed} 个`,
     })
   } catch (error) {
-    console.error('[TinyPNG API] 生成失败:', error)
+    console.error('[TinyPNG Batch API] 批量生成失败:', error)
     
     const errorMessage = error instanceof Error ? error.message : "未知错误"
     
     return NextResponse.json(
       { 
         success: false,
-        error: `生成 TinyPNG API Key 失败: ${errorMessage}`,
-        failedStep: "未知步骤",
-        failedMessage: errorMessage,
+        error: `批量生成 TinyPNG API Key 失败: ${errorMessage}`,
       },
       { status: 500 }
     )

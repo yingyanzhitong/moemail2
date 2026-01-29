@@ -350,7 +350,7 @@ export async function generateTinyPngApiKey(
   currentStep = GenerateStep.CREATE_EMAIL
   const emailAddress = `tinypng-${nanoid(8)}@${domain}`
   const now = new Date()
-  const expiresAt = new Date(now.getTime() + 24 * 60 * 60 * 1000) // 24小时后过期
+  const expiresAt = new Date(now.getTime() + 1 * 60 * 60 * 1000) // 1小时后过期
   
   let createdEmail: { id: string; address: string }
   
@@ -438,5 +438,159 @@ export async function generateTinyPngApiKey(
         message: errorMsg,
       }
     }
+  }
+}
+
+/**
+ * 批量生成结果接口
+ */
+export interface BatchGenerateResult {
+  success: boolean
+  results: {
+    email: string
+    apiKey?: string
+    error?: string
+  }[]
+  totalRequested: number
+  totalSuccess: number
+  totalFailed: number
+}
+
+/**
+ * 单个邮箱的准备状态
+ */
+interface PreparedEmail {
+  id: string
+  address: string
+  registered: boolean
+  error?: string
+}
+
+/**
+ * 批量生成 TinyPNG API Key
+ * 优化流程：先并行创建邮箱和注册，再逐个获取 API Key
+ * @param db 数据库实例
+ * @param userId 用户 ID
+ * @param domain 邮箱域名
+ * @param count 生成数量
+ * @returns 批量生成结果
+ */
+export async function generateTinyPngApiKeysBatch(
+  db: DrizzleD1Database<Record<string, unknown>>,
+  userId: string,
+  domain: string,
+  count: number
+): Promise<BatchGenerateResult> {
+  const results: BatchGenerateResult['results'] = []
+  const preparedEmails: PreparedEmail[] = []
+  const now = new Date()
+  const expiresAt = new Date(now.getTime() + 1 * 60 * 60 * 1000) // 1小时后过期
+
+  console.log(`[TinyPNG Batch] 开始批量生成 ${count} 个 API Key`)
+
+  // 阶段1：批量创建临时邮箱
+  console.log(`[TinyPNG Batch] 阶段1: 创建 ${count} 个临时邮箱...`)
+  for (let i = 0; i < count; i++) {
+    const emailAddress = `tinypng-${nanoid(8)}@${domain}`
+    try {
+      const [result] = await db
+        .insert(emails)
+        .values({
+          address: emailAddress,
+          userId: userId,
+          createdAt: now,
+          expiresAt: expiresAt,
+        })
+        .returning()
+      
+      preparedEmails.push({
+        id: result.id,
+        address: emailAddress,
+        registered: false,
+      })
+      console.log(`[TinyPNG Batch] 创建邮箱 ${i + 1}/${count}: ${emailAddress}`)
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error)
+      console.error(`[TinyPNG Batch] 创建邮箱失败: ${errorMsg}`)
+      results.push({
+        email: emailAddress,
+        error: `创建邮箱失败: ${errorMsg}`,
+      })
+    }
+  }
+
+  // 阶段2：并行向 TinyPNG 发送注册请求
+  console.log(`[TinyPNG Batch] 阶段2: 并行发送 ${preparedEmails.length} 个注册请求...`)
+  const registerPromises = preparedEmails.map(async (email, index) => {
+    try {
+      await registerTinyPng(email.address)
+      email.registered = true
+      console.log(`[TinyPNG Batch] 注册请求 ${index + 1}/${preparedEmails.length} 已发送: ${email.address}`)
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error)
+      email.error = `注册失败: ${errorMsg}`
+      console.error(`[TinyPNG Batch] 注册失败 ${email.address}: ${errorMsg}`)
+    }
+  })
+  
+  await Promise.all(registerPromises)
+
+  // 阶段3：逐个等待邮件并获取 API Key
+  console.log(`[TinyPNG Batch] 阶段3: 逐个获取 API Key...`)
+  const successfulEmails = preparedEmails.filter(e => e.registered && !e.error)
+  
+  for (let i = 0; i < successfulEmails.length; i++) {
+    const email = successfulEmails[i]
+    console.log(`[TinyPNG Batch] 处理 ${i + 1}/${successfulEmails.length}: ${email.address}`)
+    
+    try {
+      // 等待 magic link 邮件
+      const magicLink = await waitForMagicLinkEmail(db, email.id, now)
+      console.log(`[TinyPNG Batch] 收到 magic link: ${email.address}`)
+      
+      // 提取 token
+      const token = extractTokenFromMagicLink(magicLink)
+      
+      // 获取 Bearer Token
+      const bearerToken = await getBearerToken(token)
+      
+      // 获取 API Key
+      const apiKey = await getAndEnableApiKey(bearerToken)
+      
+      results.push({
+        email: email.address,
+        apiKey,
+      })
+      console.log(`[TinyPNG Batch] API Key 生成成功: ${email.address}`)
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error)
+      results.push({
+        email: email.address,
+        error: errorMsg,
+      })
+      console.error(`[TinyPNG Batch] 获取 API Key 失败 ${email.address}: ${errorMsg}`)
+    }
+  }
+
+  // 添加注册失败的邮箱到结果
+  const failedEmails = preparedEmails.filter(e => !e.registered || e.error)
+  for (const email of failedEmails) {
+    results.push({
+      email: email.address,
+      error: email.error || "注册未完成",
+    })
+  }
+
+  const totalSuccess = results.filter(r => r.apiKey).length
+  const totalFailed = results.filter(r => r.error).length
+
+  console.log(`[TinyPNG Batch] 批量生成完成: 成功 ${totalSuccess}, 失败 ${totalFailed}`)
+
+  return {
+    success: totalSuccess > 0,
+    results,
+    totalRequested: count,
+    totalSuccess,
+    totalFailed,
   }
 }

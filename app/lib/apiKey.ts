@@ -25,7 +25,11 @@ async function getUserByApiKey(key: string): Promise<User | null> {
 }
 
 export async function handleApiKeyAuth(apiKey: string, pathname: string) {
-  if (!pathname.startsWith('/api/emails') && !pathname.startsWith('/api/config')) {
+  // 允许 API Key 访问的路径
+  const allowedPaths = ['/api/emails', '/api/config', '/api/tinypng', '/api/api-keys/tinypng']
+  const isAllowed = allowedPaths.some(path => pathname.startsWith(path))
+  
+  if (!isAllowed) {
     return NextResponse.json(
       { error: "无权限查看" },
       { status: 403 }

@@ -75,38 +75,47 @@ export function TinyPngDialog() {
       }
       const { apiKey: moEmailApiKey } = await apiKeyResponse.json() as { apiKey: string }
 
-      // 2. 使用获取到的 API Key 进行 TinyPNG 生成
-      const generated: GeneratedApiKey[] = []
+      // 2. 使用批量生成 API
+      setProgress(1) // 表示正在处理
+      const response = await fetch("/api/tinypng/generate/batch", {
+        method: "POST",
+        headers: { 
+          "Content-Type": "application/json",
+          "X-API-Key": moEmailApiKey,
+        },
+        body: JSON.stringify({ count }),
+      })
 
-      for (let i = 0; i < count; i++) {
-        try {
-          setProgress(i + 1)
-          const response = await fetch("/api/tinypng/generate", {
-            method: "POST",
-            headers: { 
-              "Content-Type": "application/json",
-              "X-API-Key": moEmailApiKey,
-            },
-          })
-
-          if (!response.ok) {
-            const data = await response.json()
-            throw new Error((data as { error: string }).error || "生成失败")
-          }
-
-          const data = await response.json() as { apiKey: string; email: string }
-          generated.push({
-            email: data.email,
-            apiKey: data.apiKey,
-          })
-        } catch (err) {
-          const message = err instanceof Error ? err.message : "未知错误"
-          setError(`第 ${i + 1} 个生成失败: ${message}`)
-          break
-        }
+      if (!response.ok) {
+        const data = await response.json()
+        throw new Error((data as { error: string }).error || "批量生成失败")
       }
 
+      const data = await response.json() as {
+        success: boolean
+        results: { email: string; apiKey?: string; error?: string }[]
+        totalSuccess: number
+        totalFailed: number
+      }
+
+      // 转换结果
+      const generated: GeneratedApiKey[] = data.results
+        .filter(r => r.apiKey)
+        .map(r => ({
+          email: r.email,
+          apiKey: r.apiKey!,
+        }))
+
       setResults(generated)
+      setProgress(count)
+
+      if (data.totalFailed > 0) {
+        const failedMessages = data.results
+          .filter(r => r.error)
+          .map(r => `${r.email}: ${r.error}`)
+          .join('\n')
+        setError(`${data.totalFailed} 个生成失败:\n${failedMessages}`)
+      }
 
       if (generated.length > 0) {
         toast({
