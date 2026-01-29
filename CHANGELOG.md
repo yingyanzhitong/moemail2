@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.7.0] - 2026-01-29
+
+### Features
+
+- 添加 skills 技能文件系统，沉淀开发经验
+- TinyPNG 邮箱列表显示官方 favicon 图标
+- 点击邮箱自动选择最新一封邮件
+
+### Bug Fixes
+
+- 优化 send-permission 请求缓存，5分钟内不重复请求
+- 点击已选中邮箱不再重复加载消息
+
 ## [1.6.0] - 2026-01-29
 
 ### Features

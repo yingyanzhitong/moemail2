@@ -1,6 +1,6 @@
 {
   "name": "moemail",
-  "version": "1.6.0",
+  "version": "1.7.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -17,8 +17,7 @@
     "deploy:local": "pnpm dlx tsx ./scripts/deploy/index.ts",
     "deploy:email": "wrangler deploy --config wrangler.email.json",
     "deploy:cleanup": "wrangler deploy --config wrangler.cleanup.json",
-    "deploy:pages": "npm run build:pages && wrangler pages deploy .vercel/output/static --branch main --no-bundle",
-    "deploy": "tsx scripts/release.ts"
+    "deploy:pages": "npm run build:pages && wrangler pages deploy .vercel/output/static --branch main --no-bundle"
   },
   "type": "module",
   "dependencies": {
