@@ -198,8 +198,17 @@ export function EmailList({ onEmailSelect, selectedEmailId }: EmailListProps) {
                     "hover:bg-primary/5",
                     selectedEmailId === email.id && "bg-primary/10"
                   )}
-                  onClick={() => onEmailSelect(email)}
-                  onKeyDown={(e) => e.key === 'Enter' && onEmailSelect(email)}
+                  onClick={() => {
+                    // 如果点击的是已选中的邮箱，不重新触发
+                    if (selectedEmailId !== email.id) {
+                      onEmailSelect(email)
+                    }
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && selectedEmailId !== email.id) {
+                      onEmailSelect(email)
+                    }
+                  }}
                   role="button"
                   tabIndex={0}
                 >
