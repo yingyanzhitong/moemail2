@@ -68,7 +68,7 @@ export function MessageList({ email, messageType, onMessageSelect, selectedMessa
     messagesRef.current = messages
   }, [messages])
 
-  const fetchMessages = async (cursor?: string) => {
+  const fetchMessages = async (cursor?: string, autoSelectFirst: boolean = false) => {
     try {
       const url = new URL(`/api/emails/${email.id}`, window.location.origin)
       if (messageType === 'sent') {
@@ -92,6 +92,10 @@ export function MessageList({ email, messageType, onMessageSelect, selectedMessa
           setMessages(newMessages)
           setNextCursor(data.nextCursor)
           setTotal(data.total)
+          // 初次加载时自动选择第一条消息
+          if (autoSelectFirst && newMessages.length > 0) {
+            onMessageSelect(newMessages[0].id, messageType)
+          }
           return
         }
         const uniqueNewMessages = newMessages.slice(0, lastDuplicateIndex)
@@ -189,7 +193,7 @@ export function MessageList({ email, messageType, onMessageSelect, selectedMessa
     }
     setLoading(true)
     setNextCursor(null)
-    fetchMessages()
+    fetchMessages(undefined, true) // 初次加载时自动选择第一条消息
     startPolling() 
 
     return () => {

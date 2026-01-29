@@ -24,6 +24,7 @@ import {
 import { ROLES } from "@/lib/permissions"
 import { useUserRole } from "@/hooks/use-user-role"
 import { useConfig } from "@/hooks/use-config"
+import { TinyPngBadge } from "@/components/tinypng/tinypng-key-viewer"
 
 interface Email {
   id: string
@@ -198,8 +199,12 @@ export function EmailList({ onEmailSelect, selectedEmailId }: EmailListProps) {
                     selectedEmailId === email.id && "bg-primary/10"
                   )}
                   onClick={() => onEmailSelect(email)}
+                  onKeyDown={(e) => e.key === 'Enter' && onEmailSelect(email)}
+                  role="button"
+                  tabIndex={0}
                 >
                   <Mail className="h-4 w-4 text-primary/60" />
+                  <TinyPngBadge emailAddress={email.address} />
                   <div className="truncate flex-1">
                     <div className="font-medium truncate">{email.address}</div>
                     <div className="text-xs text-gray-500">
@@ -210,7 +215,12 @@ export function EmailList({ onEmailSelect, selectedEmailId }: EmailListProps) {
                       )}
                     </div>
                   </div>
-                  <div className="opacity-0 group-hover:opacity-100 flex gap-1" onClick={(e) => e.stopPropagation()}>
+                  <div 
+                    className="opacity-0 group-hover:opacity-100 flex gap-1" 
+                    onClick={(e) => e.stopPropagation()}
+                    onKeyDown={(e) => e.stopPropagation()}
+                    role="group"
+                  >
                     <ShareDialog emailId={email.id} emailAddress={email.address} />
                     <Button
                       variant="ghost"

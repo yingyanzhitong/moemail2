@@ -4,14 +4,15 @@ import { tinypngKeys } from "@/lib/schema"
 import { NextResponse } from "next/server"
 import { checkPermission } from "@/lib/auth"
 import { PERMISSIONS } from "@/lib/permissions"
-import { desc, eq } from "drizzle-orm"
+import { desc, eq, and } from "drizzle-orm"
 
 export const runtime = "edge"
 
 /**
  * GET: 获取用户的 TinyPNG API Keys 列表
+ * 支持 ?email=xxx 查询单个 key
  */
-export async function GET() {
+export async function GET(request: Request) {
   const hasPermission = await checkPermission(PERMISSIONS.MANAGE_API_KEY)
   if (!hasPermission) {
     return NextResponse.json({ error: "权限不足" }, { status: 403 })
@@ -24,6 +25,33 @@ export async function GET() {
 
   try {
     const db = createDb()
+    const url = new URL(request.url)
+    const emailParam = url.searchParams.get("email")
+
+    // 如果提供了 email 参数，查询单个 key
+    if (emailParam) {
+      const key = await db.query.tinypngKeys.findFirst({
+        where: and(
+          eq(tinypngKeys.userId, session.user.id),
+          eq(tinypngKeys.email, emailParam)
+        ),
+      })
+
+      if (!key) {
+        return NextResponse.json({ error: "未找到对应的 API Key" }, { status: 404 })
+      }
+
+      return NextResponse.json({
+        key: {
+          id: key.id,
+          apiKey: key.apiKey,
+          email: key.email,
+          createdAt: key.createdAt,
+        }
+      })
+    }
+
+    // 否则返回所有 keys
     const keys = await db.query.tinypngKeys.findMany({
       where: eq(tinypngKeys.userId, session.user.id),
       orderBy: desc(tinypngKeys.createdAt),

@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { useToast } from "@/components/ui/use-toast"
-import { ImageIcon, Loader2, Copy } from "lucide-react"
+import { Loader2, Copy } from "lucide-react"
 import { useCopy } from "@/hooks/use-copy"
 import { useRolePermission } from "@/hooks/use-role-permission"
 
@@ -160,14 +160,14 @@ export function TinyPngDialog() {
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
         <Button variant="outline" size="sm" className="gap-2 hidden sm:flex">
-          <ImageIcon className="w-4 h-4" />
+          <img src="https://tinypng.com/images/favicon.ico" alt="TinyPNG" className="w-4 h-4" />
           <span className="hidden md:inline">TinyPNG</span>
         </Button>
       </DialogTrigger>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <ImageIcon className="w-5 h-5" />
+            <img src="https://tinypng.com/images/favicon.ico" alt="TinyPNG" className="w-5 h-5" />
             批量生成 TinyPNG API Key
           </DialogTitle>
           <DialogDescription>
