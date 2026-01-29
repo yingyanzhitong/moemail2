@@ -64,13 +64,18 @@ export async function assignRoleToUser(db: Db, userId: string, roleId: string) {
     })
 }
 
-export async function getUserRole(userId: string) {
+export async function getUserRole(userId: string): Promise<Role | null> {
   const db = createDb()
   const userRoleRecords = await db.query.userRoles.findMany({
     where: eq(userRoles.userId, userId),
     with: { role: true },
   })
-  return userRoleRecords[0].role.name
+  
+  if (!userRoleRecords.length || !userRoleRecords[0].role) {
+    return null
+  }
+  
+  return userRoleRecords[0].role.name as Role
 }
 
 export async function checkPermission(permission: Permission) {

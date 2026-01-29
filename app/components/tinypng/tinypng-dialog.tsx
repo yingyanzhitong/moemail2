@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useMemo } from "react"
+import { useSession } from "next-auth/react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog"
@@ -24,6 +25,7 @@ const PER_REQUEST_LIMITS = {
 } as const
 
 export function TinyPngDialog() {
+  const { data: session } = useSession()
   const [open, setOpen] = useState(false)
   const [count, setCount] = useState(1)
   const [loading, setLoading] = useState(false)
@@ -138,6 +140,11 @@ export function TinyPngDialog() {
       setError(null)
       setProgress(0)
     }
+  }
+
+  // 未登录时不显示
+  if (!session) {
+    return null
   }
 
   return (

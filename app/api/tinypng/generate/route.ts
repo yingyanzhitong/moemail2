@@ -48,6 +48,25 @@ export async function POST(request: Request) {
     const db = createDb()
     const limitConfig = TINYPNG_KEY_LIMITS[userRole as Role]
 
+    // 先检查用户是否已有存储的 TinyPNG API Key
+    const existingKeys = await db.query.tinypngKeys.findMany({
+      where: eq(tinypngKeys.userId, userId),
+      orderBy: (keys, { desc }) => [desc(keys.createdAt)],
+    })
+
+    // 如果已有 key，直接返回最新的一个
+    if (existingKeys.length > 0) {
+      const latestKey = existingKeys[0]
+      return NextResponse.json({
+        success: true,
+        apiKey: latestKey.apiKey,
+        email: latestKey.email,
+        message: "已有 TinyPNG API Key，无需重新生成",
+        isExisting: true,
+        totalKeys: existingKeys.length,
+      })
+    }
+
     // 检查每日生成限制
     if (limitConfig.perDay > 0) {
       const todayStart = getTodayStart()
