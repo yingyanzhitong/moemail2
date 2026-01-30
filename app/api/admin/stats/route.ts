@@ -2,7 +2,7 @@ import { NextResponse } from "next/server"
 import { createDb } from "@/lib/db"
 import { users, userRoles, roles } from "@/lib/schema"
 import { checkPermission } from "@/lib/auth"
-import { PERMISSIONS, ROLES } from "@/lib/permissions"
+import { PERMISSIONS } from "@/lib/permissions"
 import { sql, eq, and, gte } from "drizzle-orm"
 
 export const runtime = "edge"

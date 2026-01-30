@@ -6,7 +6,7 @@ import { Gem, Sword, User2, Loader2 } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { useState, useEffect } from "react"
 import { useToast } from "@/components/ui/use-toast"
-import { ROLES, Role, PERMISSIONS } from "@/lib/permissions"
+import { ROLES, Role } from "@/lib/permissions"
 import { useRouter } from "next/navigation"
 import { Users, UserPlus, ArrowRight } from "lucide-react"
 import {
