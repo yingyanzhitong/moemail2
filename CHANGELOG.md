@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.9.1] - 2026-01-30
+
+### Database
+
+- 提交 `api_usage_stats` 表的数据库迁移文件 (0021_clear_mindworm.sql)
+
 ## [1.9.0] - 2026-01-30
 
 ### Features
