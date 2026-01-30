@@ -1,6 +1,6 @@
 import { createDb } from "./db"
-import { apiKeys } from "./schema"
-import { eq, and, gt } from "drizzle-orm"
+import { apiKeys, apiUsageStats } from "./schema"
+import { eq, and, gt, sql } from "drizzle-orm"
 import { NextResponse } from "next/server"
 import type { User } from "next-auth"
 import { auth } from "./auth"
@@ -52,6 +52,29 @@ export async function handleApiKeyAuth(apiKey: string, pathname: string) {
       headers: requestHeaders
     }
   })
+  // API Usage Tracking
+  try {
+    const db = createDb()
+    // Group endpoints to avoid cardinality explosion
+    let endpoint = allowedPaths.find(p => pathname.startsWith(p)) || pathname
+
+    await db.insert(apiUsageStats)
+      .values({
+        userId: user.id,
+        endpoint: endpoint,
+        count: 1,
+      })
+      .onConflictDoUpdate({
+        target: [apiUsageStats.userId, apiUsageStats.endpoint],
+        set: {
+          count: sql`${apiUsageStats.count} + 1`,
+          lastUsedAt: new Date(),
+        }
+      })
+  } catch (error) {
+    console.error('Failed to log API usage:', error)
+  }
+
   return response
 }
 

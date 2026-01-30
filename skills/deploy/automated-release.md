@@ -87,7 +87,7 @@ git push origin master
 git push origin --tags
 
 # 5. 部署
-pnpm run deploy
+pnpm run deploy:
 ```
 
 ## CHANGELOG 格式示例

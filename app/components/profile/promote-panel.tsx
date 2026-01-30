@@ -4,9 +4,11 @@ import { useTranslations } from "next-intl"
 import { Button } from "@/components/ui/button"
 import { Gem, Sword, User2, Loader2 } from "lucide-react"
 import { Input } from "@/components/ui/input"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useToast } from "@/components/ui/use-toast"
-import { ROLES, Role } from "@/lib/permissions"
+import { ROLES, Role, PERMISSIONS } from "@/lib/permissions"
+import { useRouter } from "next/navigation"
+import { Users, UserPlus, ArrowRight } from "lucide-react"
 import {
   Select,
   SelectContent,
@@ -29,7 +31,20 @@ export function PromotePanel() {
   const [searchText, setSearchText] = useState("")
   const [loading, setLoading] = useState(false)
   const [targetRole, setTargetRole] = useState<RoleWithoutEmperor>(ROLES.KNIGHT)
+  const [stats, setStats] = useState<{ totalUsers: number, newUsersToday: number } | null>(null)
+  const router = useRouter()
   const { toast } = useToast()
+
+  useEffect(() => {
+    fetch("/api/admin/stats")
+      .then(res => res.json())
+      .then((data: unknown) => {
+        const statsData = data as { totalUsers: number, newUsersToday: number, error?: string }
+        if (!statsData.error) setStats(statsData)
+      })
+      .catch(console.error)
+  }, [])
+
   
   const roleNames = {
     [ROLES.DUKE]: tCard("roles.DUKE"),
@@ -116,7 +131,42 @@ export function PromotePanel() {
         <h2 className="text-lg font-semibold">{t("title")}</h2>
       </div>
 
-      <div className="space-y-4">
+      <div className="space-y-6">
+        {/* Stats Section */}
+        {stats && (
+          <div className="grid grid-cols-2 gap-4 mb-6">
+            <div className="bg-primary/5 p-4 rounded-lg flex flex-col justify-between">
+              <div className="flex items-center gap-2 mb-2 text-muted-foreground text-sm">
+                <Users className="w-4 h-4" />
+                <span>{t("totalUsers")}</span>
+              </div>
+              <div className="text-2xl font-bold text-primary">
+                {stats.totalUsers}
+              </div>
+            </div>
+            <div className="bg-primary/5 p-4 rounded-lg flex flex-col justify-between relative group cursor-pointer" 
+                 onClick={() => router.push(`/profile/users`)}>
+              <div className="flex items-center gap-2 mb-2 text-muted-foreground text-sm">
+                <UserPlus className="w-4 h-4" />
+                <span>{t("newUsersToday")}</span>
+              </div>
+              <div className="text-2xl font-bold text-primary">
+                {stats.newUsersToday}
+              </div>
+              <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                <ArrowRight className="w-4 h-4 text-primary" />
+              </div>
+            </div>
+          </div>
+        )}
+        
+        {/* View More Button (Explicit) */}
+        <div className="flex justify-between items-center mb-4">
+             <Button variant="link" className="p-0 h-auto text-muted-foreground hover:text-primary" onClick={() => router.push(`/profile/users`)}>
+                {t("viewAllUsers")} <ArrowRight className="ml-1 w-4 h-4" />
+             </Button>
+        </div>
+
         <div className="flex gap-4">
           <div className="flex-1">
             <Input

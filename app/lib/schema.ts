@@ -168,6 +168,18 @@ export const tinypngKeys = sqliteTable('moemail_tinypng_keys', {
   apiKeyIdx: index('moemail_tinypng_keys_api_key_idx').on(table.apiKey),
 }));
 
+export const apiUsageStats = sqliteTable('api_usage_stats', {
+  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  userId: text('user_id').notNull().references(() => users.id, { onDelete: "cascade" }),
+  endpoint: text('endpoint').notNull(),
+  count: integer('count').notNull().default(0),
+  lastUsedAt: integer('last_used_at', { mode: 'timestamp' }).$defaultFn(() => new Date()),
+}, (table) => ({
+  // Ensure unique stats per user per endpoint for Upsert
+  userEndpointUnique: uniqueIndex('user_endpoint_unique').on(table.userId, table.endpoint),
+  userIdIdx: index('api_usage_stats_user_id_idx').on(table.userId),
+}));
+
 
 
 export const apiKeysRelations = relations(apiKeys, ({ one }) => ({
@@ -215,6 +227,13 @@ export const messageSharesRelations = relations(messageShares, ({ one }) => ({
 export const tinypngKeysRelations = relations(tinypngKeys, ({ one }) => ({
   user: one(users, {
     fields: [tinypngKeys.userId],
+    references: [users.id],
+  }),
+}));
+
+export const apiUsageStatsRelations = relations(apiUsageStats, ({ one }) => ({
+  user: one(users, {
+    fields: [apiUsageStats.userId],
     references: [users.id],
   }),
 }));

@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.9.0] - 2026-01-30
+
+### Features
+
+- 皇帝角色个人中心增加用户统计看板（总用户、今日新增）
+- 新增用户列表页面，展示注册时间、邮箱数、TinyPNG Token 数
+- 实现 API 调用次数统计与展示
+- 优化角色管理面板 UI
+
+### Database
+
+- 新增 `api_usage_stats` 表用于记录 API 调用统计
+
 ## [1.8.0] - 2026-01-29
 
 ### Features

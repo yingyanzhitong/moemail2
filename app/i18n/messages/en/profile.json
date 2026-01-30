@@ -134,7 +134,10 @@
     "noUsers": "No users found",
     "loading": "Loading...",
     "updateSuccess": "User role updated successfully",
-    "updateFailed": "Failed to update user role"
+    "updateFailed": "Failed to update user role",
+    "totalUsers": "Total Users",
+    "newUsersToday": "New Today",
+    "viewAllUsers": "View More"
   },
   "password": {
     "title": "Change Password",
@@ -146,5 +149,22 @@
     "saving": "Updating...",
     "success": "Password updated successfully",
     "failed": "Failed to update password"
+  },
+  "users": {
+    "title": "User List",
+    "username": "Username",
+    "email": "Email",
+    "role": "Role",
+    "joinedAt": "Joined At",
+    "emailCount": "Emails",
+    "tinypngCount": "TinyPNG Token",
+    "apiUsage": "API Usage",
+    "apiUsageTitle": "API Usage Details",
+    "roles": {
+      "emperor": "Emperor",
+      "duke": "Duke",
+      "knight": "Knight",
+      "civilian": "Civilian"
+    }
   }
 }
