@@ -56,7 +56,7 @@ export async function handleApiKeyAuth(apiKey: string, pathname: string) {
   try {
     const db = createDb()
     // Group endpoints to avoid cardinality explosion
-    let endpoint = allowedPaths.find(p => pathname.startsWith(p)) || pathname
+    const endpoint = allowedPaths.find(p => pathname.startsWith(p)) || pathname
 
     await db.insert(apiUsageStats)
       .values({
