@@ -33,12 +33,13 @@ export function TinyPngDialog() {
   const [loading, setLoading] = useState(false)
   const [progress, setProgress] = useState(0)
   const [results, setResults] = useState<GeneratedApiKey[]>([])
-  const [error, setError] = useState<string | null>(null)
+  const [autoError, setAutoError] = useState<string | null>(null)
   
   // Manual mode state
 
   const [activeTab, setActiveTab] = useState("auto")
   const [manualStep, setManualStep] = useState<"idle" | "script" | "processing" | "completed">("idle")
+  const [manualError, setManualError] = useState<string | null>(null)
   
   interface ManualTask {
     email: string
@@ -85,7 +86,7 @@ export function TinyPngDialog() {
     setLoading(true)
     setProgress(0)
     setResults([])
-    setError(null)
+    setAutoError(null)
 
     try {
       const apiKeyResponse = await fetch("/api/api-keys/tinypng")
@@ -132,7 +133,7 @@ export function TinyPngDialog() {
           .filter(r => r.error)
           .map(r => `${r.email}: ${r.error}`)
           .join('\n')
-        setError(`${data.totalFailed} 个生成失败:\n${failedMessages}`)
+        setAutoError(`${data.totalFailed} 个生成失败:\n${failedMessages}`)
       }
 
       if (generated.length > 0) {
@@ -143,7 +144,7 @@ export function TinyPngDialog() {
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : "未知错误"
-      setError(message)
+      setAutoError(message)
     } finally {
       setLoading(false)
     }
@@ -167,7 +168,7 @@ export function TinyPngDialog() {
       setManualTasks(data.results.map(r => ({ ...r, status: 'pending' })))
       setManualStep("script")
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Init failed")
+      setManualError(err instanceof Error ? err.message : "Init failed")
     } finally {
       setLoading(false)
     }
@@ -220,7 +221,7 @@ export function TinyPngDialog() {
         toast({ title: "Partial Success", description: `${successCount} generated, ${manualTasks.length - successCount} failed.` })
     } else {
         // All failed
-         setError("All tasks failed. Please try again or check scripts.")
+         setManualError("All tasks failed. Please try again or check scripts.")
          setManualStep("script") // Back to script to retry
     }
   }
@@ -257,7 +258,7 @@ export function TinyPngDialog() {
     if (!isOpen) {
       // Reset state when closing
       setResults([])
-      setError(null)
+      setAutoError(null)
       setProgress(0)
       resetManual()
       setActiveTab("auto")
@@ -339,9 +340,9 @@ export function TinyPngDialog() {
               )}
 
               {/* Error display */}
-              {error && activeTab === 'auto' && (
+              {autoError && activeTab === 'auto' && (
                 <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-lg text-sm text-destructive whitespace-pre-wrap">
-                  {error}
+                  {autoError}
                 </div>
               )}
 
@@ -391,7 +392,7 @@ export function TinyPngDialog() {
                     </>
                 ) : (
                     <>
-                    <Button variant="outline" onClick={() => { setResults([]); setError(null); }}>
+                    <Button variant="outline" onClick={() => { setResults([]); setAutoError(null); }}>
                         {t("actions.restart")}
                     </Button>
                     <Button onClick={() => setOpen(false)}>{t("actions.done")}</Button>
@@ -449,7 +450,7 @@ export function TinyPngDialog() {
                              {t("manual.registered_btn")}
                          </Button>
                     </div>
-                    {error && <p className="text-sm text-destructive">{error}</p>}
+                    {manualError && <p className="text-sm text-destructive">{manualError}</p>}
                 </div>
              )}
 
