@@ -15,5 +15,39 @@
     "logout": "로그아웃",
     "backToMailbox": "메일함으로 돌아가기"
   },
-  "github": "소스 코드 받기"
+  "github": "소스 코드 받기",
+  "tinypng": {
+    "title": "TinyPNG API Key 일괄 생성",
+    "description": "임시 이메일을 자동 생성하여 TinyPNG 계정을 등록하고 API 키를 가져옵니다",
+    "tabs": {
+      "auto": "자동 일괄 (Server)",
+      "manual": "수동 등록 (Client)"
+    },
+    "quantity": "생성 수량",
+    "per_batch": "(1회당 1-{max}개)",
+    "processing": "{progress} / {count} 개 생성 중...",
+    "wait_time": "각 API 키 생성에는 약 10-30초가 소요됩니다. 잠시만 기다려주세요...",
+    "results_title": "생성 결과 ({count} 개)",
+    "actions": {
+      "copy_keys": "키 복사",
+      "copy_all": "전체 복사",
+      "cancel": "취소",
+      "start": "생성 시작",
+      "generating": "생성 중...",
+      "restart": "재생성",
+      "done": "완료"
+    },
+    "manual": {
+      "description": "서버 IP가 제한된 경우 이 모드를 사용하십시오. 계정을 수동으로 등록해야 합니다.",
+      "start_btn": "수동 프로세스 시작",
+      "step1_label": "1. 전용 이메일 (복사)",
+      "step2_label": "2. 등록 스크립트 실행",
+      "wait_hint": "스크립트 출력에 \"success\"가 표시될 때까지 기다리십시오.",
+      "registered_btn": "등록 완료",
+      "processing_title": "이메일 대기 및 API 키 생성 중...",
+      "processing_desc": "최대 2분이 소요될 수 있습니다.",
+      "success_title": "생성 성공!",
+      "generate_another": "다시 생성"
+    }
+  }
 }

@@ -15,5 +15,39 @@
     "logout": "退出登录",
     "backToMailbox": "返回邮箱"
   },
-  "github": "获取网站源代码"
+  "github": "获取网站源代码",
+  "tinypng": {
+    "title": "批量生成 TinyPNG API Key",
+    "description": "自动生成临时邮箱注册 TinyPNG 并获取 API Key",
+    "tabs": {
+      "auto": "批量自动 (Server)",
+      "manual": "手动注册 (Client)"
+    },
+    "quantity": "生成数量",
+    "per_batch": "(1-{max} 个/次)",
+    "processing": "正在生成第 {progress} / {count} 个...",
+    "wait_time": "每个 API Key 需要约 10-30 秒生成，请耐心等待...",
+    "results_title": "生成结果 ({count} 个)",
+    "actions": {
+      "copy_keys": "复制所有 Key",
+      "copy_all": "复制全部",
+      "cancel": "取消",
+      "start": "开始生成",
+      "generating": "生成中...",
+      "restart": "重新生成",
+      "done": "完成"
+    },
+    "manual": {
+      "description": "如果有 IP 限制，请使用此模式。你需要手动注册账号。",
+      "start_btn": "开始手动流程",
+      "step1_label": "1. 专用邮箱（复制此邮箱）",
+      "step2_label": "2. 运行注册脚本",
+      "wait_hint": "等待脚本输出 \"success\"。",
+      "registered_btn": "我已完成注册",
+      "processing_title": "正在等待邮件并生成 API Key...",
+      "processing_desc": "这可能需要 2 分钟。",
+      "success_title": "生成成功！",
+      "generate_another": "再生成一个"
+    }
+  }
 }

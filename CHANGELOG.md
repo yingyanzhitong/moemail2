@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.10.0] - 2026-02-01
+
+### Features
+
+- TinyPNG: 新增手动注册模式 ("Manual Mode")，支持生成 cURL/Python/Node.js 注册脚本，解决服务器 IP 受限问题
+- TinyPNG: 弹窗支持多语言 (i18n)
+
 ## [1.9.1] - 2026-01-30
 
 ### Database

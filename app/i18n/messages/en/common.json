@@ -15,5 +15,39 @@
     "logout": "Logout",
     "backToMailbox": "Back to Mailbox"
   },
-  "github": "Get Source Code"
+  "github": "Get Source Code",
+  "tinypng": {
+    "title": "Generate TinyPNG API Key",
+    "description": "Generate temporary email to register TinyPNG account",
+    "tabs": {
+      "auto": "Auto Batch (Server)",
+      "manual": "Manual (Client)"
+    },
+    "quantity": "Quantity",
+    "per_batch": "(1-{max} per batch)",
+    "processing": "Processing {progress} / {count}...",
+    "wait_time": "Each API Key takes about 10-30 seconds to generate, please wait...",
+    "results_title": "Results ({count})",
+    "actions": {
+      "copy_keys": "Copy Keys",
+      "copy_all": "Copy All",
+      "cancel": "Cancel",
+      "start": "Start",
+      "generating": "Generating...",
+      "restart": "Restart",
+      "done": "Done"
+    },
+    "manual": {
+      "description": "Use this mode if the server IP is blocked by TinyPNG. You will register the account manually.",
+      "start_btn": "Start Manual Process",
+      "step1_label": "1. Targeted Email (Copy this)",
+      "step2_label": "2. Run Registration Script",
+      "wait_hint": "Wait until you see \"success\" in your script output.",
+      "registered_btn": "I Have Registered",
+      "processing_title": "Waiting for email and generating API Key...",
+      "processing_desc": "This may take up to 2 minutes.",
+      "success_title": "Generation Success!",
+      "generate_another": "Generate Another"
+    }
+  }
 }

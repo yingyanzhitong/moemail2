@@ -15,5 +15,39 @@
     "logout": "登出",
     "backToMailbox": "返回郵箱"
   },
-  "github": "取得網站原始碼"
+  "github": "取得網站原始碼",
+  "tinypng": {
+    "title": "批量生成 TinyPNG API Key",
+    "description": "自動產生臨時信箱註冊 TinyPNG 並獲取 API Key",
+    "tabs": {
+      "auto": "批量自動 (Server)",
+      "manual": "手動註冊 (Client)"
+    },
+    "quantity": "生成數量",
+    "per_batch": "(1-{max} 個/次)",
+    "processing": "正在生成第 {progress} / {count} 個...",
+    "wait_time": "每個 API Key 需要約 10-30 秒生成，請耐心等待...",
+    "results_title": "生成結果 ({count} 個)",
+    "actions": {
+      "copy_keys": "複製所有 Key",
+      "copy_all": "複製全部",
+      "cancel": "取消",
+      "start": "開始生成",
+      "generating": "生成中...",
+      "restart": "重新生成",
+      "done": "完成"
+    },
+    "manual": {
+      "description": "如果有 IP 限制，請使用此模式。你需要手動註冊帳號。",
+      "start_btn": "開始手動流程",
+      "step1_label": "1. 專用信箱（複製此信箱）",
+      "step2_label": "2. 執行註冊腳本",
+      "wait_hint": "等待腳本輸出 \"success\"。",
+      "registered_btn": "我已完成註冊",
+      "processing_title": "正在等待郵件並生成 API Key...",
+      "processing_desc": "這可能需要 2 分鐘。",
+      "success_title": "生成成功！",
+      "generate_another": "再生成一個"
+    }
+  }
 }

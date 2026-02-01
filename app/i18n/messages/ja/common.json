@@ -15,6 +15,40 @@
     "logout": "ログアウト",
     "backToMailbox": "メールボックスに戻る"
   },
-  "github": "ソースコードを入手"
+  "github": "ソースコードを入手",
+  "tinypng": {
+    "title": "TinyPNG API Key 一括生成",
+    "description": "一時メールを自動生成してTinyPNGアカウントを登録し、APIキーを取得します",
+    "tabs": {
+      "auto": "自動一括 (Server)",
+      "manual": "手動登録 (Client)"
+    },
+    "quantity": "生成数量",
+    "per_batch": "(1回につき1-{max}個)",
+    "processing": "{progress} / {count} 個目を生成中...",
+    "wait_time": "各APIキーの生成には約10〜30秒かかります。お待ちください...",
+    "results_title": "生成結果 ({count} 個)",
+    "actions": {
+      "copy_keys": "キーをコピー",
+      "copy_all": "すべてコピー",
+      "cancel": "キャンセル",
+      "start": "生成開始",
+      "generating": "生成中...",
+      "restart": "再生成",
+      "done": "完了"
+    },
+    "manual": {
+      "description": "サーバーIPが制限されている場合は、このモードを使用してください。手動でアカウントを登録する必要があります。",
+      "start_btn": "手動プロセス開始",
+      "step1_label": "1. 専用メールアドレス (コピーしてください)",
+      "step2_label": "2. 登録スクリプト実行",
+      "wait_hint": "スクリプト出力に \"success\" が表示されるまでお待ちください。",
+      "registered_btn": "登録完了しました",
+      "processing_title": "メール待機中 & APIキー生成中...",
+      "processing_desc": "最大2分かかる場合があります。",
+      "success_title": "生成成功！",
+      "generate_another": "もう一度生成"
+    }
+  }
 }
 
