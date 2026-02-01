@@ -263,6 +263,11 @@ export function LoginForm({ turnstile }: LoginFormProps) {
                         setPassword(e.target.value)
                         setErrors({})
                       }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          handleLogin()
+                        }
+                      }}
                       disabled={loading}
                     />
                   </div>
