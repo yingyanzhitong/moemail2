@@ -59,10 +59,11 @@ export async function POST(request: Request) {
         }
     }
 
-    const body = await request.json().catch(() => ({})) as { 
+const body = await request.json().catch(() => ({})) as { 
         action: 'init' | 'finish', 
         domain?: string,
-        emailId?: string 
+        emailId?: string,
+        count?: number
     }
 
     if (body.action === 'init') {
@@ -76,14 +77,26 @@ export async function POST(request: Request) {
     
         const domain = body.domain && domains.includes(body.domain) ? body.domain : domains[0]
         
-        const createdEmail = await createTinyPngTempEmail(db, userId, domain)
-        const scripts = getRegisterScripts(createdEmail.address)
+        // Handle batch count
+        const count = Math.max(1, Math.min(50, body.count || 1))
+        const results = []
+
+        // Parallel creation of temp emails
+        for (let i = 0; i < count; i++) {
+             // Sequential to avoid potential race conditions in createTinyPngTempEmail if any, 
+             // but mostly to keep logic simple. With D1 it should be fast enough.
+             const createdEmail = await createTinyPngTempEmail(db, userId, domain)
+             const scripts = getRegisterScripts(createdEmail.address)
+             results.push({
+                 email: createdEmail.address,
+                 emailId: createdEmail.id,
+                 scripts
+             })
+        }
         
         return NextResponse.json({
             success: true,
-            email: createdEmail.address,
-            emailId: createdEmail.id,
-            scripts
+            results // Return as array
         })
     } else if (body.action === 'finish') {
         if (!body.emailId) {

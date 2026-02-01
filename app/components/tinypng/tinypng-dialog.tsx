@@ -36,16 +36,20 @@ export function TinyPngDialog() {
   const [error, setError] = useState<string | null>(null)
   
   // Manual mode state
+
   const [activeTab, setActiveTab] = useState("auto")
   const [manualStep, setManualStep] = useState<"idle" | "script" | "processing" | "completed">("idle")
-  const [manualData, setManualData] = useState<{
+  
+  interface ManualTask {
     email: string
     emailId: string
     scripts: { curl: string; python: string; nodejs: string }
     apiKey?: string
-  } | null>(null)
-
-
+    status?: 'pending' | 'processing' | 'success' | 'failed'
+    error?: string
+  }
+  
+  const [manualTasks, setManualTasks] = useState<ManualTask[]>([])
 
   const { toast } = useToast()
   const { copyToClipboard } = useCopy()
@@ -77,13 +81,13 @@ export function TinyPngDialog() {
   }
 
   const generateApiKeys = async () => {
+    // ... Existing auto generation logic ...
     setLoading(true)
     setProgress(0)
     setResults([])
     setError(null)
 
     try {
-      // 1. 首先获取或创建 "tinypng" 专用 API Key
       const apiKeyResponse = await fetch("/api/api-keys/tinypng")
       if (!apiKeyResponse.ok) {
         const data = await apiKeyResponse.json()
@@ -91,8 +95,7 @@ export function TinyPngDialog() {
       }
       const { apiKey: moEmailApiKey } = await apiKeyResponse.json() as { apiKey: string }
 
-      // 2. 使用批量生成 API
-      setProgress(1) // 表示正在处理
+      setProgress(1) 
       const response = await fetch("/api/tinypng/generate/batch", {
         method: "POST",
         headers: { 
@@ -114,7 +117,6 @@ export function TinyPngDialog() {
         totalFailed: number
       }
 
-      // 转换结果
       const generated: GeneratedApiKey[] = data.results
         .filter(r => r.apiKey)
         .map(r => ({
@@ -151,19 +153,18 @@ export function TinyPngDialog() {
   const startManualProcess = async () => {
     setLoading(true)
     setError(null)
+    setManualTasks([])
     try {
       const res = await fetch("/api/tinypng/generate-front", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "init" }),
+        body: JSON.stringify({ action: "init", count }), // Pass count
       })
       if (!res.ok) throw new Error("Failed to init manual process")
       const data = await res.json() as {
-        email: string
-        emailId: string
-        scripts: { curl: string; python: string; nodejs: string }
+        results: { email: string; emailId: string; scripts: { curl: string; python: string; nodejs: string } }[]
       }
-      setManualData(data)
+      setManualTasks(data.results.map(r => ({ ...r, status: 'pending' })))
       setManualStep("script")
     } catch (err) {
       setError(err instanceof Error ? err.message : "Init failed")
@@ -173,33 +174,60 @@ export function TinyPngDialog() {
   }
 
   const finishManualProcess = async () => {
-    if (!manualData?.emailId) return
+    if (manualTasks.length === 0) return
     setLoading(true)
     setManualStep("processing")
     setError(null)
-    try {
-      const res = await fetch("/api/tinypng/generate-front", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "finish", emailId: manualData.emailId }),
-      })
-      const data = await res.json() as { error?: string; apiKey?: string }
-      if (!res.ok) throw new Error(data.error || "Finish failed")
-      
-      setManualData(prev => prev ? { ...prev, apiKey: data.apiKey } : null)
-      setManualStep("completed")
-      toast({ title: "Success", description: "API Key generated successfully!" })
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Finish failed")
-      setManualStep("script") // Go back to script step on error to retry
-    } finally {
-      setLoading(false)
+    
+    // Process one by one effectively 
+    // We can use Promise.all but let's do batches to report progress if needed, 
+    // though Promise.all is sufficient for small N
+    const newTasks = [...manualTasks]
+    let successCount = 0
+
+    // Concurrent execution with all Settlement
+    const promises = newTasks.map(async (task, index) => {
+        if (task.apiKey) return; // Already done
+
+        newTasks[index] = { ...newTasks[index], status: 'processing' }
+        setManualTasks([...newTasks]) // Trigger re-render (optimization needed for large list but fine for 50)
+
+        try {
+            const res = await fetch("/api/tinypng/generate-front", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ action: "finish", emailId: task.emailId }),
+            })
+            const data = await res.json() as { error?: string; apiKey?: string }
+            if (!res.ok) throw new Error(data.error || "Finish failed")
+            
+            newTasks[index] = { ...newTasks[index], status: 'success', apiKey: data.apiKey }
+            successCount++
+        } catch (err) {
+            newTasks[index] = { ...newTasks[index], status: 'failed', error: err instanceof Error ? err.message : "Failed" }
+        }
+    })
+
+    await Promise.all(promises)
+    setManualTasks(newTasks)
+    setLoading(false)
+
+    if (successCount === manualTasks.length) {
+        setManualStep("completed")
+        toast({ title: "Success", description: "All API Keys generated successfully!" })
+    } else if (successCount > 0) {
+        setManualStep("completed") // Partial completion shows result view too
+        toast({ title: "Partial Success", description: `${successCount} generated, ${manualTasks.length - successCount} failed.` })
+    } else {
+        // All failed
+         setError("All tasks failed. Please try again or check scripts.")
+         setManualStep("script") // Back to script to retry
     }
   }
 
   const resetManual = () => {
     setManualStep("idle")
-    setManualData(null)
+    setManualTasks([])
     setError(null)
   }
 
@@ -207,10 +235,21 @@ export function TinyPngDialog() {
     const keysText = results.map(r => r.apiKey).join("\n")
     copyToClipboard(keysText)
   }
+  
+  const copyManualKeys = () => {
+    const keys = manualTasks.filter(t => t.apiKey).map(t => t.apiKey).join("\n")
+    copyToClipboard(keys)
+  }
 
   const copyAllResults = () => {
     const text = results.map(r => `${r.email}\t${r.apiKey}`).join("\n")
     copyToClipboard(text)
+  }
+
+  const copyManualScripts = () => {
+      // Concatenate all cURL scripts
+      const script = manualTasks.map(t => t.scripts.curl).join("\n\n")
+      copyToClipboard(script)
   }
 
   const handleOpenChange = (isOpen: boolean) => {
@@ -225,10 +264,30 @@ export function TinyPngDialog() {
     }
   }
 
-  // 未登录时不显示
-  if (!session) {
-    return null
-  }
+  // Auto Input Render helper to reuse
+  const renderCountInput = () => (
+    <div className="flex items-center gap-4">
+        <Label htmlFor="count" className="shrink-0">
+        {t("quantity")}:
+        </Label>
+        <Input
+        id="count"
+        type="number"
+        min={1}
+        max={maxCount}
+        value={count}
+        onChange={(e) => handleCountChange(e.target.value)}
+        className="w-24"
+        disabled={loading || maxCount === 0}
+        />
+        <span className="text-sm text-muted-foreground">
+        {t("per_batch", { max: maxCount })}
+        </span>
+    </div>
+  )
+
+  // ... View ...
+  if (!session) return null;
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -238,7 +297,7 @@ export function TinyPngDialog() {
           <span className="hidden md:inline">TinyPNG</span>
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <img src="https://tinypng.com/images/favicon.ico" alt="TinyPNG" className="w-5 h-5" />
@@ -258,26 +317,7 @@ export function TinyPngDialog() {
           <TabsContent value="auto" className="space-y-4 py-4">
              <div className="space-y-4">
                {/* Input section */}
-              {results.length === 0 && (
-                <div className="flex items-center gap-4">
-                  <Label htmlFor="count" className="shrink-0">
-                    {t("quantity")}:
-                  </Label>
-                  <Input
-                    id="count"
-                    type="number"
-                    min={1}
-                    max={maxCount}
-                    value={count}
-                    onChange={(e) => handleCountChange(e.target.value)}
-                    className="w-24"
-                    disabled={loading || maxCount === 0}
-                  />
-                  <span className="text-sm text-muted-foreground">
-                    {t("per_batch", { max: maxCount })}
-                  </span>
-                </div>
-              )}
+              {results.length === 0 && renderCountInput()}
 
               {/* Progress section */}
               {loading && activeTab === 'auto' && (
@@ -367,6 +407,7 @@ export function TinyPngDialog() {
                     <p className="text-sm text-muted-foreground">
                         {t("manual.description")}
                     </p>
+                    {renderCountInput()}
                     <div className="flex justify-end">
                         <Button onClick={startManualProcess} disabled={loading}>
                             {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : t("manual.start_btn")}
@@ -375,47 +416,29 @@ export function TinyPngDialog() {
                 </div>
              )}
 
-             {manualStep === "script" && manualData && (
+             {manualStep === "script" && manualTasks.length > 0 && (
                 <div className="space-y-4">
-                    <div className="p-4 bg-secondary/30 rounded-lg space-y-2">
-                        <Label>{t("manual.step1_label")}</Label>
-                        <div className="flex items-center gap-2">
-                            <Input value={manualData.email} readOnly />
-                            <Button size="icon" variant="ghost" onClick={() => copyToClipboard(manualData.email)}>
-                                <Copy className="w-4 h-4" />
-                            </Button>
-                        </div>
+                    <div className="flex justify-between items-center">
+                        <Label>Registration Scripts ({manualTasks.length})</Label>
+                        <Button size="sm" variant="outline" onClick={copyManualScripts}>
+                            <Copy className="w-4 h-4 mr-2" /> Copy All cURL
+                        </Button>
                     </div>
-
-                    <div className="space-y-2">
-                        <Label>{t("manual.step2_label")}</Label>
-                        <Tabs defaultValue="curl" className="w-full">
-                            <TabsList className="w-full justify-start">
-                                <TabsTrigger value="curl">cURL</TabsTrigger>
-                                <TabsTrigger value="python">Python</TabsTrigger>
-                                <TabsTrigger value="node">Node.js</TabsTrigger>
-                            </TabsList>
-                            <div className="mt-2 relative">
-                                <TabsContent value="curl">
-                                    <pre className="p-4 bg-muted rounded-lg text-xs overflow-x-auto whitespace-pre-wrap font-mono">
-                                        {manualData.scripts.curl}
+                    
+                    <div className="max-h-64 overflow-y-auto space-y-4 border rounded-lg p-4 bg-secondary/10">
+                         {manualTasks.map((task, i) => (
+                             <div key={task.emailId} className="space-y-2 pb-4 border-b last:border-0 border-border/50">
+                                 <div className="flex items-center gap-2">
+                                     <span className="text-xs text-muted-foreground w-6">{i + 1}.</span>
+                                     <span className="text-xs font-mono select-all flex-1">{task.email}</span>
+                                 </div>
+                                 <div className="relative">
+                                    <pre className="p-2 bg-muted rounded text-[10px] overflow-x-auto whitespace-pre-wrap font-mono text-muted-foreground">
+                                        {task.scripts.curl.split('\n').filter(l => !l.trim().startsWith('curl') && !l.includes('tinify.com')).join(' ').slice(0, 50)}...
                                     </pre>
-                                    <Button size="sm" variant="secondary" className="absolute top-14 right-2" onClick={() => copyToClipboard(manualData.scripts.curl)}>Copy</Button>
-                                </TabsContent>
-                                <TabsContent value="python">
-                                    <pre className="p-4 bg-muted rounded-lg text-xs overflow-x-auto whitespace-pre-wrap font-mono">
-                                        {manualData.scripts.python}
-                                    </pre>
-                                    <Button size="sm" variant="secondary" className="absolute top-14 right-2" onClick={() => copyToClipboard(manualData.scripts.python)}>Copy</Button>
-                                </TabsContent>
-                                <TabsContent value="node">
-                                    <pre className="p-4 bg-muted rounded-lg text-xs overflow-x-auto whitespace-pre-wrap font-mono">
-                                        {manualData.scripts.nodejs}
-                                    </pre>
-                                    <Button size="sm" variant="secondary" className="absolute top-14 right-2" onClick={() => copyToClipboard(manualData.scripts.nodejs)}>Copy</Button>
-                                </TabsContent>
-                            </div>
-                        </Tabs>
+                                 </div>
+                             </div>
+                         ))}
                     </div>
 
                     <div className="flex justify-between items-center pt-2">
@@ -434,11 +457,14 @@ export function TinyPngDialog() {
                 <div className="flex flex-col items-center justify-center py-8 space-y-4">
                     <Loader2 className="w-8 h-8 animate-spin text-primary" />
                     <p className="text-sm text-muted-foreground">{t("manual.processing_title")}</p>
-                    <p className="text-xs text-muted-foreground">{t("manual.processing_desc")}</p>
+                    <div className="w-full bg-secondary rounded-full h-2 max-w-xs">
+                        {/* Progress visual if needed, currently indeterminate mostly or we count successes */}
+                        <div className="bg-primary rounded-full h-2 transition-all animate-pulse" style={{ width: '100%' }} />
+                    </div>
                 </div>
              )}
 
-             {manualStep === "completed" && manualData?.apiKey && (
+             {manualStep === "completed" && (
                  <div className="space-y-4">
                     <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg flex flex-col items-center gap-2">
                         <div className="h-12 w-12 bg-green-100 dark:bg-green-900 rounded-full flex items-center justify-center">
@@ -447,16 +473,29 @@ export function TinyPngDialog() {
                         <h3 className="font-semibold text-green-700 dark:text-green-300">{t("manual.success_title")}</h3>
                     </div>
 
-                    <div className="space-y-2">
-                        <Label>API Key</Label>
-                        <div className="flex items-center gap-2">
-                            <code className="flex-1 p-2 bg-muted rounded font-mono text-sm break-all">
-                                {manualData.apiKey}
-                            </code>
-                            <Button size="icon" variant="ghost" onClick={() => copyToClipboard(manualData.apiKey!)}>
-                                <Copy className="w-4 h-4" />
-                            </Button>
-                        </div>
+                    <div className="flex justify-end gap-2 mb-2">
+                         <Button size="sm" variant="outline" onClick={copyManualKeys}>
+                             <Copy className="w-4 h-4 mr-2" /> Copy All Keys
+                         </Button>
+                    </div>
+
+                    <div className="max-h-64 overflow-y-auto space-y-2 border rounded-lg p-2">
+                        {manualTasks.map((task, index) => (
+                            <div key={index} className="flex items-center gap-2 p-2 bg-secondary/50 rounded text-sm">
+                                <span className="text-muted-foreground w-6">{index + 1}.</span>
+                                <div className="flex-1 min-w-0 space-y-0.5">
+                                    <div className="text-xs text-muted-foreground truncate">{task.email}</div>
+                                    <div className={`font-mono text-xs truncate ${task.status === 'failed' ? 'text-destructive' : ''}`}>
+                                        {task.apiKey || task.error || "Processing..."}
+                                    </div>
+                                </div>
+                                {task.apiKey && (
+                                    <Button variant="ghost" size="icon" className="shrink-0 h-8 w-8" onClick={() => copyToClipboard(task.apiKey!)}>
+                                        <Copy className="w-3 h-3" />
+                                    </Button>
+                                )}
+                            </div>
+                        ))}
                     </div>
 
                     <div className="flex justify-end pt-2">
