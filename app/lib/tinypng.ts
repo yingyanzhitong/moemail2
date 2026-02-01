@@ -575,21 +575,31 @@ export async function generateTinyPngApiKeysBatch(
     }
   }
 
-  // 阶段2：并行向 TinyPNG 发送注册请求
-  console.log(`[TinyPNG Batch] 阶段2: 并行发送 ${preparedEmails.length} 个注册请求...`)
-  const registerPromises = preparedEmails.map(async (email, index) => {
-    try {
-      await registerTinyPng(email.address)
-      email.registered = true
-      console.log(`[TinyPNG Batch] 注册请求 ${index + 1}/${preparedEmails.length} 已发送: ${email.address}`)
-    } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : String(error)
-      email.error = `注册失败: ${errorMsg}`
-      console.error(`[TinyPNG Batch] 注册失败 ${email.address}: ${errorMsg}`)
-    }
-  })
+  // 阶段2：并行向 TinyPNG 发送注册请求 (限制速率：2个/秒)
+  console.log(`[TinyPNG Batch] 阶段2: 速率限制发送 ${preparedEmails.length} 个注册请求 (2个/秒)...`)
   
-  await Promise.all(registerPromises)
+  for (let i = 0; i < preparedEmails.length; i += 2) {
+    const chunk = preparedEmails.slice(i, i + 2)
+    const promises = chunk.map(async (email, chunkIndex) => {
+      const globalIndex = i + chunkIndex
+      try {
+        await registerTinyPng(email.address)
+        email.registered = true
+        console.log(`[TinyPNG Batch] 注册请求 ${globalIndex + 1}/${preparedEmails.length} 已发送: ${email.address}`)
+      } catch (error) {
+        const errorMsg = error instanceof Error ? error.message : String(error)
+        email.error = `注册失败: ${errorMsg}`
+        console.error(`[TinyPNG Batch] 注册失败 ${email.address}: ${errorMsg}`)
+      }
+    })
+    
+    await Promise.all(promises)
+    
+    // 如果还有更多邮箱需要处理，等待 1 秒
+    if (i + 2 < preparedEmails.length) {
+      await new Promise(resolve => setTimeout(resolve, 1000))
+    }
+  }
 
   // 阶段3：逐个等待邮件并获取 API Key
   console.log(`[TinyPNG Batch] 阶段3: 逐个获取 API Key...`)

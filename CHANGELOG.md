@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.10.2] - 2026-02-01
+
+### Features
+
+- TinyPNG: 自动批量注册模式增加速率限制（2个/秒），防止触发 TinyPNG API 频率限制
+
 ## [1.10.1] - 2026-02-01
 
 ### Features
