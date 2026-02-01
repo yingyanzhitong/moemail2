@@ -21,7 +21,7 @@
     "description": "自动生成临时邮箱注册 TinyPNG 并获取 API Key",
     "tabs": {
       "auto": "批量自动 (Server)",
-      "manual": "手动注册 (Client)"
+      "manual": "批量手动 (Client)"
     },
     "quantity": "生成数量",
     "per_batch": "(1-{max} 个/次)",

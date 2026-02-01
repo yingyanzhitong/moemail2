@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.10.1] - 2026-02-01
+
+### Features
+
+- TinyPNG: 手动注册模式支持批量生成，与自动模式共享每日/单次限额
+- TinyPNG: 优化手动模式 UI，错误信息独立显示，避免与自动模式混淆
+- TinyPNG: 新增 "Copy All cURL" 功能，方便一键复制所有注册脚本
+
 ## [1.10.0] - 2026-02-01
 
 ### Features

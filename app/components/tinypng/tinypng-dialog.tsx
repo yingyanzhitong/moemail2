@@ -144,7 +144,11 @@ export function TinyPngDialog() {
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : "未知错误"
-      setAutoError(message)
+      // If we are in auto mode, set error. If activeTab is manual, this function shouldn't be called, 
+      // but let's be safe. Wait, this function IS for auto mode.
+      if (activeTab === 'auto') {
+          setAutoError(message)
+      }
     } finally {
       setLoading(false)
     }
@@ -153,7 +157,7 @@ export function TinyPngDialog() {
   // Manual Mode Handlers
   const startManualProcess = async () => {
     setLoading(true)
-    setError(null)
+    setManualError(null)
     setManualTasks([])
     try {
       const res = await fetch("/api/tinypng/generate-front", {
@@ -178,7 +182,7 @@ export function TinyPngDialog() {
     if (manualTasks.length === 0) return
     setLoading(true)
     setManualStep("processing")
-    setError(null)
+    setManualError(null)
     
     // Process one by one effectively 
     // We can use Promise.all but let's do batches to report progress if needed, 
@@ -200,7 +204,10 @@ export function TinyPngDialog() {
                 body: JSON.stringify({ action: "finish", emailId: task.emailId }),
             })
             const data = await res.json() as { error?: string; apiKey?: string }
-            if (!res.ok) throw new Error(data.error || "Finish failed")
+            if (!res.ok) {
+                // Here we capture the specific error from generate-front
+                 throw new Error(data.error || "Finish failed") 
+            }
             
             newTasks[index] = { ...newTasks[index], status: 'success', apiKey: data.apiKey }
             successCount++
@@ -229,7 +236,7 @@ export function TinyPngDialog() {
   const resetManual = () => {
     setManualStep("idle")
     setManualTasks([])
-    setError(null)
+    setManualError(null)
   }
 
   const copyAllKeys = () => {
@@ -403,6 +410,13 @@ export function TinyPngDialog() {
           </TabsContent>
 
           <TabsContent value="manual" className="space-y-4 py-4">
+             {/* Error display */}
+              {manualError && (
+                  <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-lg text-sm text-destructive whitespace-pre-wrap">
+                      {manualError}
+                  </div>
+              )}
+
              {manualStep === "idle" && (
                 <div className="space-y-4">
                     <p className="text-sm text-muted-foreground">
@@ -450,7 +464,6 @@ export function TinyPngDialog() {
                              {t("manual.registered_btn")}
                          </Button>
                     </div>
-                    {manualError && <p className="text-sm text-destructive">{manualError}</p>}
                 </div>
              )}
 
@@ -498,6 +511,8 @@ export function TinyPngDialog() {
                             </div>
                         ))}
                     </div>
+
+                    
 
                     <div className="flex justify-end pt-2">
                         <Button onClick={resetManual}>{t("manual.generate_another")}</Button>

@@ -77,8 +77,12 @@ const body = await request.json().catch(() => ({})) as {
     
         const domain = body.domain && domains.includes(body.domain) ? body.domain : domains[0]
         
-        // Handle batch count
-        const count = Math.max(1, Math.min(50, body.count || 1))
+        // Handle batch count with role limits
+        // 0 means unlimited in config, but we cap at 50 for safety
+        const maxPerRequest = limitConfig.perRequest > 0 ? limitConfig.perRequest : 50
+        const safeMax = Math.min(50, maxPerRequest)
+        const count = Math.max(1, Math.min(safeMax, body.count || 1))
+        
         const results = []
 
         // Parallel creation of temp emails
