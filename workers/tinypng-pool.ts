@@ -17,7 +17,7 @@ export default {
       const staleThreshold = new Date(Date.now() - 10 * 60 * 1000)
       const staleItems = await db.select().from(tinypngKeyPool)
         .where(and(
-          eq(tinypngKeyPool.status, 'pending'),
+          inArray(tinypngKeyPool.status, ['pending', 'registration_failed']),
           lt(tinypngKeyPool.createdAt, staleThreshold)
         ))
         .all()

@@ -1,6 +1,13 @@
 # Changelog
 
 All notable changes to this project will be documented in this file.
+## [1.11.16] - 2026-02-02
+
+### Improvements
+
+- 优化 TinyPNG Pool Worker: 自动清理超过10分钟且状态为 REGISTRATION_FAILED 的记录
+- 优化 TinyPNG Pool 列表页：使用 Tooltip 展示完整错误信息
+
 ## [1.11.15] - 2026-02-02
 
 ### Other

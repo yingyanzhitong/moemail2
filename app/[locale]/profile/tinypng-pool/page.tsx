@@ -13,6 +13,12 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { useCopy } from "@/hooks/use-copy"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 
 interface PoolItem {
   id: string
@@ -152,9 +158,18 @@ export default function TinyPngPoolPage() {
                                     {item.status.toUpperCase()}
                                 </span>
                                 {item.status === 'registration_failed' && item.errorMessage && (
-                                    <span className="text-[10px] text-red-500 max-w-[200px] truncate" title={item.errorMessage}>
-                                        {item.errorMessage}
-                                    </span>
+                                    <TooltipProvider>
+                                        <Tooltip>
+                                            <TooltipTrigger asChild>
+                                                <span className="text-[10px] text-red-500 max-w-[200px] truncate cursor-help hover:underline decoration-dotted">
+                                                    {item.errorMessage}
+                                                </span>
+                                            </TooltipTrigger>
+                                            <TooltipContent className="max-w-[300px] break-all">
+                                                <p>{item.errorMessage}</p>
+                                            </TooltipContent>
+                                        </Tooltip>
+                                    </TooltipProvider>
                                 )}
                             </div>
                         </TableCell>
