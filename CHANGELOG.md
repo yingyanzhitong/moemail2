@@ -1,6 +1,12 @@
 # Changelog
 
 All notable changes to this project will be documented in this file.
+## [1.11.21] - 2026-02-02
+
+### Improvements
+
+- TinyPNG 按钮在未登录时也展示，点击后引导到登录页面
+
 ## [1.11.20] - 2026-02-02
 
 ### Other

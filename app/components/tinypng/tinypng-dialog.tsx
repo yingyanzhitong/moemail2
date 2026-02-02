@@ -161,7 +161,20 @@ export function TinyPngDialog() {
     }
   }
 
-  if (!session) return null;
+  // 未登录时，点击按钮跳转登录页
+  if (!session) {
+    return (
+      <Button 
+        variant="outline" 
+        size="sm" 
+        className="gap-2 hidden sm:flex"
+        onClick={() => { window.location.href = '/login' }}
+      >
+        <img src="https://tinypng.com/images/favicon.ico" alt="TinyPNG" className="w-4 h-4" />
+        <span className="hidden md:inline">TinyPNG</span>
+      </Button>
+    )
+  }
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
