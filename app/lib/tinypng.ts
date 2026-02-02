@@ -186,7 +186,7 @@ export async function getApiKeys(bearerToken: string): Promise<TinyPngApiKey[]> 
  * @param description API Key 描述
  * @returns 新创建的 API Key
  */
-export async function createApiKey(bearerToken: string, description: string = "MoeMail Generated"): Promise<string> {
+export async function createApiKey(bearerToken: string, description: string = "SnapMail Generated"): Promise<string> {
   const response = await fetch(TINYPNG_API_URL, {
     method: "POST",
     headers: {
@@ -438,7 +438,10 @@ export async function generateTinyPngApiKey(
          if (emailRec) {
              const currentTime = new Date()
              await db.update(emails)
-                 .set({ expiresAt: new Date(currentTime.getTime() + 60 * 60 * 1000) })
+                 .set({ 
+                   expiresAt: new Date(currentTime.getTime() + 60 * 60 * 1000),
+                   userId: userId  // Transfer ownership to the new user
+                 })
                  .where(eq(emails.id, emailRec.id))
          }
          
@@ -609,7 +612,10 @@ export async function generateTinyPngApiKeysBatch(
              if (emailRec) {
                  const currentTime = new Date()
                  await db.update(emails)
-                     .set({ expiresAt: new Date(currentTime.getTime() + expiresInHours * 60 * 60 * 1000) })
+                     .set({ 
+                       expiresAt: new Date(currentTime.getTime() + expiresInHours * 60 * 60 * 1000),
+                       userId: userId  // Transfer ownership to the new user
+                     })
                      .where(eq(emails.id, emailRec.id))
              }
              

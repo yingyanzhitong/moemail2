@@ -78,7 +78,7 @@ export function BrandHeader({
             </div>
           </div>
           <span className="text-3xl font-bold tracking-wider bg-clip-text text-transparent bg-gradient-to-r from-primary to-purple-600">
-            MoeMail
+            SnapMail
           </span>
         </Link>
       </div>

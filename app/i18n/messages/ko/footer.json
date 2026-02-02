@@ -1,0 +1,16 @@
+{
+  "description": "안전하고 빠른 일회용 이메일 주소. 스팸으로부터 개인정보를 보호합니다.",
+  "links": {
+    "title": "링크",
+    "about": "회사 소개"
+  },
+  "legal": {
+    "title": "법적 고지",
+    "privacy": "개인정보 처리방침",
+    "terms": "서비스 약관"
+  },
+  "contact": {
+    "title": "연락처"
+  },
+  "copyright": "All rights reserved."
+}

@@ -1,0 +1,16 @@
+{
+  "description": "安全で高速な使い捨てメールアドレス。スパムからプライバシーを守ります。",
+  "links": {
+    "title": "リンク",
+    "about": "私たちについて"
+  },
+  "legal": {
+    "title": "法的情報",
+    "privacy": "プライバシーポリシー",
+    "terms": "利用規約"
+  },
+  "contact": {
+    "title": "お問い合わせ"
+  },
+  "copyright": "All rights reserved."
+}

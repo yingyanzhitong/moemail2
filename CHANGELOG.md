@@ -1,6 +1,21 @@
 # Changelog
 
 All notable changes to this project will be documented in this file.
+## [1.11.18] - 2026-02-02
+
+### Bug Fixes
+
+- 修复从 TinyPNG Pool 获取 Key 后邮箱未归属到新用户的问题
+
+### Features
+
+- 新增首页 Footer：包含链接、法律条款、联系方式（GitHub/Telegram）
+- 品牌重命名：MoeMail → SnapMail
+
+### i18n
+
+- 新增 Footer 多语言支持（中文简繁、英语、日语、韩语）
+
 ## [1.11.17] - 2026-02-02
 
 ### Bug Fixes

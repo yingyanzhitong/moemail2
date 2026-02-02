@@ -1,0 +1,16 @@
+{
+  "description": "Secure, fast, disposable email addresses. Protect your privacy from spam.",
+  "links": {
+    "title": "Links",
+    "about": "About Us"
+  },
+  "legal": {
+    "title": "Legal",
+    "privacy": "Privacy Policy",
+    "terms": "Terms of Service"
+  },
+  "contact": {
+    "title": "Contact"
+  },
+  "copyright": "All rights reserved."
+}

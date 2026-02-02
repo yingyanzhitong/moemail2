@@ -10,9 +10,10 @@ export default getRequestConfig(async ({locale}) => {
     const metadata = (await import(`@/i18n/messages/${safeLocale}/metadata.json`)).default
     const emails = (await import(`@/i18n/messages/${safeLocale}/emails.json`)).default
     const profile = (await import(`@/i18n/messages/${safeLocale}/profile.json`)).default
-    return {locale: safeLocale, messages: {common, home, auth, metadata, emails, profile}}
+    const footer = (await import(`@/i18n/messages/${safeLocale}/footer.json`)).default
+    return {locale: safeLocale, messages: {common, home, auth, metadata, emails, profile, footer}}
   } catch {
-    return {locale: safeLocale, messages: {common: {}, home: {}, auth: {}, metadata: {}, emails: {}, profile: {}}}
+    return {locale: safeLocale, messages: {common: {}, home: {}, auth: {}, metadata: {}, emails: {}, profile: {}, footer: {}}}
   }
 })
 
