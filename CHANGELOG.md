@@ -1,6 +1,13 @@
 # Changelog
 
 All notable changes to this project will be documented in this file.
+## [1.11.5] - 2026-02-02
+
+### Bug Fixes
+
+- 修复 TinyPNG Pool Worker 注册请求逻辑，统一使用 `tinify.com/web/api`
+- 修复 Email Receiver Worker 中的 Key 提取逻辑，从 HTML 解析改为使用 Bearer Token 调用 API (与前端生成逻辑一致)
+
 ## [1.11.4] - 2026-02-02
 
 ### Bug Fixes

@@ -52,17 +52,24 @@ export default {
         
         // 3. Request Key from TinyPNG
         try {
-            const response = await fetch('https://tinypng.com/web/apikey', {
+            const response = await fetch('https://tinify.com/web/api', {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
-                'User-Agent': 'Mozilla/5.0 (compatible; Moemail/1.0)'
+                'Accept': 'application/json, text/plain, */*',
+                'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36',
+                'Origin': 'https://tinify.com',
+                'Referer': 'https://tinify.com/developers',
               },
-              body: JSON.stringify({ mail: emailAddress })
+              body: JSON.stringify({ 
+                  fullName: emailAddress,
+                  mail: emailAddress 
+              })
             })
             
             if (!response.ok) {
-               console.error(`Failed to request key for ${emailAddress}: ${response.status}`)
+                const text = await response.text()
+                console.error(`Failed to request key for ${emailAddress}: ${response.status} - ${text}`)
             } else {
                console.log(`Requested key for ${emailAddress}`)
             }
