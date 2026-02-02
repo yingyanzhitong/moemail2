@@ -10,7 +10,7 @@ import { useToast } from "@/components/ui/use-toast"
 import { Loader2, Copy } from "lucide-react"
 import { useCopy } from "@/hooks/use-copy"
 import { useRolePermission } from "@/hooks/use-role-permission"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+
 import { useTranslations } from "next-intl"
 
 interface GeneratedApiKey {
@@ -275,7 +275,7 @@ export function TinyPngDialog() {
                   </div>
                   <div className="max-h-64 overflow-y-auto space-y-2 border rounded-lg p-2">
                     {results.map((result, index) => (
-                      <div key={index} className="flex items-center gap-2 p-2 bg-secondary/50 rounded text-sm">
+                      <div key={result.apiKey} className="flex items-center gap-2 p-2 bg-secondary/50 rounded text-sm">
                         <span className="text-muted-foreground w-6">{index + 1}.</span>
                         <div className="flex-1 min-w-0 space-y-0.5">
                           <div className="flex items-center gap-2">
