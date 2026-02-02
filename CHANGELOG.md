@@ -1,6 +1,14 @@
 # Changelog
 
 All notable changes to this project will be documented in this file.
+## [1.11.9] - 2026-02-02
+
+### Improvements
+
+- 优化 TinyPNG Pool 状态机：支持 `pending` (临时邮箱已创建) -> `registered` (已注册) -> `link_received` (收到邮件) -> `active` (账号激活)
+- 优化 Pool 逻辑：任务失败的 `pending` 记录将保留，并在后续周期中重试注册，解决 IP 速率限制问题
+- SEO 优化：页面标题增加“临时邮箱”、“批量生成 TinyPNG Token”等关键词
+
 ## [1.11.8] - 2026-02-02
 
 ### Improvements

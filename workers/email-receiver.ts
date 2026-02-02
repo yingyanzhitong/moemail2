@@ -69,7 +69,7 @@ const handleEmail = async (message: ForwardableEmailMessage, env: Env) => {
         where: eq(tinypngKeyPool.email, targetEmail.address)
     })
 
-    if (poolKey && poolKey.status === 'pending' && (message.from.includes('tinypng.com') || message.from.includes('tinify.com'))) {
+    if (poolKey && ['pending', 'registered'].includes(poolKey.status) && (message.from.includes('tinypng.com') || message.from.includes('tinify.com'))) {
         console.log(`Attempting to extract TinyPNG key for ${targetEmail.address}`)
         
         // Logic adapted from app/lib/tinypng.ts
@@ -77,6 +77,7 @@ const handleEmail = async (message: ForwardableEmailMessage, env: Env) => {
         
         // 1. Extract Magic Link
         let magicLink: string | null = null
+        // ... patterns ...
         const patterns = [
             /https:\/\/tinypng\.com\/login\?token=[^"'\s<>]+/gi,
             /https:\/\/tinify\.com\/login\?token=[^"'\s<>]+/gi,
@@ -98,7 +99,13 @@ const handleEmail = async (message: ForwardableEmailMessage, env: Env) => {
         }
 
         if (magicLink) {
+            // Update status to link_received
+            await db.update(tinypngKeyPool)
+              .set({ status: 'link_received', updatedAt: new Date() })
+              .where(eq(tinypngKeyPool.id, poolKey.id))
+              
             try {
+                // ... extraction logic ...
                 // 2. Extract Token
                 const url = new URL(magicLink)
                 const token = url.searchParams.get("token")

@@ -242,7 +242,7 @@ export const tinypngKeyPool = sqliteTable('tinypng_key_pool', {
   id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
   email: text('email').notNull().unique(), // The generated email address
   apiKey: text('api_key'), // The acquired API key
-  status: text('status', { enum: ['pending', 'active', 'used'] }).notNull().default('pending'),
+  status: text('status', { enum: ['pending', 'registered', 'link_received', 'active', 'used'] }).notNull().default('pending'),
   createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull().$defaultFn(() => new Date()),
   updatedAt: integer('updated_at', { mode: 'timestamp_ms' }).notNull().$defaultFn(() => new Date()),
 }, (table) => ({
