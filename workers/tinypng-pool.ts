@@ -12,6 +12,9 @@ export default {
     const db = drizzle(env.DB, { schema: { emails, tinypngKeyPool } })
     
     try {
+      // Clean up pending records from previous runs
+      await db.delete(tinypngKeyPool).where(eq(tinypngKeyPool.status, 'pending'))
+      
       // Check pool size
       // We count both pending and active keys found in the pool
       const poolCountResult = await db.select({ value: count() })

@@ -1,6 +1,12 @@
 # Changelog
 
 All notable changes to this project will be documented in this file.
+## [1.11.6] - 2026-02-02
+
+### Bug Fixes
+
+- 优化 TinyPNG Pool Worker: 每次执行前自动清理 Pending 状态的记录，防止任务堆积
+
 ## [1.11.5] - 2026-02-02
 
 ### Bug Fixes
