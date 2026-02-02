@@ -442,8 +442,10 @@ export async function generateTinyPngApiKey(
                  .where(eq(emails.id, emailRec.id))
          }
          
-         // Remove from pool (as requested: "simultaneously delete from temporary table")
-         await db.delete(tinypngKeyPool).where(eq(tinypngKeyPool.id, poolKey.id))
+         // Mark as used instead of deleting, so we can track usage statistics
+         await db.update(tinypngKeyPool)
+             .set({ status: 'used', updatedAt: new Date() })
+             .where(eq(tinypngKeyPool.id, poolKey.id))
          
          return {
              success: true,
@@ -611,8 +613,10 @@ export async function generateTinyPngApiKeysBatch(
                      .where(eq(emails.id, emailRec.id))
              }
              
-             // Remove from pool
-             await db.delete(tinypngKeyPool).where(eq(tinypngKeyPool.id, poolKey.id))
+             // Mark as used instead of deleting, so we can track usage statistics
+             await db.update(tinypngKeyPool)
+                 .set({ status: 'used', updatedAt: new Date() })
+                 .where(eq(tinypngKeyPool.id, poolKey.id))
              
              results.push({
                 email: poolKey.email,

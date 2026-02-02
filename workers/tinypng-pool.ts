@@ -1,4 +1,4 @@
-import { Env } from '../types'
+import type { Env } from '../types'
 import { drizzle } from 'drizzle-orm/d1'
 import { emails, tinypngKeyPool } from '../app/lib/schema'
 import { count, eq, inArray, and, lt } from 'drizzle-orm'
@@ -13,18 +13,32 @@ export default {
     
     try {
 
-      // 0. Cleanup stale pending items from previous cycles (older than 10 minutes)
-      const staleThreshold = new Date(Date.now() - 10 * 60 * 1000)
-      const staleItems = await db.select().from(tinypngKeyPool)
+      // 0a. Cleanup all registration_failed items immediately (delete in next cycle)
+      const failedItems = await db.select().from(tinypngKeyPool)
+        .where(eq(tinypngKeyPool.status, 'registration_failed'))
+        .all()
+        
+      if (failedItems.length > 0) {
+          console.log(`Cleaning up ${failedItems.length} registration_failed items`)
+          for (const item of failedItems) {
+              await db.delete(tinypngKeyPool).where(eq(tinypngKeyPool.id, item.id))
+              // Also delete the email to free up space and keep things clean
+              await db.delete(emails).where(eq(emails.address, item.email))
+          }
+      }
+
+      // 0b. Cleanup stale pending items from previous cycles (older than 30 minutes)
+      const staleThreshold = new Date(Date.now() - 30 * 60 * 1000)
+      const stalePendingItems = await db.select().from(tinypngKeyPool)
         .where(and(
-          inArray(tinypngKeyPool.status, ['pending', 'registration_failed']),
+          eq(tinypngKeyPool.status, 'pending'),
           lt(tinypngKeyPool.createdAt, staleThreshold)
         ))
         .all()
         
-      if (staleItems.length > 0) {
-          console.log(`Cleaning up ${staleItems.length} stale pending items`)
-          for (const item of staleItems) {
+      if (stalePendingItems.length > 0) {
+          console.log(`Cleaning up ${stalePendingItems.length} stale pending items`)
+          for (const item of stalePendingItems) {
               await db.delete(tinypngKeyPool).where(eq(tinypngKeyPool.id, item.id))
               // Also delete the email to free up space and keep things clean
               await db.delete(emails).where(eq(emails.address, item.email))
@@ -47,7 +61,7 @@ export default {
       
       // Use configured domain or fallback
       // Note: Env vars must be set in wrangler.tinypng.json or dashboard
-      const domain = (env as any).EMAIL_DOMAIN || 'tinypng-token.site'
+      const domain = env.EMAIL_DOMAIN || 'tinypng-token.site'
       console.log(`Generating ${BATCH_SIZE} emails for domain: ${domain}`)
 
       for (let i = 0; i < BATCH_SIZE; i++) {

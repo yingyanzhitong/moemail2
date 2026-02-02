@@ -1,6 +1,17 @@
 # Changelog
 
 All notable changes to this project will be documented in this file.
+## [1.11.17] - 2026-02-02
+
+### Bug Fixes
+
+- 修复 TinyPNG Pool "Used" 统计始终为 0 的问题：从 Pool 获取 Key 后更新状态为 `used` 而非删除记录
+
+### Improvements
+
+- 优化 TinyPNG Pool Worker 定时任务频率：从每 5 分钟改为每 30 分钟，减少请求频率
+- 优化清理逻辑：`registration_failed` 状态记录在下个周期直接删除，`pending` 状态记录超过 30 分钟后删除
+
 ## [1.11.16] - 2026-02-02
 
 ### Improvements
