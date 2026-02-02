@@ -1,5 +1,4 @@
 import { Header } from "@/components/layout/header"
-import { Footer } from "@/components/home/footer"
 import { auth } from "@/lib/auth"
 import { Shield, Share2, Clock, Code2 } from "lucide-react"
 import { ActionButton } from "@/components/home/action-button"
@@ -20,11 +19,11 @@ export default async function Home({
   const t = await getTranslations({ locale, namespace: "home" })
 
   return (
-    <div className="bg-gradient-to-b from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 min-h-screen flex flex-col">
-      <div className="container mx-auto px-4 lg:px-8 max-w-[1600px] flex-1">
+    <div className="bg-gradient-to-b from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 min-h-screen">
+      <div className="container mx-auto px-4 lg:px-8 max-w-[1600px]">
         <Header />
         <main className="pt-16">
-          <div className="min-h-[calc(100vh-12rem)] flex flex-col items-center justify-center text-center px-2 relative overflow-hidden">
+          <div className="h-[calc(100vh-4rem)] flex flex-col items-center justify-center text-center px-2 relative overflow-hidden">
             <div className="absolute inset-0 -z-10 bg-grid-primary/5" />
 
             <div className="w-full max-w-3xl mx-auto space-y-6 sm:space-y-8 py-4">
@@ -69,7 +68,6 @@ export default async function Home({
           </div>
         </main>
       </div>
-      <Footer />
     </div>
   )
 }

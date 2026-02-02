@@ -1,6 +1,12 @@
 # Changelog
 
 All notable changes to this project will be documented in this file.
+## [1.11.19] - 2026-02-02
+
+### Other
+
+- 移除首页 Footer
+
 ## [1.11.18] - 2026-02-02
 
 ### Bug Fixes
