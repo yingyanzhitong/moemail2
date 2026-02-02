@@ -1,6 +1,12 @@
 # Changelog
 
 All notable changes to this project will be documented in this file.
+## [1.11.3] - 2026-02-02
+
+### Other
+
+- 重新触发部署流程 (CI/CD)
+
 ## [1.11.2] - 2026-02-02
 
 ### Bug Fixes
