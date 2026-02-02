@@ -1,7 +1,7 @@
 import { Env } from '../types'
 import { drizzle } from 'drizzle-orm/d1'
 import { emails, tinypngKeyPool } from '../app/lib/schema'
-import { count, eq, inArray } from 'drizzle-orm'
+import { count, eq, inArray, and, lt } from 'drizzle-orm'
 
 // Configuration
 const POOL_LIMIT = 500
@@ -12,6 +12,25 @@ export default {
     const db = drizzle(env.DB, { schema: { emails, tinypngKeyPool } })
     
     try {
+
+      // 0. Cleanup stale pending items from previous cycles (older than 10 minutes)
+      const staleThreshold = new Date(Date.now() - 10 * 60 * 1000)
+      const staleItems = await db.select().from(tinypngKeyPool)
+        .where(and(
+          eq(tinypngKeyPool.status, 'pending'),
+          lt(tinypngKeyPool.createdAt, staleThreshold)
+        ))
+        .all()
+        
+      if (staleItems.length > 0) {
+          console.log(`Cleaning up ${staleItems.length} stale pending items`)
+          for (const item of staleItems) {
+              await db.delete(tinypngKeyPool).where(eq(tinypngKeyPool.id, item.id))
+              // Also delete the email to free up space and keep things clean
+              await db.delete(emails).where(eq(emails.address, item.email))
+          }
+      }
+
       // Check pool size
       // We count all keys that are in progress or active to respect the limit
       const poolCountResult = await db.select({ value: count() })
@@ -72,15 +91,14 @@ export default {
             if (!response.ok) {
                 const text = await response.text()
                 console.error(`Failed to request key for ${emailAddress}: ${response.status} - ${text}`)
-                // Stay in pending status to retry later? Or mark as failed? 
-                // For now, if failed, we leave it as pending or we could delete it.
-                // But as per user request: "pending not deleted... ip limit... retry next cycle"
-                // So we do nothing, leaving it as 'pending'.
-                // Ideally we should track 'attempts' or 'last_attempt_at' but schema changes might be too much right now.
-                // We will rely on the fact that next time we might try to pick up pending ones?
-                // Actually, this loop CREATES NEW emails. It doesn't retry old ones.
-                // To support "retry using this email", we would need a separate logic to iterate existing 'pending' emails.
-                // Let's add that logic below or mix it.
+                // Mark as failed so we know why it's stuck
+                await db.update(tinypngKeyPool)
+                  .set({ 
+                    status: 'registration_failed', 
+                    errorMessage: `${response.status} - ${text.substring(0, 200)}`,
+                    updatedAt: new Date()
+                  })
+                  .where(eq(tinypngKeyPool.email, emailAddress))
             } else {
                console.log(`Requested key for ${emailAddress}`)
                // Update status to 'registered'
@@ -90,47 +108,17 @@ export default {
             }
         } catch (reqErr) {
             console.error(`Network error requesting key for ${emailAddress}`, reqErr)
+            await db.update(tinypngKeyPool)
+              .set({ 
+                status: 'registration_failed', 
+                errorMessage: reqErr instanceof Error ? reqErr.message : String(reqErr),
+                updatedAt: new Date()
+              })
+              .where(eq(tinypngKeyPool.email, emailAddress))
         }
       }
       
-      // 4. Retry Logic: Check 'pending' items and try to register them again
-      // Fetch some pending items
-      const pendingItems = await db.select().from(tinypngKeyPool)
-        .where(eq(tinypngKeyPool.status, 'pending'))
-        .limit(5) // Retry a few each time
-        .all()
-        
-      for (const item of pendingItems) {
-         console.log(`Retrying registration for existing pending email: ${item.email}`)
-         try {
-            const response = await fetch('https://tinify.com/web/api', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'Accept': 'application/json, text/plain, */*',
-                'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36',
-                'Origin': 'https://tinify.com',
-                'Referer': 'https://tinify.com/developers',
-              },
-              body: JSON.stringify({ 
-                  fullName: item.email,
-                  mail: item.email 
-              })
-            })
-            
-            if (response.ok) {
-               console.log(`Retry successful for ${item.email}`)
-               await db.update(tinypngKeyPool)
-                 .set({ status: 'registered', updatedAt: new Date() })
-                 .where(eq(tinypngKeyPool.id, item.id))
-            } else {
-                const text = await response.text()
-                console.error(`Retry failed for ${item.email}: ${response.status} - ${text}`)
-            }
-         } catch (e) {
-             console.error(`Retry network error for ${item.email}`, e)
-         }
-      }
+      // 4. Retry Logic removed as per request to just delete pending items in next cycle.
 
     } catch (e) {
       console.error('Error in tinypng pool worker:', e)

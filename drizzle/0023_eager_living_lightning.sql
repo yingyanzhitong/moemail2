@@ -1,0 +1,1 @@
+ALTER TABLE `tinypng_key_pool` ADD `error_message` text;

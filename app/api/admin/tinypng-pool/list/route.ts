@@ -4,11 +4,11 @@ import { tinypngKeyPool } from "@/lib/schema"
 import { NextResponse } from "next/server"
 import { ROLES } from "@/lib/permissions"
 import { getUserRole } from "@/lib/auth"
-import { desc } from "drizzle-orm"
+import { desc, asc } from "drizzle-orm"
 
 export const runtime = "edge"
 
-export async function GET() {
+export async function GET(req: Request) {
   const session = await auth()
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
@@ -20,14 +20,17 @@ export async function GET() {
   }
 
   try {
+    const { searchParams } = new URL(req.url)
+    const limit = parseInt(searchParams.get("limit") || "100")
+    const offset = parseInt(searchParams.get("offset") || "0")
+
     const db = createDb()
     
-    // Get list, limited to latest 100 for now or add pagination if needed
-    // User requested "details page", usually a list.
     const list = await db.select()
       .from(tinypngKeyPool)
-      .orderBy(desc(tinypngKeyPool.createdAt))
-      .limit(100)
+      .orderBy(asc(tinypngKeyPool.status), desc(tinypngKeyPool.createdAt))
+      .limit(limit)
+      .offset(offset)
       .all()
 
     return NextResponse.json({ list })

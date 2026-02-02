@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { Loader2, ArrowLeft, RefreshCw, Copy } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -18,30 +18,39 @@ interface PoolItem {
   id: string
   email: string
   apiKey: string | null
-  status: 'pending' | 'active' | 'used'
+  status: 'pending' | 'active' | 'used' | 'registered' | 'link_received' | 'registration_failed'
+  errorMessage?: string | null
   createdAt: number
   updatedAt: number
 }
 
 export default function TinyPngPoolPage() {
   const [items, setItems] = useState<PoolItem[]>([])
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(false)
+  const [hasMore, setHasMore] = useState(true)
+  const observerTarget = useRef<HTMLDivElement>(null)
   const router = useRouter()
   const { copyToClipboard } = useCopy()
   
-  // Assuming if you are here you have permission, but double check
-  // or just rely on API failure.
-  // Actually checkPermission returns boolean.
-  
-  const fetchList = async () => {
+  const fetchList = async (isRefresh = false) => {
     try {
       setLoading(true)
-      const res = await fetch("/api/admin/tinypng-pool/list")
+      const offset = isRefresh ? 0 : items.length
+      const res = await fetch(`/api/admin/tinypng-pool/list?limit=100&offset=${offset}`)
+      
       if (res.ok) {
         const data = await res.json() as { list: PoolItem[] }
-        setItems(data.list)
-      } else {
-          // Handle error
+        if (data.list.length < 100) {
+          setHasMore(false)
+        } else {
+            setHasMore(true)
+        }
+        
+        if (isRefresh) {
+          setItems(data.list)
+        } else {
+          setItems(prev => [...prev, ...data.list])
+        }
       }
     } catch (error) {
       console.error(error)
@@ -50,13 +59,39 @@ export default function TinyPngPoolPage() {
     }
   }
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
-    fetchList()
+    fetchList(true)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasMore && !loading) {
+          fetchList()
+        }
+      },
+      { threshold: 1.0 }
+    )
+
+    if (observerTarget.current) {
+      observer.observe(observerTarget.current)
+    }
+
+    return () => {
+      if (observerTarget.current) {
+        observer.unobserve(observerTarget.current)
+      }
+    }
+  }, [hasMore, loading, items.length])
 
   const formatDate = (ts: number) => {
     return new Date(ts).toLocaleString()
+  }
+
+  const handleRefresh = () => {
+      setHasMore(true)
+      fetchList(true)
   }
 
   return (
@@ -67,7 +102,7 @@ export default function TinyPngPoolPage() {
         </Button>
         <h1 className="text-2xl font-bold">TinyPNG Pool Details</h1>
         <div className="flex-1" />
-        <Button variant="outline" onClick={fetchList} disabled={loading}>
+        <Button variant="outline" onClick={handleRefresh} disabled={loading}>
           <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
           Refresh
         </Button>
@@ -85,7 +120,7 @@ export default function TinyPngPoolPage() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {loading && items.length === 0 ? (
+            {items.length === 0 && loading ? (
                <TableRow>
                  <TableCell colSpan={5} className="h-24 text-center">
                    <div className="flex justify-center items-center gap-2">
@@ -101,17 +136,27 @@ export default function TinyPngPoolPage() {
                     </TableCell>
                 </TableRow>
             ) : (
-                items.map((item) => (
+                <>
+
+                {items.map((item) => (
                     <TableRow key={item.id}>
                         <TableCell className="font-mono text-sm">{item.email}</TableCell>
                         <TableCell>
-                            <span className={`px-2 py-1 rounded-full text-xs ${
-                                item.status === 'active' ? 'bg-green-100 text-green-700' :
-                                item.status === 'pending' ? 'bg-yellow-100 text-yellow-700' :
-                                'bg-gray-100 text-gray-700'
-                            }`}>
-                                {item.status.toUpperCase()}
-                            </span>
+                            <div className="flex flex-col gap-1">
+                                <span className={`px-2 py-1 rounded-full text-xs w-fit ${
+                                    item.status === 'active' ? 'bg-green-100 text-green-700' :
+                                    item.status === 'pending' ? 'bg-yellow-100 text-yellow-700' :
+                                    item.status === 'registration_failed' ? 'bg-red-100 text-red-700' :
+                                    'bg-gray-100 text-gray-700'
+                                }`}>
+                                    {item.status.toUpperCase()}
+                                </span>
+                                {item.status === 'registration_failed' && item.errorMessage && (
+                                    <span className="text-[10px] text-red-500 max-w-[200px] truncate" title={item.errorMessage}>
+                                        {item.errorMessage}
+                                    </span>
+                                )}
+                            </div>
                         </TableCell>
                         <TableCell className="font-mono text-xs max-w-[200px] truncate">
                             {item.apiKey ? (
@@ -124,7 +169,20 @@ export default function TinyPngPoolPage() {
                         <TableCell className="text-sm text-muted-foreground whitespace-nowrap">{formatDate(item.createdAt)}</TableCell>
                         <TableCell className="text-sm text-muted-foreground whitespace-nowrap">{formatDate(item.updatedAt)}</TableCell>
                     </TableRow>
-                ))
+                ))}
+                {/* Sentinel for infinite scroll */}
+                <TableRow>
+                   <TableCell colSpan={5} className="p-0 border-0">
+                       <div ref={observerTarget} className="h-4 w-full" />
+                       {loading && items.length > 0 && (
+                           <div className="flex justify-center items-center py-4 text-muted-foreground text-sm">
+                               <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                               Loading more...
+                           </div>
+                       )}
+                   </TableCell>
+                </TableRow>
+                </>
             )}
           </TableBody>
         </Table>

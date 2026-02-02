@@ -1,6 +1,15 @@
 # Changelog
 
 All notable changes to this project will be documented in this file.
+## [1.11.14] - 2026-02-02
+
+### Improvements
+
+- 优化 TinyPNG Pool 列表页：支持无限滚动加载 (IntersectionObserver)，优化排序 (Active 优先)，支持列表刷新
+- 优化 TinyPNG Pool Worker: 自动清理超过10分钟的 stale tasks
+- 优化 TinyPNG Pool Worker: 记录注册失败原因 (registration_failed) 并入库，不再卡在 pending 状态
+- 数据库: `tinypng_key_pool` 表新增 `status` 状态 `registration_failed` 和 `errorMessage` 字段
+
 ## [1.11.13] - 2026-02-02
 
 ### Bug Fixes
