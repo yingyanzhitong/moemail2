@@ -15,6 +15,7 @@ import { PERMISSIONS } from "@/lib/permissions"
 import { WebsiteConfigPanel } from "./website-config-panel"
 import { ApiKeyPanel } from "./api-key-panel"
 import { TinyPngKeysPanel } from "./tinypng-keys-panel"
+import { TinyPngPoolStatsCard } from "./tinypng-pool-stats-card"
 import { ChangePasswordDialog } from "./change-password-dialog"
 
 interface ExtendedUser extends User {
@@ -157,6 +158,8 @@ export function ProfileCard({ user }: ProfileCardProps) {
       {canPromote && <PromotePanel />}
       {canManageWebhook && <ApiKeyPanel />}
       <TinyPngKeysPanel />
+      
+      {user.roles?.some(r => r.name === 'emperor') && <TinyPngPoolStatsCard />}
 
       <div className="flex flex-col sm:flex-row gap-4 px-1">
         <Button

@@ -155,6 +155,13 @@
       "when": 1769762370895,
       "tag": "0021_clear_mindworm",
       "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "6",
+      "when": 1770017622818,
+      "tag": "0022_stormy_mac_gargan",
+      "breakpoints": true
     }
   ]
 }

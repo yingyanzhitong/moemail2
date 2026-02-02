@@ -1,7 +1,15 @@
 # Changelog
 
 All notable changes to this project will be documented in this file.
+## [1.11.0] - 2026-02-02
 
+### Features
+
+- TinyPNG: 新增后台自动缓冲池 (Pool) 功能，每5分钟自动申请 Key (上限500个)
+- TinyPNG: 用户申请 Key 时优先从缓冲池获取，秒级响应
+- TinyPNG: 缓冲池 Key 将在分发给用户时自动延长关联邮箱有效期至1小时，并从缓冲池中移除
+- 个人中心: 皇帝角色增加缓冲池数据监控看板 (Total/Active/Pending/Used) 及详细列表页
+- 后台: 邮件接收 Worker 自动识别 TinyPNG 激活邮件，提取 Key 并存入缓冲池
 ## [1.10.2] - 2026-02-01
 
 ### Features

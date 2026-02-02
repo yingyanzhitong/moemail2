@@ -1,13 +1,13 @@
 import { Env } from '../types'
 import { drizzle } from 'drizzle-orm/d1'
-import { messages, emails, webhooks } from '../app/lib/schema'
+import { messages, emails, webhooks, tinypngKeyPool } from '../app/lib/schema'
 import { eq, sql } from 'drizzle-orm'
 import PostalMime from 'postal-mime'
 import { WEBHOOK_CONFIG } from '../app/config/webhook'
 import { EmailMessage } from '../app/lib/webhook'
 
 const handleEmail = async (message: ForwardableEmailMessage, env: Env) => {
-  const db = drizzle(env.DB, { schema: { messages, emails, webhooks } })
+  const db = drizzle(env.DB, { schema: { messages, emails, webhooks, tinypngKeyPool } })
 
   const parsedMessage = await PostalMime.parse(message.raw)
 
@@ -60,7 +60,57 @@ const handleEmail = async (message: ForwardableEmailMessage, env: Env) => {
       }
     }
 
-    console.log(`Email processed: ${parsedMessage.subject}`)
+    // Check for TinyPNG pool key extraction
+    // We already have targetEmail, check if it's in our pool
+    const poolKey = await db.query.tinypngKeyPool.findFirst({
+        where: eq(tinypngKeyPool.email, targetEmail.address)
+    })
+
+    if (poolKey && poolKey.status === 'pending' && (message.from.includes('tinypng.com') || message.from.includes('tinify.com'))) {
+        console.log(`Attempting to extract TinyPNG key for ${targetEmail.address}`)
+        const linkMatch = (parsedMessage.html || parsedMessage.text || '').match(/https:\/\/tinify\.com\/dashboard\/api\/[^"'\s<]+/)
+        
+        if (linkMatch) {
+            const loginUrl = linkMatch[0]
+            try {
+                // 1. Visit Login Link (catch cookies)
+                const loginResp = await fetch(loginUrl, { 
+                    redirect: 'manual',
+                    headers: { 'User-Agent': 'Mozilla/5.0' }
+                })
+                const setCookie = loginResp.headers.get('set-cookie')
+                
+                if (setCookie) {
+                    // 2. Visit Dashboard
+                    const dashResp = await fetch('https://tinify.com/dashboard/api', {
+                        headers: { 
+                            'Cookie': setCookie,
+                            'User-Agent': 'Mozilla/5.0'
+                        }
+                    })
+                    const dashHtml = await dashResp.text()
+                    
+                    // 3. Extract Key (Looking for value="KEY")
+                    const keyMatch = dashHtml.match(/value="([A-Za-z0-9]{32})"/)
+                    if (keyMatch && keyMatch[1]) {
+                        await db.update(tinypngKeyPool)
+                            .set({ 
+                                apiKey: keyMatch[1], 
+                                status: 'active',
+                                updatedAt: new Date()
+                            })
+                            .where(eq(tinypngKeyPool.id, poolKey.id))
+                        console.log(`Successfully activated TinyPNG key for ${targetEmail.address}`)
+                    } else {
+                        console.error('Failed to parse API key from dashboard')
+                    }
+                }
+            } catch (err) {
+                console.error('Error activating TinyPNG key:', err)
+            }
+        }
+    }
+
   } catch (error) {
     console.error('Failed to process email:', error)
   }

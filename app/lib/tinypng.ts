@@ -9,7 +9,7 @@
  */
 
 import { nanoid } from "nanoid"
-import { emails, messages } from "@/lib/schema"
+import { emails, messages, tinypngKeyPool } from "@/lib/schema"
 import { eq, and, gt, desc } from "drizzle-orm"
 import type { DrizzleD1Database } from "drizzle-orm/d1"
 
@@ -299,6 +299,7 @@ export enum GenerateStep {
   EXTRACT_TOKEN = "提取 magic link token",
   GET_BEARER_TOKEN = "获取 Bearer Token",
   GET_API_KEY = "获取 API Key",
+  FETCH_FROM_POOL = "从缓冲池获取",
 }
 
 /**
@@ -418,6 +419,45 @@ export async function generateTinyPngApiKey(
   let createdEmail: { id: string; address: string } | undefined
   
   try {
+    // 0. 尝试从缓冲池获取 (Check Pool first)
+    try {
+      // Find an active key from the pool
+      const poolKey = await db.select().from(tinypngKeyPool)
+        .where(eq(tinypngKeyPool.status, 'active'))
+        .limit(1)
+        .get()
+
+      if (poolKey?.apiKey) {
+         console.log(`[TinyPNG] Retrieving key from pool: ${poolKey.email}`)
+         
+         // Update associated email expiration to 1 hour
+         const [emailRec] = await db.select().from(emails)
+             .where(eq(emails.address, poolKey.email))
+             .limit(1)
+         
+         if (emailRec) {
+             const currentTime = new Date()
+             await db.update(emails)
+                 .set({ expiresAt: new Date(currentTime.getTime() + 60 * 60 * 1000) })
+                 .where(eq(emails.id, emailRec.id))
+         }
+         
+         // Remove from pool (as requested: "simultaneously delete from temporary table")
+         await db.delete(tinypngKeyPool).where(eq(tinypngKeyPool.id, poolKey.id))
+         
+         return {
+             success: true,
+             apiKey: poolKey.apiKey,
+             email: poolKey.email,
+             steps: [
+                 { step: GenerateStep.FETCH_FROM_POOL, success: true, message: '从缓冲池获取成功', duration: 0 }
+             ]
+         }
+      }
+    } catch(poolErr) {
+        console.error('[TinyPNG] Failed to check pool:', poolErr)
+    }
+
     // 1. 生成临时邮箱
     currentStep = GenerateStep.CREATE_EMAIL
     try {

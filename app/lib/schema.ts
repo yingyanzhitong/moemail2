@@ -237,3 +237,14 @@ export const apiUsageStatsRelations = relations(apiUsageStats, ({ one }) => ({
     references: [users.id],
   }),
 }));
+
+export const tinypngKeyPool = sqliteTable('tinypng_key_pool', {
+  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  email: text('email').notNull().unique(), // The generated email address
+  apiKey: text('api_key'), // The acquired API key
+  status: text('status', { enum: ['pending', 'active', 'used'] }).notNull().default('pending'),
+  createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull().$defaultFn(() => new Date()),
+  updatedAt: integer('updated_at', { mode: 'timestamp_ms' }).notNull().$defaultFn(() => new Date()),
+}, (table) => ({
+  statusIdx: index('tinypng_key_pool_status_idx').on(table.status),
+}));

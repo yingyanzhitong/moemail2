@@ -1,0 +1,25 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "tinypng-pool-worker",
+  "main": "workers/tinypng-pool.ts",
+  "compatibility_date": "2024-03-20",
+  "compatibility_flags": [
+    "nodejs_compat"
+  ],
+  "triggers": {
+    "crons": [
+      "*/5 * * * *"
+    ]
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "migrations_dir": "drizzle",
+      "database_name": "moemail",
+      "database_id": "9dd80929-206e-4132-91a0-e22cfb9106b1"
+    }
+  ],
+  "vars": {
+      "EMAIL_DOMAIN": "moemail.app"
+  }
+}
