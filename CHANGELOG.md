@@ -1,6 +1,12 @@
 # Changelog
 
 All notable changes to this project will be documented in this file.
+## [1.11.2] - 2026-02-02
+
+### Bug Fixes
+
+- 修复个人中心 TinyPNG Keys 和 API Key 面板的无限循环请求问题 (useCallback 优化)
+
 ## [1.11.1] - 2026-02-02
 
 ### Bug Fixes

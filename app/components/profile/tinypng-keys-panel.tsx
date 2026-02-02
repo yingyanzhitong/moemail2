@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { Button } from "@/components/ui/button"
 import { ImageIcon, Loader2, Copy, Trash2, RefreshCw } from "lucide-react"
 import { useToast } from "@/components/ui/use-toast"
@@ -24,7 +24,7 @@ export function TinyPngKeysPanel() {
   const { checkPermission } = useRolePermission()
   const canManageApiKey = checkPermission(PERMISSIONS.MANAGE_API_KEY)
 
-  const fetchKeys = async () => {
+  const fetchKeys = useCallback(async () => {
     try {
       setLoading(true)
       const res = await fetch("/api/tinypng/keys")
@@ -41,7 +41,7 @@ export function TinyPngKeysPanel() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [toast])
 
   useEffect(() => {
     if (canManageApiKey) {
