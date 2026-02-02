@@ -43,7 +43,7 @@ export default {
         await db.insert(emails).values({
           id: crypto.randomUUID(),
           address: emailAddress,
-          expiresAt: new Date(Date.now() + 1000 * 60 * 60 * 24 * 30), // 30 days
+          expiresAt: new Date(Date.now() + 1000 * 60 * 60 * 24 * 365), // 365 days (effectively permanent until claimed)
           createdAt: new Date(),
         })
         

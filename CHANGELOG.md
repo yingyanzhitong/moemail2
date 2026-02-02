@@ -1,6 +1,12 @@
 # Changelog
 
 All notable changes to this project will be documented in this file.
+## [1.11.8] - 2026-02-02
+
+### Improvements
+
+- 调整 TinyPNG Pool 邮箱有效期逻辑：池中未分配的邮箱有效期延长至 1 年（视为永久），分配后自动调整为 1 小时过期
+
 ## [1.11.7] - 2026-02-02
 
 ### Improvements
