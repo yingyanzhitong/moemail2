@@ -1,6 +1,13 @@
 # Changelog
 
 All notable changes to this project will be documented in this file.
+## [1.11.4] - 2026-02-02
+
+### Bug Fixes
+
+- 修复 TinyPNG 账号激活一直处于 Pending 的问题 (优化邮件接收和 Cookie 处理逻辑)
+- 修复 API Key 删除时的确认弹窗逻辑
+
 ## [1.11.3] - 2026-02-02
 
 ### Other

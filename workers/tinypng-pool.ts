@@ -1,7 +1,7 @@
 import { Env } from '../types'
 import { drizzle } from 'drizzle-orm/d1'
 import { emails, tinypngKeyPool } from '../app/lib/schema'
-import { count, eq } from 'drizzle-orm'
+import { count, eq, inArray } from 'drizzle-orm'
 
 // Configuration
 const POOL_LIMIT = 500
@@ -16,7 +16,7 @@ export default {
       // We count both pending and active keys found in the pool
       const poolCountResult = await db.select({ value: count() })
         .from(tinypngKeyPool)
-        .where(eq(tinypngKeyPool.status, 'pending')) // Count just pending? Or all? User said limit 500. Assuming simple limit.
+        .where(inArray(tinypngKeyPool.status, ['pending', 'active']))
         .get()
         
       const currentSize = poolCountResult?.value ?? 0

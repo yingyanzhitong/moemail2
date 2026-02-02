@@ -46,6 +46,7 @@ export function ApiKeyPanel() {
   const { copyToClipboard } = useCopy()
   const [showExamples, setShowExamples] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
+  const [keyToDelete, setKeyToDelete] = useState<string | null>(null)
   const { checkPermission } = useRolePermission()
   const canManageApiKey = checkPermission(PERMISSIONS.MANAGE_API_KEY)
 
@@ -302,13 +303,40 @@ export function ApiKeyPanel() {
                       <Button
                         variant="ghost"
                         size="icon"
-                        onClick={() => deleteApiKey(key.id)}
+                        onClick={() => setKeyToDelete(key.id)}
                       >
                         <Trash2 className="w-4 h-4" />
                       </Button>
                     </div>
                   </div>
                 ))}
+
+                <Dialog open={!!keyToDelete} onOpenChange={(open) => !open && setKeyToDelete(null)}>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>确认删除</DialogTitle>
+                      <DialogDescription>
+                        您确定要删除这个 API Key 吗？此操作无法撤销。
+                      </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter>
+                      <Button variant="outline" onClick={() => setKeyToDelete(null)}>
+                        取消
+                      </Button>
+                      <Button 
+                        variant="destructive" 
+                        onClick={() => {
+                          if (keyToDelete) {
+                            deleteApiKey(keyToDelete)
+                            setKeyToDelete(null)
+                          }
+                        }}
+                      >
+                        删除
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
 
                 <div className="mt-8 space-y-4">
                   <button

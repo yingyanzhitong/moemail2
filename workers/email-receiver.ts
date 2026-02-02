@@ -32,31 +32,34 @@ const handleEmail = async (message: ForwardableEmailMessage, env: Env) => {
       type: 'received',
     }).returning().get()
 
-    const webhook = await db.query.webhooks.findFirst({
-      where: eq(webhooks.userId, targetEmail!.userId!)
-    })
+    // Only trigger webhook if the email belongs to a user
+    if (targetEmail.userId) {
+      const webhook = await db.query.webhooks.findFirst({
+        where: eq(webhooks.userId, targetEmail.userId)
+      })
 
-    if (webhook?.enabled) {
-      try {
-        await fetch(webhook.url, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-Webhook-Event': WEBHOOK_CONFIG.EVENTS.NEW_MESSAGE
-          },
-          body: JSON.stringify({
-            emailId: targetEmail.id,
-            messageId: savedMessage.id,
-            fromAddress: savedMessage.fromAddress,
-            subject: savedMessage.subject,
-            content: savedMessage.content,
-            html: savedMessage.html,
-            receivedAt: savedMessage.receivedAt.toISOString(),
-            toAddress: targetEmail.address
-          } as EmailMessage)
-        })
-      } catch (error) {
-        console.error('Failed to send webhook:', error)
+      if (webhook?.enabled) {
+        try {
+          await fetch(webhook.url, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-Webhook-Event': WEBHOOK_CONFIG.EVENTS.NEW_MESSAGE
+            },
+            body: JSON.stringify({
+              emailId: targetEmail.id,
+              messageId: savedMessage.id,
+              fromAddress: savedMessage.fromAddress,
+              subject: savedMessage.subject,
+              content: savedMessage.content,
+              html: savedMessage.html,
+              receivedAt: savedMessage.receivedAt.toISOString(),
+              toAddress: targetEmail.address
+            } as EmailMessage)
+          })
+        } catch (error) {
+          console.error('Failed to send webhook:', error)
+        }
       }
     }
 
@@ -74,6 +77,7 @@ const handleEmail = async (message: ForwardableEmailMessage, env: Env) => {
             const loginUrl = linkMatch[0]
             try {
                 // 1. Visit Login Link (catch cookies)
+                // Use redirect: 'manual' to catch the 302 and Set-Cookie
                 const loginResp = await fetch(loginUrl, { 
                     redirect: 'manual',
                     headers: { 'User-Agent': 'Mozilla/5.0' }
@@ -81,8 +85,10 @@ const handleEmail = async (message: ForwardableEmailMessage, env: Env) => {
                 const setCookie = loginResp.headers.get('set-cookie')
                 
                 if (setCookie) {
+                    console.log(`Got session cookie for ${targetEmail.address}`)
                     // 2. Visit Dashboard
-                    const dashResp = await fetch('https://tinify.com/dashboard/api', {
+                    // Changing URL from .../dashboard/api to .../dashboard
+                    const dashResp = await fetch('https://tinify.com/dashboard', {
                         headers: { 
                             'Cookie': setCookie,
                             'User-Agent': 'Mozilla/5.0'
@@ -102,12 +108,16 @@ const handleEmail = async (message: ForwardableEmailMessage, env: Env) => {
                             .where(eq(tinypngKeyPool.id, poolKey.id))
                         console.log(`Successfully activated TinyPNG key for ${targetEmail.address}`)
                     } else {
-                        console.error('Failed to parse API key from dashboard')
+                        console.error('Failed to parse API key from dashboard HTML')
                     }
+                } else {
+                    console.error('No Set-Cookie header found in login response')
                 }
             } catch (err) {
                 console.error('Error activating TinyPNG key:', err)
             }
+        } else {
+             console.log('No dashboard link found in email')
         }
     }
 
