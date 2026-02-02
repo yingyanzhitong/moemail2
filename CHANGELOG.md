@@ -1,6 +1,12 @@
 # Changelog
 
 All notable changes to this project will be documented in this file.
+## [1.11.20] - 2026-02-02
+
+### Other
+
+- 移除获取网站源代码浮动按钮
+
 ## [1.11.19] - 2026-02-02
 
 ### Other
