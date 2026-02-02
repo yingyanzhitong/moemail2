@@ -1,6 +1,13 @@
 # Changelog
 
 All notable changes to this project will be documented in this file.
+## [1.11.11] - 2026-02-02
+
+### Improvements
+
+- 移除手动批量获取 TinyPNG Key 的功能，精简界面
+- 自动批量获取增加邮箱有效期选项（1小时 - 30天），默认 1 小时
+
 ## [1.11.10] - 2026-02-02
 
 ### Improvements

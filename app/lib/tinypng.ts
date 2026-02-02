@@ -575,14 +575,15 @@ export async function generateTinyPngApiKeysBatch(
   db: DrizzleD1Database<Record<string, unknown>>,
   userId: string,
   domain: string,
-  count: number
+  count: number,
+  expiresInHours: number = 1 // Default to 1 hour
 ): Promise<BatchGenerateResult> {
   const results: BatchGenerateResult['results'] = []
   const preparedEmails: PreparedEmail[] = []
   const now = new Date()
-  const expiresAt = new Date(now.getTime() + 1 * 60 * 60 * 1000) // 1小时后过期
+  const expiresAt = new Date(now.getTime() + expiresInHours * 60 * 60 * 1000)
 
-  console.log(`[TinyPNG Batch] 开始批量生成 ${count} 个 API Key`)
+  console.log(`[TinyPNG Batch] 开始批量生成 ${count} 个 API Key (有效期 ${expiresInHours} 小时)`)
 
   // 阶段0：尝试从缓冲池获取 Active 的账号
   console.log(`[TinyPNG Batch] 阶段0: 尝试从缓冲池获取 Active 账号...`)
@@ -598,7 +599,7 @@ export async function generateTinyPngApiKeysBatch(
         if (poolKey.apiKey) {
              console.log(`[TinyPNG Batch] Retrieving key from pool: ${poolKey.email}`)
              
-             // Update associated email expiration to 1 hour
+             // Update associated email expiration to requested hours
              const [emailRec] = await db.select().from(emails)
                  .where(eq(emails.address, poolKey.email))
                  .limit(1)
@@ -606,7 +607,7 @@ export async function generateTinyPngApiKeysBatch(
              if (emailRec) {
                  const currentTime = new Date()
                  await db.update(emails)
-                     .set({ expiresAt: new Date(currentTime.getTime() + 60 * 60 * 1000) })
+                     .set({ expiresAt: new Date(currentTime.getTime() + expiresInHours * 60 * 60 * 1000) })
                      .where(eq(emails.id, emailRec.id))
              }
              

@@ -53,8 +53,9 @@ export async function POST(request: Request) {
     const limitConfig = TINYPNG_KEY_LIMITS[userRole as Role]
 
     // 解析请求参数
-    const body = await request.json().catch(() => ({})) as { count?: number; domain?: string }
+    const body = await request.json().catch(() => ({})) as { count?: number; domain?: string; expiresInHours?: number }
     const requestedCount = body.count || 1
+    const expiresInHours = body.expiresInHours || 1
 
     // 验证请求数量
     if (requestedCount < 1) {
@@ -124,7 +125,7 @@ export async function POST(request: Request) {
     const domain = body.domain && domains.includes(body.domain) ? body.domain : domains[0]
     
     // 执行批量 TinyPNG API Key 生成流程
-    const result = await generateTinyPngApiKeysBatch(db, userId, domain, requestedCount)
+    const result = await generateTinyPngApiKeysBatch(db, userId, domain, requestedCount, expiresInHours)
 
     // 保存成功生成的 TinyPNG API Key 到数据库
     const successfulResults = result.results.filter(r => r.apiKey)
