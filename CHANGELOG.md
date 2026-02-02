@@ -1,6 +1,12 @@
 # Changelog
 
 All notable changes to this project will be documented in this file.
+## [1.11.13] - 2026-02-02
+
+### Bug Fixes
+
+- 修复 GitHub Actions 部署流程中的 action 引用错误 (x-actions/website-check not found)
+
 ## [1.11.12] - 2026-02-02
 
 ### Bug Fixes
