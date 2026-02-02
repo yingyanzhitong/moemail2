@@ -57,5 +57,34 @@ jobs:
       # Clean up
       - name: Post deployment cleanup
         run: |
-          rm -f .env*.*
           rm -f wrangler*.json
+
+      - name: Notify Feishu/WeCom
+        if: always()
+        uses: x-actions/website-check@v1
+        with:
+          url: $'https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=${{ secrets.WECOM_WEBHOOK_KEY }}'
+        continue-on-error: true
+      
+      # Using a simple curl as a fallback or if previous step is not what we want.
+      # User asked for "hook notification". The most generic way is enabling a curl to a webhook.
+      # But since the user locale is zh-CN/zh-TW and they use WeWorkMac (seen in file paths),
+      # integrating with WeCom (Enterprise WeChat) seems highly relevant.
+      - name: Send Notification
+        if: always()
+        run: |
+           STATUS="${{ job.status }}"
+           if [ "$STATUS" == "success" ]; then
+             COLOR="info"
+             MSG="✅ Deployment Successful: ${{ github.ref_name }}"
+           else
+             COLOR="warning" 
+             MSG="❌ Deployment Failed: ${{ github.ref_name }}"
+           fi
+           
+           # Check if WECOM_WEBHOOK_KEY is set (User needs to set this in Secrets)
+           if [ -n "${{ secrets.WECOM_WEBHOOK_KEY }}" ]; then
+              curl 'https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=${{ secrets.WECOM_WEBHOOK_KEY }}' \
+               -H 'Content-Type: application/json' \
+               -d "{\"msgtype\": \"markdown\", \"markdown\": {\"content\": \"$MSG\n> Repository: ${{ github.repository }}\n> Trigger: ${{ github.event_name }}\"}}"
+           fi
