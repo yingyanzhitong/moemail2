@@ -1,9 +1,8 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { useTranslations } from "next-intl"
-import { Loader2, ArrowLeft, RefreshCw, Copy, Check, Info } from "lucide-react"
+import { Loader2, ArrowLeft, RefreshCw, Copy } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   Table,
@@ -13,10 +12,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { useRolePermission } from "@/hooks/use-role-permission"
 import { useCopy } from "@/hooks/use-copy"
-import { PERMISSIONS } from "@/lib/permissions"
-import { useToast } from "@/components/ui/use-toast"
 
 interface PoolItem {
   id: string
@@ -32,7 +28,6 @@ export default function TinyPngPoolPage() {
   const [loading, setLoading] = useState(true)
   const router = useRouter()
   const { copyToClipboard } = useCopy()
-  const { checkPermission } = useRolePermission()
   
   // Assuming if you are here you have permission, but double check
   // or just rely on API failure.
@@ -43,7 +38,7 @@ export default function TinyPngPoolPage() {
       setLoading(true)
       const res = await fetch("/api/admin/tinypng-pool/list")
       if (res.ok) {
-        const data = await res.json()
+        const data = await res.json() as { list: PoolItem[] }
         setItems(data.list)
       } else {
           // Handle error
@@ -55,6 +50,7 @@ export default function TinyPngPoolPage() {
     }
   }
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     fetchList()
   }, [])
@@ -119,10 +115,10 @@ export default function TinyPngPoolPage() {
                         </TableCell>
                         <TableCell className="font-mono text-xs max-w-[200px] truncate">
                             {item.apiKey ? (
-                                <div className="flex items-center gap-2 cursor-pointer hover:text-primary" onClick={() => copyToClipboard(item.apiKey!)}>
+                                <button type="button" className="flex items-center gap-2 cursor-pointer hover:text-primary bg-transparent border-0 p-0" onClick={() => copyToClipboard(item.apiKey!)}>
                                     {item.apiKey.substring(0, 8)}...
                                     <Copy className="w-3 h-3" />
-                                </div>
+                                </button>
                             ) : '-'}
                         </TableCell>
                         <TableCell className="text-sm text-muted-foreground whitespace-nowrap">{formatDate(item.createdAt)}</TableCell>

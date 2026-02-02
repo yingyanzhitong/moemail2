@@ -1,6 +1,13 @@
 # Changelog
 
 All notable changes to this project will be documented in this file.
+## [1.11.1] - 2026-02-02
+
+### Bug Fixes
+
+- 修复部署脚本中的 Eslint 错误和 React Hook 依赖警告
+- 更新 TinyPNG Pool Worker 默认域名为 `tinypng-token.site`
+
 ## [1.11.0] - 2026-02-02
 
 ### Features

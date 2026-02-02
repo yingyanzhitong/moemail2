@@ -47,7 +47,7 @@ export function TinyPngKeysPanel() {
     if (canManageApiKey) {
       fetchKeys()
     }
-  }, [canManageApiKey])
+  }, [canManageApiKey, fetchKeys])
 
   const deleteKey = async (id: string) => {
     try {

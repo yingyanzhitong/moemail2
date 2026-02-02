@@ -71,7 +71,7 @@ export function ApiKeyPanel() {
     if (canManageApiKey) {
       fetchApiKeys()
     }
-  }, [canManageApiKey])
+  }, [canManageApiKey, fetchApiKeys])
 
   const { config } = useConfig()
 

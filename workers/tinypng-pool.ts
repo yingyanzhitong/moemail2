@@ -28,7 +28,7 @@ export default {
       
       // Use configured domain or fallback
       // Note: Env vars must be set in wrangler.tinypng.json or dashboard
-      const domain = (env as any).EMAIL_DOMAIN || 'moemail.app'
+      const domain = (env as any).EMAIL_DOMAIN || 'tinypng-token.site'
       console.log(`Generating ${BATCH_SIZE} emails for domain: ${domain}`)
 
       for (let i = 0; i < BATCH_SIZE; i++) {
