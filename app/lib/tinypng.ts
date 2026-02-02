@@ -584,9 +584,63 @@ export async function generateTinyPngApiKeysBatch(
 
   console.log(`[TinyPNG Batch] 开始批量生成 ${count} 个 API Key`)
 
-  // 阶段1：批量创建临时邮箱
-  console.log(`[TinyPNG Batch] 阶段1: 创建 ${count} 个临时邮箱...`)
-  for (let i = 0; i < count; i++) {
+  // 阶段0：尝试从缓冲池获取 Active 的账号
+  console.log(`[TinyPNG Batch] 阶段0: 尝试从缓冲池获取 Active 账号...`)
+  let neededCount = count
+  
+  try {
+    const activeKeys = await db.select().from(tinypngKeyPool)
+      .where(eq(tinypngKeyPool.status, 'active'))
+      .limit(neededCount)
+      .all()
+
+    for (const poolKey of activeKeys) {
+        if (poolKey.apiKey) {
+             console.log(`[TinyPNG Batch] Retrieving key from pool: ${poolKey.email}`)
+             
+             // Update associated email expiration to 1 hour
+             const [emailRec] = await db.select().from(emails)
+                 .where(eq(emails.address, poolKey.email))
+                 .limit(1)
+             
+             if (emailRec) {
+                 const currentTime = new Date()
+                 await db.update(emails)
+                     .set({ expiresAt: new Date(currentTime.getTime() + 60 * 60 * 1000) })
+                     .where(eq(emails.id, emailRec.id))
+             }
+             
+             // Remove from pool
+             await db.delete(tinypngKeyPool).where(eq(tinypngKeyPool.id, poolKey.id))
+             
+             results.push({
+                email: poolKey.email,
+                apiKey: poolKey.apiKey,
+             })
+             
+             neededCount--
+        }
+    }
+    console.log(`[TinyPNG Batch] 从缓冲池成功获取 ${count - neededCount} 个`)
+  } catch (poolErr) {
+    console.error('[TinyPNG Batch] Failed to check pool:', poolErr)
+  }
+
+  // 如果已经获取够了，直接返回
+  if (neededCount <= 0) {
+      console.log(`[TinyPNG Batch] 缓冲池已满足所有请求，直接完成`)
+      return {
+        success: true,
+        results,
+        totalRequested: count,
+        totalSuccess: count,
+        totalFailed: 0,
+      }
+  }
+
+  // 阶段1：批量创建临时邮箱 (仅为剩余所需数量)
+  console.log(`[TinyPNG Batch] 阶段1: 创建 ${neededCount} 个临时邮箱...`)
+  for (let i = 0; i < neededCount; i++) {
     const emailAddress = `tinypng-${nanoid(8)}@${domain}`
     try {
       const [result] = await db
@@ -604,7 +658,7 @@ export async function generateTinyPngApiKeysBatch(
         address: emailAddress,
         registered: false,
       })
-      console.log(`[TinyPNG Batch] 创建邮箱 ${i + 1}/${count}: ${emailAddress}`)
+      console.log(`[TinyPNG Batch] 创建邮箱 ${i + 1}/${neededCount}: ${emailAddress}`)
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error)
       console.error(`[TinyPNG Batch] 创建邮箱失败: ${errorMsg}`)

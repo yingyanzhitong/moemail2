@@ -1,6 +1,12 @@
 # Changelog
 
 All notable changes to this project will be documented in this file.
+## [1.11.7] - 2026-02-02
+
+### Improvements
+
+- 优化 TinyPNG 批量生成接口: 优先从缓冲池 `active` 状态的账号中获取，不足部分再新注册
+
 ## [1.11.6] - 2026-02-02
 
 ### Bug Fixes
