@@ -1,6 +1,12 @@
 # Changelog
 
 All notable changes to this project will be documented in this file.
+## [1.11.12] - 2026-02-02
+
+### Bug Fixes
+
+- 修复未使用的导入 (unused imports) 和 React Key 报错
+
 ## [1.11.11] - 2026-02-02
 
 ### Improvements
