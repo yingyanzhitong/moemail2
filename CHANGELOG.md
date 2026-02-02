@@ -1,6 +1,12 @@
 # Changelog
 
 All notable changes to this project will be documented in this file.
+## [1.11.15] - 2026-02-02
+
+### Other
+
+- 添加标准发布流程工作流 (.agent/workflows/deploy.md)
+
 ## [1.11.14] - 2026-02-02
 
 ### Improvements
