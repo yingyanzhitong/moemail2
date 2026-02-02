@@ -1,6 +1,13 @@
 # Changelog
 
 All notable changes to this project will be documented in this file.
+## [1.11.10] - 2026-02-02
+
+### Improvements
+
+- SEO 增强：增加 `robots.txt` 和 `sitemap.xml` 自动生成 (app/robots.ts, app/sitemap.ts)
+- SEO 关键词优化：在中英文 Metadata 中突出 "免费 (Free)", "TinyPNG Token", "批量生成" 等关键词
+
 ## [1.11.9] - 2026-02-02
 
 ### Improvements

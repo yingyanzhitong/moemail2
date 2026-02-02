@@ -11,6 +11,7 @@ export default {
   async scheduled(_: ScheduledEvent, env: Env) {
     const db = drizzle(env.DB, { schema: { emails, tinypngKeyPool } })
     
+    try {
       // Check pool size
       // We count all keys that are in progress or active to respect the limit
       const poolCountResult = await db.select({ value: count() })
