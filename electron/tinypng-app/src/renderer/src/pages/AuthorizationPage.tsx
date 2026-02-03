@@ -146,21 +146,6 @@ function AuthorizationPage({ onAuthorized }: AuthorizationPageProps): JSX.Elemen
             )}
           </div>
         </div>
-
-        {/* Help text */}
-        <div className="mt-8 pt-6 border-t border-white/5 text-center">
-          <p className="text-sm text-slate-500">
-            Get your authorization code from{' '}
-            <a 
-              href="https://moemail.app" 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="text-cyan-400 hover:underline"
-            >
-              moemail.app
-            </a>
-          </p>
-        </div>
       </div>
     </div>
   )

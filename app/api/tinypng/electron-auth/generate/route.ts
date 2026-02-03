@@ -1,4 +1,3 @@
-import { auth } from "@/lib/auth"
 import { createDb } from "@/lib/db"
 import { tinypngKeyPool } from "@/lib/schema"
 import { NextResponse } from "next/server"
@@ -6,6 +5,7 @@ import { getUserRole } from "@/lib/auth"
 import { ROLES } from "@/lib/permissions"
 import { eq } from "drizzle-orm"
 import { nanoid } from "nanoid"
+import { getUserId } from "@/lib/apiKey"
 
 export const runtime = "edge"
 
@@ -19,14 +19,15 @@ interface GenerateRequest {
 /**
  * POST: Generate an authorization code for the Electron app
  * Emperor only - this generates a one-time code that can be redeemed for API keys
+ * Supports both session auth and API Key auth
  */
 export async function POST(request: Request) {
-  const session = await auth()
-  if (!session?.user?.id) {
+  const userId = await getUserId()
+  if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 
-  const role = await getUserRole(session.user.id)
+  const role = await getUserRole(userId)
   if (role !== ROLES.EMPEROR) {
     return NextResponse.json({ error: "Forbidden - Emperor role required" }, { status: 403 })
   }

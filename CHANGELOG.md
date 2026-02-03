@@ -1,6 +1,17 @@
 # Changelog
 
 All notable changes to this project will be documented in this file.
+## [1.13.0] - 2026-02-03
+
+### Features
+
+- **Electron App**: 皇帝个人页面新增「Generate Auth Link」按钮，可直接生成 Electron 应用授权链接
+- **API**: 授权链接生成接口 (`/api/tinypng/electron-auth/generate`) 支持 API Key 认证
+
+### Improvements
+
+- **Electron App**: 移除授权页底部的帮助描述文字
+
 ## [1.12.1] - 2026-02-03
 
 ### Bug Fixes
