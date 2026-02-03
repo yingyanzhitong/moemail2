@@ -36,7 +36,7 @@
 </p>
 
 ## Live Demo
-[https://moemail.tinypng-token.site](https://moemail.tinypng-token.site)
+[https://snapmail.tinypng-token.site](https://snapmail.tinypng-token.site)
 
 ![Home](https://pic.otaku.ren/20241209/AQADwsUxG9k1uVZ-.jpg "Home")
 

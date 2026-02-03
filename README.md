@@ -35,7 +35,7 @@
 </p>
 
 ## 在线演示
-[https://moemail.tinypng-token.site](https://moemail.tinypng-token.site)
+[https://snapmail.tinypng-token.site](https://snapmail.tinypng-token.site)
 
 ![首页](https://pic.otaku.ren/20241209/AQADwsUxG9k1uVZ-.jpg "首页")
 

@@ -1,7 +1,7 @@
 # 通过临时邮箱获取 TinyPNG API Key
 
 1.通过moemail openapi生成临时邮箱
-curl -X POST https://moemail.tinypng-token.site/api/emails/generate \
+curl -X POST https://snapmail.tinypng-token.site/api/emails/generate \
   -H "X-API-Key: mk_XK1IQ0TC-OYvsIsRA2m7TrldUV1a31DK" \
   -H "Content-Type: application/json" \
   -d '{

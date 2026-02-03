@@ -1,7 +1,7 @@
 import { MetadataRoute } from 'next'
 
 export default function robots(): MetadataRoute.Robots {
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://moemail.tinypng-token.site"
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://snapmail.tinypng-token.site"
   return {
     rules: {
       userAgent: '*',
