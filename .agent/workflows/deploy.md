@@ -4,6 +4,9 @@ description: 标准发布的完整工作流 (Reference: skills/deploy/automated-
 
 # 标准发布与部署流程
 
+> **语言要求**：在执行此工作流时，所有回复和日志请使用中文。
+
+
 本工作流完整复刻 `skills/deploy/automated-release.md` 的规范。当需要发布新版本时，必须严格执行所有步骤。
 
 ## 1. 更新变更日志 (CHANGELOG.md)

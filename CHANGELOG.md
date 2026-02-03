@@ -1,7 +1,18 @@
 # Changelog
 
 All notable changes to this project will be documented in this file.
-## [1.11.21] - 2026-02-02
+## [1.12.0] - 2026-02-03
+
+### Features
+
+- **Electron App**: 发布 TinyPNG 桌面端应用 (v1.0.0)，支持拖拽压缩、本地 MD5 去重、API Key 管理
+- **API**: 新增 Electron 应用授权接口 (`/api/tinypng/electron-auth/*`)
+
+### Improvements
+
+- **TinyPNG Pool Worker**: 优化定时任务频率为每小时一次，每批次申请 5 个 Key，降低被封禁风险
+- **Workflow**: 部署工作流增加中文语言要求说明
+
 
 ### Improvements
 
