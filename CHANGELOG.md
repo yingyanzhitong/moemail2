@@ -1,6 +1,14 @@
 # Changelog
 
 All notable changes to this project will be documented in this file.
+## [1.12.1] - 2026-02-03
+
+### Bug Fixes
+
+- 修复构建错误：排除 Electron 目录以解决类型冲突，修复 ESLint 依赖警告
+- 修复 Electron 授权接口导入路径错误 (`@/lib/auth` -> `@/lib/permissions`)
+- 修复 UI 组件的可访问性问题 (Button type, Iframe title)
+
 ## [1.12.0] - 2026-02-03
 
 ### Features

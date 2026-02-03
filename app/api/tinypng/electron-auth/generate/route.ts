@@ -1,8 +1,9 @@
 import { auth } from "@/lib/auth"
 import { createDb } from "@/lib/db"
-import { tinypngKeyPool, emails } from "@/lib/schema"
+import { tinypngKeyPool } from "@/lib/schema"
 import { NextResponse } from "next/server"
-import { getUserRole, ROLES } from "@/lib/auth"
+import { getUserRole } from "@/lib/auth"
+import { ROLES } from "@/lib/permissions"
 import { eq } from "drizzle-orm"
 import { nanoid } from "nanoid"
 

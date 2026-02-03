@@ -170,6 +170,7 @@ export function TinyPngDialog() {
         className="gap-2 hidden sm:flex"
         onClick={() => { window.location.href = '/login' }}
       >
+        {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="https://tinypng.com/images/favicon.ico" alt="TinyPNG" className="w-4 h-4" />
         <span className="hidden md:inline">TinyPNG</span>
       </Button>
@@ -180,6 +181,7 @@ export function TinyPngDialog() {
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
         <Button variant="outline" size="sm" className="gap-2 hidden sm:flex">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="https://tinypng.com/images/favicon.ico" alt="TinyPNG" className="w-4 h-4" />
           <span className="hidden md:inline">TinyPNG</span>
         </Button>
@@ -187,6 +189,7 @@ export function TinyPngDialog() {
       <DialogContent className="max-w-xl max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="https://tinypng.com/images/favicon.ico" alt="TinyPNG" className="w-5 h-5" />
             {t("title")}
           </DialogTitle>

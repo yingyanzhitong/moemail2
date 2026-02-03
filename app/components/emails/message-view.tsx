@@ -84,101 +84,103 @@ export function MessageView({ emailId, messageId, messageType = 'received' }: Me
     fetchMessage()
   }, [emailId, messageId, messageType, toast, t, tList])
 
-  const updateIframeContent = () => {
-    if (viewMode === "html" && message?.html && iframeRef.current) {
-      const iframe = iframeRef.current
-      const doc = iframe.contentDocument || iframe.contentWindow?.document
 
-      if (doc) {
-        doc.open()
-        doc.write(`
-          <!DOCTYPE html>
-          <html>
-            <head>
-              <base target="_blank">
-              <style>
-                html, body {
-                  margin: 0;
-                  padding: 0;
-                  min-height: 100%;
-                  font-family: system-ui, -apple-system, sans-serif;
-                  color: ${theme === 'dark' ? '#fff' : '#000'};
-                  background: ${theme === 'dark' ? '#1a1a1a' : '#fff'};
-                }
-                body {
-                  padding: 20px;
-                }
-                img {
-                  max-width: 100%;
-                  height: auto;
-                }
-                a {
-                  color: #2563eb;
-                }
-                /* 滚动条样式 */
-                ::-webkit-scrollbar {
-                  width: 6px;
-                  height: 6px;
-                }
-                ::-webkit-scrollbar-track {
-                  background: transparent;
-                }
-                ::-webkit-scrollbar-thumb {
-                  background: ${theme === 'dark'
-                    ? 'rgba(130, 109, 217, 0.3)'
-                    : 'rgba(130, 109, 217, 0.2)'};
-                  border-radius: 9999px;
-                  transition: background-color 0.2s;
-                }
-                ::-webkit-scrollbar-thumb:hover {
-                  background: ${theme === 'dark'
-                    ? 'rgba(130, 109, 217, 0.5)'
-                    : 'rgba(130, 109, 217, 0.4)'};
-                }
-                /* Firefox 滚动条 */
-                * {
-                  scrollbar-width: thin;
-                  scrollbar-color: ${theme === 'dark'
-                    ? 'rgba(130, 109, 217, 0.3) transparent'
-                    : 'rgba(130, 109, 217, 0.2) transparent'};
-                }
-              </style>
-            </head>
-            <body>${message.html}</body>
-          </html>
-        `)
-        doc.close()
-
-        // 更新高度以填充容器
-        const updateHeight = () => {
-          const container = iframe.parentElement
-          if (container) {
-            iframe.style.height = `${container.clientHeight}px`
-          }
-        }
-
-        updateHeight()
-        window.addEventListener('resize', updateHeight)
-
-        // 监听内容变化
-        const resizeObserver = new ResizeObserver(updateHeight)
-        resizeObserver.observe(doc.body)
-
-        // 监听图片加载
-        doc.querySelectorAll('img').forEach((img: HTMLImageElement) => {
-          img.onload = updateHeight
-        })
-
-        return () => {
-          window.removeEventListener('resize', updateHeight)
-          resizeObserver.disconnect()
-        }
-      }
-    }
-  }
 
   // 监听主题变化和内容变化
+  // 监听主题变化和内容变化
   useEffect(() => {
+    const updateIframeContent = () => {
+        if (viewMode === "html" && message?.html && iframeRef.current) {
+          const iframe = iframeRef.current
+          const doc = iframe.contentDocument || iframe.contentWindow?.document
+    
+          if (doc) {
+            doc.open()
+            doc.write(`
+              <!DOCTYPE html>
+              <html>
+                <head>
+                  <base target="_blank">
+                  <style>
+                    html, body {
+                      margin: 0;
+                      padding: 0;
+                      min-height: 100%;
+                      font-family: system-ui, -apple-system, sans-serif;
+                      color: ${theme === 'dark' ? '#fff' : '#000'};
+                      background: ${theme === 'dark' ? '#1a1a1a' : '#fff'};
+                    }
+                    body {
+                      padding: 20px;
+                    }
+                    img {
+                      max-width: 100%;
+                      height: auto;
+                    }
+                    a {
+                      color: #2563eb;
+                    }
+                    /* 滚动条样式 */
+                    ::-webkit-scrollbar {
+                      width: 6px;
+                      height: 6px;
+                    }
+                    ::-webkit-scrollbar-track {
+                      background: transparent;
+                    }
+                    ::-webkit-scrollbar-thumb {
+                      background: ${theme === 'dark'
+                        ? 'rgba(130, 109, 217, 0.3)'
+                        : 'rgba(130, 109, 217, 0.2)'};
+                      border-radius: 9999px;
+                      transition: background-color 0.2s;
+                    }
+                    ::-webkit-scrollbar-thumb:hover {
+                      background: ${theme === 'dark'
+                        ? 'rgba(130, 109, 217, 0.5)'
+                        : 'rgba(130, 109, 217, 0.4)'};
+                    }
+                    /* Firefox 滚动条 */
+                    * {
+                      scrollbar-width: thin;
+                      scrollbar-color: ${theme === 'dark'
+                        ? 'rgba(130, 109, 217, 0.3) transparent'
+                        : 'rgba(130, 109, 217, 0.2) transparent'};
+                    }
+                  </style>
+                </head>
+                <body>${message.html}</body>
+              </html>
+            `)
+            doc.close()
+    
+            // 更新高度以填充容器
+            const updateHeight = () => {
+              const container = iframe.parentElement
+              if (container) {
+                iframe.style.height = `${container.clientHeight}px`
+              }
+            }
+    
+            updateHeight()
+            window.addEventListener('resize', updateHeight)
+    
+            // 监听内容变化
+            const resizeObserver = new ResizeObserver(updateHeight)
+            resizeObserver.observe(doc.body)
+    
+            // 监听图片加载
+            doc.querySelectorAll('img').forEach((img: HTMLImageElement) => {
+              img.onload = updateHeight
+            })
+    
+            return () => {
+              window.removeEventListener('resize', updateHeight)
+              resizeObserver.disconnect()
+            }
+          }
+        }
+      }
     updateIframeContent()
   }, [message?.html, viewMode, theme])
 
@@ -196,6 +198,7 @@ export function MessageView({ emailId, messageId, messageType = 'received' }: Me
       <div className="flex flex-col items-center justify-center h-32 text-center">
         <p className="text-sm text-destructive mb-2">{error}</p>
         <button 
+          type="button"
           onClick={() => window.location.reload()} 
           className="text-xs text-primary hover:underline"
         >
@@ -217,7 +220,7 @@ export function MessageView({ emailId, messageId, messageType = 'received' }: Me
             messageId={message.id} 
             messageSubject={message.subject}
             trigger={
-              <button className="p-1.5 hover:bg-primary/10 rounded-md transition-colors">
+              <button type="button" className="p-1.5 hover:bg-primary/10 rounded-md transition-colors">
                 <Share2 className="h-4 w-4 text-gray-500" />
               </button>
             }
@@ -267,6 +270,7 @@ export function MessageView({ emailId, messageId, messageType = 'received' }: Me
         {viewMode === "html" && message.html ? (
           <iframe
             ref={iframeRef}
+            title="Email content"
             className="absolute inset-0 w-full h-full border-0 bg-transparent"
             sandbox="allow-same-origin allow-popups"
           />

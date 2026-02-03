@@ -31,39 +31,40 @@ export function TinyPngKeyViewer({ emailAddress, isOpen, onClose }: TinyPngKeyVi
   const { copyToClipboard } = useCopy()
 
   useEffect(() => {
+    const fetchApiKey = async () => {
+      setLoading(true)
+      setError(null)
+      setKeyData(null)
+  
+      try {
+        const response = await fetch(`/api/tinypng/keys?email=${encodeURIComponent(emailAddress)}`)
+        
+        if (!response.ok) {
+          const data = await response.json()
+          throw new Error((data as { error: string }).error || "获取 API Key 失败")
+        }
+  
+        const data = await response.json() as { key: TinyPngKeyData }
+        setKeyData(data.key)
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "未知错误"
+        setError(message)
+      } finally {
+        setLoading(false)
+      }
+    }
+
     if (isOpen && emailAddress) {
       fetchApiKey()
     }
   }, [isOpen, emailAddress])
-
-  const fetchApiKey = async () => {
-    setLoading(true)
-    setError(null)
-    setKeyData(null)
-
-    try {
-      const response = await fetch(`/api/tinypng/keys?email=${encodeURIComponent(emailAddress)}`)
-      
-      if (!response.ok) {
-        const data = await response.json()
-        throw new Error((data as { error: string }).error || "获取 API Key 失败")
-      }
-
-      const data = await response.json() as { key: TinyPngKeyData }
-      setKeyData(data.key)
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "未知错误"
-      setError(message)
-    } finally {
-      setLoading(false)
-    }
-  }
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="https://tinypng.com/images/favicon.ico" alt="TinyPNG" className="w-5 h-5" />
             TinyPNG API Key
           </DialogTitle>
@@ -141,6 +142,7 @@ export function TinyPngBadge({ emailAddress }: TinyPngBadgeProps) {
         }}
         title="查看 TinyPNG API Key"
       >
+        {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="https://tinypng.com/images/favicon.ico" alt="TinyPNG" className="w-4 h-4" />
       </Button>
       
