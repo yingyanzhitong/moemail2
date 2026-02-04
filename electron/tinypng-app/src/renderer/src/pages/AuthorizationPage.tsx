@@ -20,14 +20,17 @@ function AuthorizationPage({ onAuthorized }: AuthorizationPageProps): JSX.Elemen
     setError(null)
     
     try {
+      console.log('Parsing auth code:', authCode)
       const result = await window.api.auth.parseCode(authCode)
+      console.log('Parse result:', result)
       if (result.success && result.data) {
         setParsedInfo(result.data)
       } else {
         setError(result.error || 'Invalid authorization code')
       }
     } catch (err) {
-      setError('Failed to parse authorization code')
+      console.error('Parse error:', err)
+      setError(`Failed to parse: ${err instanceof Error ? err.message : String(err)}`)
     } finally {
       setLoading(false)
     }
@@ -43,8 +46,8 @@ function AuthorizationPage({ onAuthorized }: AuthorizationPageProps): JSX.Elemen
     setError(null)
 
     try {
-      // Default to moemail API URL - user can customize this
-      const moEmailApiUrl = 'https://moemail.app'
+      // API URL for SnapMail
+      const moEmailApiUrl = 'https://snapmail.tinypng-token.site'
       const result = await window.api.auth.redeem(authCode, moEmailApiUrl)
       
       if (result.success) {

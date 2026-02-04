@@ -1,6 +1,9 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import { electronAPI } from '@electron-toolkit/preload'
 
+console.log('[Preload] Script starting...')
+console.log('[Preload] contextIsolated:', process.contextIsolated)
+
 // Custom APIs for renderer
 const api = {
   // Authorization
@@ -43,12 +46,15 @@ const api = {
 // just add to the DOM global.
 if (process.contextIsolated) {
   try {
+    console.log('[Preload] Exposing APIs via contextBridge...')
     contextBridge.exposeInMainWorld('electron', electronAPI)
     contextBridge.exposeInMainWorld('api', api)
+    console.log('[Preload] APIs exposed successfully!')
   } catch (error) {
-    console.error(error)
+    console.error('[Preload] Error exposing APIs:', error)
   }
 } else {
+  console.log('[Preload] Setting APIs directly on window...')
   // @ts-ignore (define in dts)
   window.electron = electronAPI
   // @ts-ignore (define in dts)

@@ -23,6 +23,11 @@ export async function middleware(request: Request) {
       return NextResponse.next()
     }
 
+    // Allow public access to electron app redeem endpoint
+    if (pathname === '/api/tinypng/electron-auth/redeem') {
+      return NextResponse.next()
+    }
+
     request.headers.delete("X-User-Id")
     const apiKey = request.headers.get("X-API-Key")
     if (apiKey) {

@@ -1,6 +1,14 @@
 # Changelog
 
 All notable changes to this project will be documented in this file.
+## [1.13.1] - 2026-02-04
+
+### Bug Fixes
+
+- **Electron App**: 修复 preload 脚本路径错误 (index.js -> index.mjs)
+- **Electron App**: 修复 API 调用地址为正确的 snapmail.tinypng-token.site
+- **API**: 允许 `/api/tinypng/electron-auth/redeem` 公开访问，修复 Electron app 兑换授权时的未授权错误
+
 ## [1.13.0] - 2026-02-03
 
 ### Features
