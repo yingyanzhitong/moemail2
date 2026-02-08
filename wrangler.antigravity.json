@@ -1,0 +1,24 @@
+{
+  "name": "antigravity-seller-api",
+  "main": "antigravity/api/index.ts",
+  "compatibility_date": "2024-01-01",
+  "node_compat": true,
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "antigravity-db",
+      "database_id": "YOUR_DATABASE_ID"
+    }
+  ],
+  "vars": {
+    "ENVIRONMENT": "production"
+  },
+  "triggers": {
+    "crons": [
+      "0 * * * *"
+    ]
+  },
+  "observability": {
+    "enabled": true
+  }
+}
