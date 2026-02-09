@@ -1,6 +1,13 @@
 # Changelog
 
 All notable changes to this project will be documented in this file.
+## [1.13.4] - 2026-02-09
+
+### Improvements
+
+- **UX**: 个人中心 TinyPNG API Keys 默认明文显示，移除脱敏遮罩，方便直接复制
+- **SEO**: 优化网站标题和描述，提高 "批量生成 TinyPNG Token" 等关键词的搜索引擎排名
+
 ## [1.13.3] - 2026-02-09
 
 ### Improvements

@@ -1,6 +1,6 @@
 {
-  "title": "SnapMail - 临时邮箱服务 & TinyPNG Token 批量生成器",
-  "description": "免费、安全、快速的一次性临时邮箱地址，保护您的隐私，远离垃圾邮件。内置免费的 TinyPNG Token 批量生成工具。支持邮箱分享、即时收件，到期自动失效。提供完整的 OpenAPI 接口，方便开发者集成和自动化测试。",
-  "keywords": "免费临时邮箱, 一次性邮箱, TinyPNG Token生成器, TinyPNG Key批量获取, 匿名邮箱, 邮箱分享, 隐私保护, 垃圾邮件过滤, 即时收件, 自动过期, 安全邮箱, 注册验证, 临时账号, 无需手机号, 开发测试, 自动化测试, 邮件API, OpenAPI, API接口, RESTful API, API Key, 开发者工具, SnapMail"
+  "title": "SnapMail - TinyPNG Token 批量生成器 & 免费临时邮箱服务",
+  "description": "SnapMail 是一个免费的 TinyPNG Token 批量生成工具，提供tinypng-token批量获取服务。同时提供安全、快速的一次性临时邮箱地址，保护您的隐私，远离垃圾邮件。支持邮箱分享、即时收件，到期自动失效。提供完整的 OpenAPI 接口，方便开发者集成和自动化测试。",
+  "keywords": "批量生成tinypng token, tinypng-token, TinyPNG Token生成器, TinyPNG Key批量获取, 免费临时邮箱, 一次性邮箱, 匿名邮箱, 邮箱分享, 隐私保护, 垃圾邮件过滤, 即时收件, 自动过期, 安全邮箱, 注册验证, 临时账号, 无需手机号, 开发测试, 自动化测试, 邮件API, OpenAPI, API接口, RESTful API, API Key, 开发者工具, SnapMail"
 }
 
