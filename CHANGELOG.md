@@ -1,6 +1,16 @@
 # Changelog
 
 All notable changes to this project will be documented in this file.
+## [1.13.3] - 2026-02-09
+
+### Improvements
+
+- **UX**: 优化个人中心 API Key 展示，支持明文查看与复制
+
+### Bug Fixes
+
+- **API**: 修复 `/api/api-keys` 接口的类型安全问题 (Unauthorized check)
+
 ## [1.13.2] - 2026-02-09
 
 ### Improvements

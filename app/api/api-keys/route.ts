@@ -18,15 +18,18 @@ export async function GET() {
   const session = await auth()
   try {
     const db = createDb()
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
     const keys = await db.query.apiKeys.findMany({
-      where: eq(apiKeys.userId, session!.user.id!),
+      where: eq(apiKeys.userId, session.user.id),
       orderBy: desc(apiKeys.createdAt),
     })
 
     return NextResponse.json({
       apiKeys: keys.map(key => ({
         ...key,
-        key: undefined
+        // key: undefined // Allow returning key
       }))
     })
   } catch (error) {
@@ -57,10 +60,14 @@ export async function POST(request: Request) {
     const key = `mk_${nanoid(32)}`
     const db = createDb()
     
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+
     await db.insert(apiKeys).values({
       name,
       key,
-      userId: session!.user.id!,
+      userId: session.user.id,
       expiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000), // 1 year
     })
 

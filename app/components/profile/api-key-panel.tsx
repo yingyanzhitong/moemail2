@@ -294,6 +294,19 @@ export function ApiKeyPanel() {
                       <div className="text-sm text-muted-foreground">
                         {t("createdAt")}: {new Date(key.createdAt).toLocaleString()}
                       </div>
+                      <div className="flex items-center gap-2 mt-2">
+                        <code className="relative rounded bg-muted px-[0.3rem] py-[0.2rem] font-mono text-xs font-semibold">
+                          {key.key}
+                        </code>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6"
+                          onClick={() => copyToClipboard(key.key)}
+                        >
+                          <Copy className="h-3 w-3" />
+                        </Button>
+                      </div>
                     </div>
                     <div className="flex items-center gap-2">
                       <Switch
