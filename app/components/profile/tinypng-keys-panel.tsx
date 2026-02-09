@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react"
 import { Button } from "@/components/ui/button"
-import { ImageIcon, Loader2, Copy, Trash2, RefreshCw } from "lucide-react"
+import { ImageIcon, Loader2, Copy, Trash2, RefreshCw, Eye, EyeOff } from "lucide-react"
 import { useToast } from "@/components/ui/use-toast"
 import { useCopy } from "@/hooks/use-copy"
 import { useRolePermission } from "@/hooks/use-role-permission"
@@ -13,6 +13,30 @@ interface TinyPngKey {
   apiKey: string
   email: string
   createdAt: string
+}
+
+function ApiKeyDisplay({ apiKey }: { apiKey: string }) {
+  const [show, setShow] = useState(false)
+
+  return (
+    <div className="flex items-center gap-2">
+      <div className="font-mono text-sm truncate max-w-[200px]">
+        {show ? apiKey : "•".repeat(20)}
+      </div>
+      <Button
+        variant="ghost"
+        size="icon"
+        className="h-4 w-4 hover:bg-transparent"
+        onClick={() => setShow(!show)}
+      >
+        {show ? (
+          <Eye className="h-3 w-3 text-muted-foreground" />
+        ) : (
+          <EyeOff className="h-3 w-3 text-muted-foreground" />
+        )}
+      </Button>
+    </div>
+  )
 }
 
 export function TinyPngKeysPanel() {
@@ -150,9 +174,7 @@ export function TinyPngKeysPanel() {
                   className="flex items-center justify-between p-4 rounded-lg border bg-card"
                 >
                   <div className="space-y-1 min-w-0 flex-1">
-                    <div className="font-mono text-sm truncate pr-4">
-                      {key.apiKey}
-                    </div>
+                      <ApiKeyDisplay apiKey={key.apiKey} />
                     <div className="text-xs text-muted-foreground">
                       {key.email} · {new Date(key.createdAt).toLocaleString()}
                     </div>

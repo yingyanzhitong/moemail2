@@ -1,14 +1,14 @@
 # Changelog
 
 All notable changes to this project will be documented in this file.
-## [1.13.1] - 2026-02-09
+## [1.13.2] - 2026-02-09
 
 ### Improvements
 
-- **Mobile UX**: 移动端取消点击邮箱后自动定位到第一封邮件
-- **Mobile UX**: 移动端增加面包屑导航，支持邮件标题换行
-- **TinyPNG Pool**: 上限调整为 500
-- **Email**: 创建邮箱时支持空名称自动随机生成，修复创建后复制失败问题
+- **Mobile UX**: 优化 TinyPNG 弹窗在移动端的显示，支持响应式布局
+- **Mobile UX**: 修复移动端列表页在隐藏桌面组件时意外触发自动选择邮件的问题
+- **Security**: 个人中心 API Key 默认脱敏显示，支持点击查看明文
+- **Security**: 个人中心 TinyPNG API Key 列表默认脱敏显示，支持点击查看明文
 
 ## [1.13.1-hotfix] - 2026-02-04
 

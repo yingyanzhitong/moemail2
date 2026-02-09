@@ -167,7 +167,7 @@ export function TinyPngDialog() {
       <Button 
         variant="outline" 
         size="sm" 
-        className="gap-2 hidden sm:flex"
+        className="gap-2 flex"
         onClick={() => { window.location.href = '/login' }}
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -180,13 +180,13 @@ export function TinyPngDialog() {
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm" className="gap-2 hidden sm:flex">
+        <Button variant="outline" size="sm" className="gap-2 flex">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="https://tinypng.com/images/favicon.ico" alt="TinyPNG" className="w-4 h-4" />
           <span className="hidden md:inline">TinyPNG</span>
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-xl max-h-[85vh] overflow-y-auto">
+      <DialogContent className="max-w-xl max-h-[85vh] overflow-y-auto w-[95vw] rounded-lg">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -203,45 +203,49 @@ export function TinyPngDialog() {
              <div className="space-y-4">
                 {results.length === 0 && (
                     <>
-                        <div className="flex items-center gap-4">
+                        <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
                             <Label htmlFor="count" className="shrink-0 w-24">
                             {t("quantity")}:
                             </Label>
-                            <Input
-                            id="count"
-                            type="number"
-                            min={1}
-                            max={maxCount}
-                            value={count}
-                            onChange={(e) => handleCountChange(e.target.value)}
-                            className="w-24"
-                            disabled={loading || maxCount === 0}
-                            />
-                            <span className="text-sm text-muted-foreground">
+                            <div className="flex items-center gap-2">
+                              <Input
+                                id="count"
+                                type="number"
+                                min={1}
+                                max={maxCount}
+                                value={count}
+                                onChange={(e) => handleCountChange(e.target.value)}
+                                className="w-24"
+                                disabled={loading || maxCount === 0}
+                              />
+                            <span className="text-sm text-muted-foreground whitespace-nowrap">
                             {t("per_batch", { max: maxCount })}
                             </span>
+                            </div>
                         </div>
                         
-                        <div className="flex items-center gap-4">
-                            <Label htmlFor="expiry" className="shrink-0 w-24">
+                        <div className="flex flex-col sm:flex-row sm:items-start gap-2 sm:gap-4">
+                            <Label htmlFor="expiry" className="shrink-0 w-24 sm:pt-2">
                                 邮箱有效期:
                             </Label>
-                            <div className="flex items-center gap-2">
-                                <Input
-                                    id="expiry"
-                                    type="number"
-                                    min={1}
-                                    max={720}
-                                    value={expiresInHours}
-                                    onChange={(e) => handleExpiryChange(e.target.value)}
-                                    className="w-24"
-                                    disabled={loading}
-                                />
-                                <span className="text-sm">小时</span>
+                            <div className="flex flex-col gap-1">
+                              <div className="flex items-center gap-2">
+                                  <Input
+                                      id="expiry"
+                                      type="number"
+                                      min={1}
+                                      max={720}
+                                      value={expiresInHours}
+                                      onChange={(e) => handleExpiryChange(e.target.value)}
+                                      className="w-24"
+                                      disabled={loading}
+                                  />
+                                  <span className="text-sm">小时</span>
+                              </div>
+                              <span className="text-sm text-muted-foreground">
+                                  (1-720 小时)
+                              </span>
                             </div>
-                            <span className="text-sm text-muted-foreground">
-                                (1-720 小时)
-                            </span>
                         </div>
                     </>
                 )}

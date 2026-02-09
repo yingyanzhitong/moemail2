@@ -95,7 +95,10 @@ export function MessageList({ email, messageType, onMessageSelect, selectedMessa
           setTotal(data.total)
           // 初次加载时自动选择第一条消息
           if (autoSelectFirst && newMessages.length > 0) {
-            onMessageSelect(newMessages[0].id, messageType)
+            // 再次检查是否为桌面端，防止隐藏的桌面组件在移动端触发选择
+            if (window.matchMedia("(min-width: 1024px)").matches) {
+              onMessageSelect(newMessages[0].id, messageType)
+            }
           }
           return
         }
@@ -201,7 +204,7 @@ export function MessageList({ email, messageType, onMessageSelect, selectedMessa
       stopPolling() 
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [email.id])
+  }, [email.id, autoSelect])
 
   useEffect(() => {
     if (refreshTrigger && refreshTrigger > 0) {
