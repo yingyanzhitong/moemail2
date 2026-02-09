@@ -39,14 +39,10 @@ export function CreateDialog({ onEmailCreated }: CreateDialogProps) {
   }
 
   const createEmail = async () => {
-    if (!emailName.trim()) {
-      toast({
-        title: tList("error"),
-        description: t("namePlaceholder"),
-        variant: "destructive"
-      })
-      return
-    }
+    const finalName = emailName.trim() || nanoid(8)
+
+
+    // 移除之前的错误逻辑，不在请求前复制
 
     setLoading(true)
     try {
@@ -54,7 +50,7 @@ export function CreateDialog({ onEmailCreated }: CreateDialogProps) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          name: emailName,
+          name: finalName,
           domain: currentDomain,
           expiryTime: parseInt(expiryTime)
         })
@@ -76,6 +72,10 @@ export function CreateDialog({ onEmailCreated }: CreateDialogProps) {
       })
       onEmailCreated()
       setOpen(false)
+      // 使用 setTimeout 确保在 Dialog 关闭后执行，避免焦点问题
+      setTimeout(() => {
+        copyToClipboard(`${finalName}@${currentDomain}`)
+      }, 100)
       setEmailName("")
     } catch {
       toast({

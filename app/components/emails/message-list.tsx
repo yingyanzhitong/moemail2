@@ -40,6 +40,7 @@ interface MessageListProps {
   onMessageSelect: (messageId: string | null, messageType?: 'received' | 'sent') => void
   selectedMessageId?: string | null
   refreshTrigger?: number
+  autoSelect?: boolean
 }
 
 interface MessageResponse {
@@ -48,7 +49,7 @@ interface MessageResponse {
   total: number
 }
 
-export function MessageList({ email, messageType, onMessageSelect, selectedMessageId, refreshTrigger }: MessageListProps) {
+export function MessageList({ email, messageType, onMessageSelect, selectedMessageId, refreshTrigger, autoSelect = false }: MessageListProps) {
   const t = useTranslations("emails.messages")
   const tList = useTranslations("emails.list")
   const tCommon = useTranslations("common.actions")
@@ -193,7 +194,7 @@ export function MessageList({ email, messageType, onMessageSelect, selectedMessa
     }
     setLoading(true)
     setNextCursor(null)
-    fetchMessages(undefined, true) // 初次加载时自动选择第一条消息
+    fetchMessages(undefined, autoSelect) // 使用传入的 autoSelect 参数
     startPolling() 
 
     return () => {

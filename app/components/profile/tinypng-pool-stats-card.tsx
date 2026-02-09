@@ -70,7 +70,7 @@ export function TinyPngPoolStatsCard() {
       } else {
         setError(data.error || "Failed to generate link")
       }
-    } catch (err) {
+    } catch {
       setError("Network error")
     } finally {
       setGenerateLoading(false)
@@ -164,11 +164,11 @@ export function TinyPngPoolStatsCard() {
                   id="keyCount"
                   type="number"
                   min={1}
-                  max={50}
+                  max={500}
                   value={keyCount}
-                  onChange={(e) => setKeyCount(Math.min(50, Math.max(1, parseInt(e.target.value) || 1)))}
+                  onChange={(e) => setKeyCount(Math.min(500, Math.max(1, parseInt(e.target.value) || 1)))}
                 />
-                <p className="text-xs text-muted-foreground">Max: 50 keys</p>
+                <p className="text-xs text-muted-foreground">Max: 500 keys</p>
               </div>
               
               {error && (

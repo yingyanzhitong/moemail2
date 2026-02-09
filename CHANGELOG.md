@@ -1,15 +1,22 @@
 # Changelog
 
 All notable changes to this project will be documented in this file.
-## [1.13.1] - 2026-02-04
+## [1.13.1] - 2026-02-09
+
+### Improvements
+
+- **Mobile UX**: 移动端取消点击邮箱后自动定位到第一封邮件
+- **Mobile UX**: 移动端增加面包屑导航，支持邮件标题换行
+- **TinyPNG Pool**: 上限调整为 500
+- **Email**: 创建邮箱时支持空名称自动随机生成，修复创建后复制失败问题
+
+## [1.13.1-hotfix] - 2026-02-04
 
 ### Bug Fixes
 
 - **Electron App**: 修复 preload 脚本路径错误 (index.js -> index.mjs)
 - **Electron App**: 修复 API 调用地址为正确的 snapmail.tinypng-token.site
 - **API**: 允许 `/api/tinypng/electron-auth/redeem` 公开访问，修复 Electron app 兑换授权时的未授权错误
-
-## [1.13.0] - 2026-02-03
 
 ### Features
 

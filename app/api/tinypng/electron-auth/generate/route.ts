@@ -34,7 +34,7 @@ export async function POST(request: Request) {
 
   try {
     const body = await request.json() as GenerateRequest
-    const count = Math.min(Math.max(1, body.count || 1), 50) // 1-50 keys max
+    const count = Math.min(Math.max(1, body.count || 1), 500) // 1-500 keys max
 
     // Check if we have enough active keys in the pool
     const db = createDb()

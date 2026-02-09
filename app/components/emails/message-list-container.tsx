@@ -15,9 +15,10 @@ interface MessageListContainerProps {
   onMessageSelect: (messageId: string | null, messageType?: 'received' | 'sent') => void
   selectedMessageId?: string | null
   refreshTrigger?: number
+  autoSelect?: boolean
 }
 
-export function MessageListContainer({ email, onMessageSelect, selectedMessageId, refreshTrigger }: MessageListContainerProps) {
+export function MessageListContainer({ email, onMessageSelect, selectedMessageId, refreshTrigger, autoSelect }: MessageListContainerProps) {
   const t = useTranslations("emails.messages")
   const [activeTab, setActiveTab] = useState<'received' | 'sent'>('received')
   const { canSend: canSendEmails } = useSendPermission()
@@ -50,6 +51,7 @@ export function MessageListContainer({ email, onMessageSelect, selectedMessageId
               messageType="received"
               onMessageSelect={onMessageSelect}
               selectedMessageId={selectedMessageId}
+              autoSelect={autoSelect}
             />
           </TabsContent>
           
@@ -60,6 +62,7 @@ export function MessageListContainer({ email, onMessageSelect, selectedMessageId
               onMessageSelect={onMessageSelect}
               selectedMessageId={selectedMessageId}
               refreshTrigger={refreshTrigger}
+              autoSelect={autoSelect}
             />
           </TabsContent>
         </Tabs>
@@ -70,6 +73,7 @@ export function MessageListContainer({ email, onMessageSelect, selectedMessageId
             messageType="received"
             onMessageSelect={onMessageSelect}
             selectedMessageId={selectedMessageId}
+            autoSelect={autoSelect}
           />
         </div>
       )}

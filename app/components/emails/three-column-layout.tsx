@@ -101,6 +101,7 @@ export function ThreeColumnLayout() {
                 onMessageSelect={handleMessageSelect}
                 selectedMessageId={selectedMessageId}
                 refreshTrigger={refreshTrigger}
+                autoSelect={true}
               />
             </div>
           )}
@@ -146,8 +147,9 @@ export function ThreeColumnLayout() {
 
           {mobileView === "emails" && selectedEmail && (
             <div className="h-full flex flex-col">
-              <div className={cn(headerClass, "gap-2")}>
+              <div className={cn(headerClass, "gap-2 flex-wrap h-auto")}>
                 <button
+                  type="button"
                   onClick={() => {
                     setSelectedEmail(null)
                   }}
@@ -155,9 +157,12 @@ export function ThreeColumnLayout() {
                 >
                   {t("backToEmailList")}
                 </button>
-                <div className="flex-1 flex justify-between items-center gap-2 min-w-0">
+                <div className="flex items-center text-sm text-gray-500 break-all">
+                  <span className="shrink-0 mx-1">/</span>
+                  <span>{selectedEmail.address}</span>
+                </div>
+                <div className="flex-1 flex justify-end items-center gap-2 min-w-0">
                   <div className="flex items-center gap-2">
-                    <span className="truncate min-w-0 flex-1 text-right">{selectedEmail.address}</span>
                     <div className="shrink-0 cursor-pointer text-primary" onClick={copyEmailAddress}>
                       <Copy className="size-4" />
                     </div>
@@ -177,6 +182,7 @@ export function ThreeColumnLayout() {
                   onMessageSelect={handleMessageSelect}
                   selectedMessageId={selectedMessageId}
                   refreshTrigger={refreshTrigger}
+                  autoSelect={false}
                 />
               </div>
             </div>
@@ -184,14 +190,20 @@ export function ThreeColumnLayout() {
 
           {mobileView === "message" && selectedEmail && selectedMessageId && (
             <div className="h-full flex flex-col">
-              <div className={headerClass}>
+              <div className={cn(headerClass, "flex-wrap h-auto")}>
                 <button
+                  type="button"
                   onClick={() => setSelectedMessageId(null)}
                   className="text-sm text-primary"
                 >
                   {t("backToMessageList")}
                 </button>
-                <span className="text-sm font-medium">{t("messageContent")}</span>
+                <div className="flex items-center text-sm text-gray-500 break-all px-2">
+                   <span className="shrink-0 mx-1">/</span>
+                   <span>{selectedEmail.address}</span>
+                   <span className="shrink-0 mx-1">/</span>
+                   <span className="truncate">{t("messageContent")}</span>
+                </div>
               </div>
               <div className="flex-1 overflow-auto">
                 <MessageView

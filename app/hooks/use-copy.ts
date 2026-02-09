@@ -17,13 +17,28 @@ export function useCopy(options: UseCopyOptions = {}) {
 
   const copyToClipboard = useCallback(async (text: string) => {
     try {
-      await navigator.clipboard.writeText(text)
+      if (navigator.clipboard) {
+        await navigator.clipboard.writeText(text)
+      } else {
+        const textArea = document.createElement("textarea")
+        textArea.value = text
+        document.body.appendChild(textArea)
+        textArea.select()
+        try {
+          document.execCommand('copy')
+        } catch (err) {
+          console.error("Fallback copy failed", err)
+          throw new Error("Copy failed")
+        }
+        document.body.removeChild(textArea)
+      }
       toast({
         title: "成功",
         description: successMessage
       })
       return true
-    } catch {
+    } catch (err) {
+      console.error(err)
       toast({
         title: "错误",
         description: errorMessage,

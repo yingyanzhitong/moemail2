@@ -71,6 +71,7 @@ export default function TinyPngPoolPage() {
   }, [])
 
   useEffect(() => {
+    const currentTarget = observerTarget.current
     const observer = new IntersectionObserver(
       (entries) => {
         if (entries[0].isIntersecting && hasMore && !loading) {
@@ -80,15 +81,16 @@ export default function TinyPngPoolPage() {
       { threshold: 1.0 }
     )
 
-    if (observerTarget.current) {
-      observer.observe(observerTarget.current)
+    if (currentTarget) {
+      observer.observe(currentTarget)
     }
 
     return () => {
-      if (observerTarget.current) {
-        observer.unobserve(observerTarget.current)
+      if (currentTarget) {
+        observer.unobserve(currentTarget)
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hasMore, loading, items.length])
 
   const formatDate = (ts: number) => {
