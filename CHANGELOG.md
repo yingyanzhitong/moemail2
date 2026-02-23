@@ -1,6 +1,12 @@
 # Changelog
 
 All notable changes to this project will be documented in this file.
+## [1.13.5] - 2026-02-24
+
+### Improvements
+
+- **Config**: TinyPNG Token 池上限从 500 提升至 10000
+
 ## [1.13.4] - 2026-02-09
 
 ### Improvements
