@@ -4,7 +4,7 @@ import { emails, tinypngKeyPool } from '../app/lib/schema'
 import { count, eq, inArray, and, lt } from 'drizzle-orm'
 
 // Configuration
-const POOL_LIMIT = 500
+const POOL_LIMIT = 10000
 const BATCH_SIZE = 5
 
 export default {
