@@ -2,8 +2,8 @@
 
 import { create } from "zustand"
 import { Role, ROLES } from "@/lib/permissions"
-import { EMAIL_CONFIG } from "@/config"
 import { useEffect } from "react"
+import { resolveRoleMaxEmails, type RoleEmailLimitConfig } from "@/lib/email-limits"
 
 interface Config {
   defaultRole: Exclude<Role, typeof ROLES.EMPEROR>
@@ -11,6 +11,15 @@ interface Config {
   emailDomainsArray: string[]
   adminContact: string
   maxEmails: number
+  roleMaxEmails: RoleEmailLimitConfig
+}
+
+interface ConfigResponse {
+  defaultRole: Exclude<Role, typeof ROLES.EMPEROR>
+  emailDomains: string
+  adminContact: string
+  maxEmails?: string | number
+  roleMaxEmails?: Partial<RoleEmailLimitConfig>
 }
 
 interface ConfigStore {
@@ -29,24 +38,27 @@ const useConfigStore = create<ConfigStore>((set) => ({
       set({ loading: true, error: null })
       const res = await fetch("/api/config")
       if (!res.ok) throw new Error("获取配置失败")
-      const data = await res.json() as Config
+      const data = (await res.json()) as ConfigResponse
+      const roleMaxEmails = resolveRoleMaxEmails(data.roleMaxEmails, data.maxEmails)
+
       set({
         config: {
           defaultRole: data.defaultRole || ROLES.CIVILIAN,
           emailDomains: data.emailDomains,
-          emailDomainsArray: data.emailDomains.split(','),
+          emailDomainsArray: data.emailDomains.split(","),
           adminContact: data.adminContact || "",
-          maxEmails: Number(data.maxEmails) || EMAIL_CONFIG.MAX_ACTIVE_EMAILS
+          maxEmails: roleMaxEmails.civilian,
+          roleMaxEmails,
         },
-        loading: false
+        loading: false,
       })
     } catch (error) {
-      set({ 
+      set({
         error: error instanceof Error ? error.message : "获取配置失败",
-        loading: false 
+        loading: false,
       })
     }
-  }
+  },
 }))
 
 export function useConfig() {
@@ -61,4 +73,4 @@ export function useConfig() {
   }, [config, loading, fetch])
 
   return store
-} 
+}

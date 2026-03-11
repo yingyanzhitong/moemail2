@@ -106,7 +106,7 @@
     "emailDomainsPlaceholder": "Separate multiple domains with commas",
     "adminContact": "Admin Contact",
     "adminContactPlaceholder": "Email or other contact method",
-    "maxEmails": "Max Emails per User",
+    "maxEmails": "Role-Based Mailbox Limits",
     "turnstile": {
       "enable": "Enable Cloudflare Turnstile",
       "enableDescription": "When enabled, username/password login and registration require Turnstile verification",
@@ -119,7 +119,8 @@
     "save": "Save Configuration",
     "saving": "Saving...",
     "saveSuccess": "Configuration saved successfully",
-    "saveFailed": "Failed to save configuration"
+    "saveFailed": "Failed to save configuration",
+    "maxEmailsDescription": "Configure mailbox creation limits separately for Duke, Knight, and Civilian. Emperor always remains unlimited."
   },
   "promote": {
     "title": "Role Management",

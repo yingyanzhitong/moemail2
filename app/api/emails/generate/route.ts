@@ -7,7 +7,12 @@ import { EXPIRY_OPTIONS } from "@/types/email"
 import { getRequestContext } from "@cloudflare/next-on-pages"
 import { getUserId } from "@/lib/apiKey"
 import { getUserRole } from "@/lib/auth"
-import { getMaxEmailsForRole, isUnlimitedEmailLimit } from "@/lib/email-limits"
+import {
+  EMAIL_ROLE_LIMIT_CONFIG_KEY,
+  getMaxEmailsForRole,
+  isUnlimitedEmailLimit,
+  parseRoleMaxEmails,
+} from "@/lib/email-limits"
 
 export const runtime = "edge"
 
@@ -20,13 +25,18 @@ export async function POST(request: Request) {
 
   try {
     // 统一获取配置，避免不同角色路径导致的 KV 访问问题
-    const domainString = await env.SITE_CONFIG.get("EMAIL_DOMAINS")
+    const [domainString, roleMaxEmails, legacyMaxEmails] = await Promise.all([
+      env.SITE_CONFIG.get("EMAIL_DOMAINS"),
+      env.SITE_CONFIG.get(EMAIL_ROLE_LIMIT_CONFIG_KEY),
+      env.SITE_CONFIG.get("MAX_EMAILS"),
+    ])
     
     const domains = domainString 
       ? domainString.split(',') 
       : [process.env.DEFAULT_EMAIL_DOMAIN!]
 
-    const maxEmailsValue = getMaxEmailsForRole(userRole)
+    const resolvedRoleMaxEmails = parseRoleMaxEmails(roleMaxEmails, legacyMaxEmails)
+    const maxEmailsValue = getMaxEmailsForRole(userRole, resolvedRoleMaxEmails, Number(legacyMaxEmails))
 
     if (!isUnlimitedEmailLimit(maxEmailsValue)) {
       const activeEmailsCount = await db

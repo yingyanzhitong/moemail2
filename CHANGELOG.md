@@ -1,6 +1,16 @@
 # Changelog
 
 All notable changes to this project will be documented in this file.
+## [1.13.7] - 2026-03-11
+
+### Features
+
+- **网站配置**：`/profile` 页面支持分别配置公爵、骑士、平民的最大邮箱数量
+
+### Improvements
+
+- **邮箱配额**：邮箱创建与邮箱列表上限展示改为优先读取后台角色配额配置，并兼容旧版 `MAX_EMAILS` 数据
+
 ## [1.13.6] - 2026-03-11
 
 ### Features

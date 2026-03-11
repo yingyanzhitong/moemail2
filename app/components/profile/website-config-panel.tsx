@@ -17,7 +17,43 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { EMAIL_CONFIG } from "@/config"
+import {
+  DEFAULT_ROLE_MAX_ACTIVE_EMAILS,
+  resolveRoleMaxEmails,
+  type RoleEmailLimitConfig,
+} from "@/lib/email-limits"
+
+interface WebsiteConfigResponse {
+  defaultRole: Exclude<Role, typeof ROLES.EMPEROR>
+  emailDomains: string
+  adminContact: string
+  maxEmails?: string | number
+  roleMaxEmails?: Partial<RoleEmailLimitConfig>
+  turnstile?: {
+    enabled: boolean
+    siteKey: string
+    secretKey?: string
+  }
+}
+
+interface RoleMaxEmailFormState {
+  duke: string
+  knight: string
+  civilian: string
+}
+
+function createRoleMaxEmailFormState(
+  roleMaxEmails?: Partial<RoleEmailLimitConfig>,
+  maxEmails?: string | number,
+): RoleMaxEmailFormState {
+  const resolvedRoleMaxEmails = resolveRoleMaxEmails(roleMaxEmails, maxEmails)
+
+  return {
+    duke: resolvedRoleMaxEmails.duke.toString(),
+    knight: resolvedRoleMaxEmails.knight.toString(),
+    civilian: resolvedRoleMaxEmails.civilian.toString(),
+  }
+}
 
 export function WebsiteConfigPanel() {
   const t = useTranslations("profile.website")
@@ -25,7 +61,9 @@ export function WebsiteConfigPanel() {
   const [defaultRole, setDefaultRole] = useState<string>("")
   const [emailDomains, setEmailDomains] = useState<string>("")
   const [adminContact, setAdminContact] = useState<string>("")
-  const [maxEmails, setMaxEmails] = useState<string>(EMAIL_CONFIG.MAX_ACTIVE_EMAILS.toString())
+  const [roleMaxEmails, setRoleMaxEmails] = useState<RoleMaxEmailFormState>(() =>
+    createRoleMaxEmailFormState(DEFAULT_ROLE_MAX_ACTIVE_EMAILS),
+  )
   const [turnstileEnabled, setTurnstileEnabled] = useState(false)
   const [turnstileSiteKey, setTurnstileSiteKey] = useState("")
   const [turnstileSecretKey, setTurnstileSecretKey] = useState("")
@@ -33,56 +71,54 @@ export function WebsiteConfigPanel() {
   const [loading, setLoading] = useState(false)
   const { toast } = useToast()
 
-
   useEffect(() => {
-    fetchConfig()
+    void fetchConfig()
   }, [])
 
   const fetchConfig = async () => {
     const res = await fetch("/api/config")
     if (res.ok) {
-      const data = await res.json() as { 
-        defaultRole: Exclude<Role, typeof ROLES.EMPEROR>,
-        emailDomains: string,
-        adminContact: string,
-        maxEmails: string,
-        turnstile?: {
-          enabled: boolean,
-          siteKey: string,
-          secretKey?: string
-        }
-      }
+      const data = (await res.json()) as WebsiteConfigResponse
       setDefaultRole(data.defaultRole)
       setEmailDomains(data.emailDomains)
       setAdminContact(data.adminContact)
-      setMaxEmails(data.maxEmails || EMAIL_CONFIG.MAX_ACTIVE_EMAILS.toString())
+      setRoleMaxEmails(createRoleMaxEmailFormState(data.roleMaxEmails, data.maxEmails))
       setTurnstileEnabled(Boolean(data.turnstile?.enabled))
       setTurnstileSiteKey(data.turnstile?.siteKey ?? "")
       setTurnstileSecretKey(data.turnstile?.secretKey ?? "")
     }
   }
 
+  const handleRoleLimitChange = (role: keyof RoleMaxEmailFormState, value: string) => {
+    setRoleMaxEmails((prev) => ({
+      ...prev,
+      [role]: value,
+    }))
+  }
+
   const handleSave = async () => {
     setLoading(true)
     try {
+      const resolvedRoleMaxEmails = resolveRoleMaxEmails(roleMaxEmails, roleMaxEmails.civilian)
       const res = await fetch("/api/config", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          defaultRole, 
+        body: JSON.stringify({
+          defaultRole,
           emailDomains,
           adminContact,
-          maxEmails: maxEmails || EMAIL_CONFIG.MAX_ACTIVE_EMAILS.toString(),
+          roleMaxEmails: resolvedRoleMaxEmails,
           turnstile: {
             enabled: turnstileEnabled,
             siteKey: turnstileSiteKey,
-            secretKey: turnstileSecretKey
-          }
+            secretKey: turnstileSecretKey,
+          },
         }),
       })
 
       if (!res.ok) throw new Error(t("saveFailed"))
 
+      setRoleMaxEmails(createRoleMaxEmailFormState(resolvedRoleMaxEmails))
       toast({
         title: t("saveSuccess"),
         description: t("saveSuccess"),
@@ -123,7 +159,7 @@ export function WebsiteConfigPanel() {
         <div className="flex items-center gap-4">
           <span className="text-sm">{t("emailDomains")}:</span>
           <div className="flex-1">
-            <Input 
+            <Input
               value={emailDomains}
               onChange={(e) => setEmailDomains(e.target.value)}
               placeholder={t("emailDomainsPlaceholder")}
@@ -134,7 +170,7 @@ export function WebsiteConfigPanel() {
         <div className="flex items-center gap-4">
           <span className="text-sm">{t("adminContact")}:</span>
           <div className="flex-1">
-            <Input 
+            <Input
               value={adminContact}
               onChange={(e) => setAdminContact(e.target.value)}
               placeholder={t("adminContactPlaceholder")}
@@ -142,17 +178,53 @@ export function WebsiteConfigPanel() {
           </div>
         </div>
 
-        <div className="flex items-center gap-4">
-          <span className="text-sm">{t("maxEmails")}:</span>
-          <div className="flex-1">
-            <Input 
-              type="number"
-              min="1"
-              max="100"
-              value={maxEmails}
-              onChange={(e) => setMaxEmails(e.target.value)}
-              placeholder={`${EMAIL_CONFIG.MAX_ACTIVE_EMAILS}`}
-            />
+        <div className="flex items-start gap-4">
+          <span className="pt-2 text-sm">{t("maxEmails")}:</span>
+          <div className="flex-1 space-y-3">
+            <p className="text-xs text-muted-foreground">{t("maxEmailsDescription")}</p>
+            <div className="grid gap-3 md:grid-cols-3">
+              <div className="space-y-2">
+                <Label htmlFor="duke-max-emails" className="text-sm font-medium">
+                  {tCard("roles.DUKE")}
+                </Label>
+                <Input
+                  id="duke-max-emails"
+                  type="number"
+                  min="1"
+                  value={roleMaxEmails.duke}
+                  onChange={(e) => handleRoleLimitChange("duke", e.target.value)}
+                  placeholder={DEFAULT_ROLE_MAX_ACTIVE_EMAILS.duke.toString()}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="knight-max-emails" className="text-sm font-medium">
+                  {tCard("roles.KNIGHT")}
+                </Label>
+                <Input
+                  id="knight-max-emails"
+                  type="number"
+                  min="1"
+                  value={roleMaxEmails.knight}
+                  onChange={(e) => handleRoleLimitChange("knight", e.target.value)}
+                  placeholder={DEFAULT_ROLE_MAX_ACTIVE_EMAILS.knight.toString()}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="civilian-max-emails" className="text-sm font-medium">
+                  {tCard("roles.CIVILIAN")}
+                </Label>
+                <Input
+                  id="civilian-max-emails"
+                  type="number"
+                  min="1"
+                  value={roleMaxEmails.civilian}
+                  onChange={(e) => handleRoleLimitChange("civilian", e.target.value)}
+                  placeholder={DEFAULT_ROLE_MAX_ACTIVE_EMAILS.civilian.toString()}
+                />
+              </div>
+            </div>
           </div>
         </div>
 
@@ -213,14 +285,10 @@ export function WebsiteConfigPanel() {
           </div>
         </div>
 
-        <Button 
-          onClick={handleSave}
-          disabled={loading}
-          className="w-full"
-        >
-          {t("save")}
+        <Button onClick={handleSave} disabled={loading} className="w-full">
+          {loading ? t("saving") : t("save")}
         </Button>
       </div>
     </div>
   )
-} 
+}
