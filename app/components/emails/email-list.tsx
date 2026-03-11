@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { useSession } from "next-auth/react"
 import { useTranslations } from "next-intl"
 import { CreateDialog } from "./create-dialog"
@@ -9,7 +9,6 @@ import { Mail, RefreshCw, Trash2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { useThrottle } from "@/hooks/use-throttle"
-import { EMAIL_CONFIG } from "@/config"
 import { useToast } from "@/components/ui/use-toast"
 import {
   AlertDialog,
@@ -21,10 +20,10 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { ROLES } from "@/lib/permissions"
 import { useUserRole } from "@/hooks/use-user-role"
 import { useConfig } from "@/hooks/use-config"
 import { TinyPngBadge } from "@/components/tinypng/tinypng-key-viewer"
+import { getMaxEmailsForRole, isUnlimitedEmailLimit } from "@/lib/email-limits"
 
 interface Email {
   id: string
@@ -36,6 +35,7 @@ interface Email {
 interface EmailListProps {
   onEmailSelect: (email: Email | null) => void
   selectedEmailId?: string
+  searchQuery?: string
 }
 
 interface EmailResponse {
@@ -44,12 +44,14 @@ interface EmailResponse {
   total: number
 }
 
-export function EmailList({ onEmailSelect, selectedEmailId }: EmailListProps) {
+export function EmailList({ onEmailSelect, selectedEmailId, searchQuery = "" }: EmailListProps) {
   const { data: session } = useSession()
   const { config } = useConfig()
   const { role } = useUserRole()
   const t = useTranslations("emails.list")
   const tCommon = useTranslations("common.actions")
+  const normalizedSearchQuery = searchQuery.trim()
+  const emailLimit = getMaxEmailsForRole(role, config?.maxEmails)
   const [emails, setEmails] = useState<Email[]>([])
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
@@ -57,20 +59,38 @@ export function EmailList({ onEmailSelect, selectedEmailId }: EmailListProps) {
   const [loadingMore, setLoadingMore] = useState(false)
   const [total, setTotal] = useState(0)
   const [emailToDelete, setEmailToDelete] = useState<Email | null>(null)
+  const requestIdRef = useRef(0)
   const { toast } = useToast()
 
-  const fetchEmails = async (cursor?: string) => {
+  const fetchEmails = async ({ cursor, reset = false }: { cursor?: string; reset?: boolean } = {}) => {
+    const requestId = ++requestIdRef.current
+
     try {
       const url = new URL("/api/emails", window.location.origin)
       if (cursor) {
         url.searchParams.set('cursor', cursor)
       }
+      if (normalizedSearchQuery) {
+        url.searchParams.set('q', normalizedSearchQuery)
+      }
+
       const response = await fetch(url)
       const data = await response.json() as EmailResponse
+
+      if (requestId !== requestIdRef.current) {
+        return
+      }
       
-      if (!cursor) {
+      if (!cursor || reset) {
         const newEmails = data.emails
-        const oldEmails = emails
+        const oldEmails = reset ? [] : emails
+
+        if (oldEmails.length === 0) {
+          setEmails(newEmails)
+          setNextCursor(data.nextCursor)
+          setTotal(data.total)
+          return
+        }
 
         const lastDuplicateIndex = newEmails.findIndex(
           newEmail => oldEmails.some(oldEmail => oldEmail.id === newEmail.id)
@@ -93,9 +113,11 @@ export function EmailList({ onEmailSelect, selectedEmailId }: EmailListProps) {
     } catch (error) {
       console.error("Failed to fetch emails:", error)
     } finally {
-      setLoading(false)
-      setRefreshing(false)
-      setLoadingMore(false)
+      if (requestId === requestIdRef.current) {
+        setLoading(false)
+        setRefreshing(false)
+        setLoadingMore(false)
+      }
     }
   }
 
@@ -113,14 +135,22 @@ export function EmailList({ onEmailSelect, selectedEmailId }: EmailListProps) {
 
     if (remainingScroll <= threshold && nextCursor) {
       setLoadingMore(true)
-      fetchEmails(nextCursor)
+      void fetchEmails({ cursor: nextCursor })
     }
   }, 200)
 
   useEffect(() => {
-    if (session) fetchEmails()
+    if (!session) return
+
+    const timer = window.setTimeout(() => {
+      setLoading(true)
+      setLoadingMore(false)
+      void fetchEmails({ reset: true })
+    }, normalizedSearchQuery ? 250 : 0)
+
+    return () => window.clearTimeout(timer)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [session])
+  }, [session, normalizedSearchQuery])
 
   const handleDelete = async (email: Email) => {
     try {
@@ -177,10 +207,10 @@ export function EmailList({ onEmailSelect, selectedEmailId }: EmailListProps) {
               <RefreshCw className="h-4 w-4" />
             </Button>
             <span className="text-xs text-gray-500">
-              {role === ROLES.EMPEROR ? (
+              {isUnlimitedEmailLimit(emailLimit) ? (
                 t("emailCountUnlimited", { count: total })
               ) : (
-                t("emailCount", { count: total, max: config?.maxEmails || EMAIL_CONFIG.MAX_ACTIVE_EMAILS })
+                t("emailCount", { count: total, max: emailLimit })
               )}
             </span>
           </div>
@@ -254,7 +284,7 @@ export function EmailList({ onEmailSelect, selectedEmailId }: EmailListProps) {
             </div>
           ) : (
             <div className="text-center text-sm text-gray-500">
-              {t("noEmails")}
+              {normalizedSearchQuery ? t("noSearchResults") : t("noEmails")}
             </div>
           )}
         </div>

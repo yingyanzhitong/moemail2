@@ -14,13 +14,15 @@ export async function GET(request: Request) {
 
   const { searchParams } = new URL(request.url)
   const cursor = searchParams.get('cursor')
+  const query = searchParams.get('q')?.trim().toLowerCase() || ""
   
   const db = createDb()
 
   try {
     const baseConditions = and(
       eq(emails.userId, userId!),
-      gt(emails.expiresAt, new Date())
+      gt(emails.expiresAt, new Date()),
+      query ? sql`LOWER(${emails.address}) LIKE ${`%${query}%`}` : undefined
     )
 
     const totalResult = await db.select({ count: sql<number>`count(*)` })

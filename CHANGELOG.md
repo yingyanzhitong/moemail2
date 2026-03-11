@@ -1,6 +1,17 @@
 # Changelog
 
 All notable changes to this project will be documented in this file.
+## [1.13.6] - 2026-03-11
+
+### Features
+
+- **邮箱列表**：在「我的邮箱」标题右侧新增邮箱地址搜索框，支持按关键字筛选并兼容分页加载
+
+### Improvements
+
+- **角色配额**：邮箱创建上限改为公爵 1000 个、骑士 100 个，皇帝继续保持无限制
+- **邮箱界面**：列表计数改为按当前角色显示对应上限，搜索无结果时显示专用提示
+
 ## [1.13.5] - 2026-02-26
 
 ### Improvements

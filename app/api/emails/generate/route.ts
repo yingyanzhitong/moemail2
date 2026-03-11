@@ -4,11 +4,10 @@ import { createDb } from "@/lib/db"
 import { emails } from "@/lib/schema"
 import { eq, and, gt, sql } from "drizzle-orm"
 import { EXPIRY_OPTIONS } from "@/types/email"
-import { EMAIL_CONFIG } from "@/config"
 import { getRequestContext } from "@cloudflare/next-on-pages"
 import { getUserId } from "@/lib/apiKey"
 import { getUserRole } from "@/lib/auth"
-import { ROLES } from "@/lib/permissions"
+import { getMaxEmailsForRole, isUnlimitedEmailLimit } from "@/lib/email-limits"
 
 export const runtime = "edge"
 
@@ -21,17 +20,15 @@ export async function POST(request: Request) {
 
   try {
     // 统一获取配置，避免不同角色路径导致的 KV 访问问题
-    const [maxEmails, domainString] = await Promise.all([
-      env.SITE_CONFIG.get("MAX_EMAILS"),
-      env.SITE_CONFIG.get("EMAIL_DOMAINS")
-    ])
+    const domainString = await env.SITE_CONFIG.get("EMAIL_DOMAINS")
     
     const domains = domainString 
       ? domainString.split(',') 
       : [process.env.DEFAULT_EMAIL_DOMAIN!]
 
-    if (userRole !== ROLES.EMPEROR) {
-      const maxEmailsValue = maxEmails || EMAIL_CONFIG.MAX_ACTIVE_EMAILS.toString()
+    const maxEmailsValue = getMaxEmailsForRole(userRole)
+
+    if (!isUnlimitedEmailLimit(maxEmailsValue)) {
       const activeEmailsCount = await db
         .select({ count: sql<number>`count(*)` })
         .from(emails)

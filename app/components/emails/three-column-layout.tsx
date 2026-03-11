@@ -9,7 +9,8 @@ import { SendDialog } from "./send-dialog"
 import { cn } from "@/lib/utils"
 import { useCopy } from "@/hooks/use-copy"
 import { useSendPermission } from "@/hooks/use-send-permission"
-import { Copy } from "lucide-react"
+import { Copy, Search } from "lucide-react"
+import { Input } from "@/components/ui/input"
 
 interface Email {
   id: string
@@ -18,10 +19,12 @@ interface Email {
 
 export function ThreeColumnLayout() {
   const t = useTranslations("emails.layout")
+  const tList = useTranslations("emails.list")
   const [selectedEmail, setSelectedEmail] = useState<Email | null>(null)
   const [selectedMessageId, setSelectedMessageId] = useState<string | null>(null)
   const [selectedMessageType, setSelectedMessageType] = useState<'received' | 'sent'>('received')
   const [refreshTrigger, setRefreshTrigger] = useState(0)
+  const [emailSearch, setEmailSearch] = useState("")
   const { copyToClipboard } = useCopy()
   const { canSend: canSendEmails } = useSendPermission()
 
@@ -51,16 +54,33 @@ export function ThreeColumnLayout() {
     setRefreshTrigger(prev => prev + 1)
   }
 
+  const renderEmailSearch = (className?: string) => (
+    <div className={cn("relative flex-1 min-w-0", className)}>
+      <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+      <Input
+        value={emailSearch}
+        onChange={(event) => setEmailSearch(event.target.value)}
+        placeholder={tList("searchPlaceholder")}
+        aria-label={tList("searchPlaceholder")}
+        className="h-9 border-primary/20 bg-background pl-9"
+      />
+    </div>
+  )
+
   return (
     <div className="pb-5 pt-20 h-full flex flex-col">
       {/* 桌面端三栏布局 */}
       <div className="hidden lg:grid grid-cols-12 gap-4 h-full min-h-0">
         <div className={cn("col-span-3", columnClass)}>
           <div className={headerClass}>
-            <h2 className={titleClass}>{t("myEmails")}</h2>
+            <div className="flex w-full items-center gap-2 min-w-0">
+              <h2 className={cn(titleClass, "w-auto shrink-0")}>{t("myEmails")}</h2>
+              {renderEmailSearch("max-w-[220px]")}
+            </div>
           </div>
           <div className="flex-1 overflow-auto">
             <EmailList
+              searchQuery={emailSearch}
               onEmailSelect={(email) => {
                 setSelectedEmail(email)
                 setSelectedMessageId(null)
@@ -101,7 +121,6 @@ export function ThreeColumnLayout() {
                 onMessageSelect={handleMessageSelect}
                 selectedMessageId={selectedMessageId}
                 refreshTrigger={refreshTrigger}
-                autoSelect={true}
               />
             </div>
           )}
@@ -132,10 +151,14 @@ export function ThreeColumnLayout() {
           {mobileView === "list" && (
             <>
               <div className={headerClass}>
-                <h2 className={titleClass}>{t("myEmails")}</h2>
+                <div className="flex w-full items-center gap-2 min-w-0">
+                  <h2 className={cn(titleClass, "w-auto shrink-0")}>{t("myEmails")}</h2>
+                  {renderEmailSearch()}
+                </div>
               </div>
               <div className="flex-1 overflow-auto">
                 <EmailList
+                  searchQuery={emailSearch}
                   onEmailSelect={(email) => {
                     setSelectedEmail(email)
                   }}
@@ -147,9 +170,8 @@ export function ThreeColumnLayout() {
 
           {mobileView === "emails" && selectedEmail && (
             <div className="h-full flex flex-col">
-              <div className={cn(headerClass, "gap-2 flex-wrap h-auto")}>
+              <div className={cn(headerClass, "gap-2")}>
                 <button
-                  type="button"
                   onClick={() => {
                     setSelectedEmail(null)
                   }}
@@ -157,12 +179,9 @@ export function ThreeColumnLayout() {
                 >
                   {t("backToEmailList")}
                 </button>
-                <div className="flex items-center text-sm text-gray-500 break-all">
-                  <span className="shrink-0 mx-1">/</span>
-                  <span>{selectedEmail.address}</span>
-                </div>
-                <div className="flex-1 flex justify-end items-center gap-2 min-w-0">
+                <div className="flex-1 flex justify-between items-center gap-2 min-w-0">
                   <div className="flex items-center gap-2">
+                    <span className="truncate min-w-0 flex-1 text-right">{selectedEmail.address}</span>
                     <div className="shrink-0 cursor-pointer text-primary" onClick={copyEmailAddress}>
                       <Copy className="size-4" />
                     </div>
@@ -182,7 +201,6 @@ export function ThreeColumnLayout() {
                   onMessageSelect={handleMessageSelect}
                   selectedMessageId={selectedMessageId}
                   refreshTrigger={refreshTrigger}
-                  autoSelect={false}
                 />
               </div>
             </div>
@@ -190,20 +208,14 @@ export function ThreeColumnLayout() {
 
           {mobileView === "message" && selectedEmail && selectedMessageId && (
             <div className="h-full flex flex-col">
-              <div className={cn(headerClass, "flex-wrap h-auto")}>
+              <div className={headerClass}>
                 <button
-                  type="button"
                   onClick={() => setSelectedMessageId(null)}
                   className="text-sm text-primary"
                 >
                   {t("backToMessageList")}
                 </button>
-                <div className="flex items-center text-sm text-gray-500 break-all px-2">
-                   <span className="shrink-0 mx-1">/</span>
-                   <span>{selectedEmail.address}</span>
-                   <span className="shrink-0 mx-1">/</span>
-                   <span className="truncate">{t("messageContent")}</span>
-                </div>
+                <span className="text-sm font-medium">{t("messageContent")}</span>
               </div>
               <div className="flex-1 overflow-auto">
                 <MessageView
