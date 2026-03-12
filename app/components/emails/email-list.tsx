@@ -21,7 +21,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { useUserRole } from "@/hooks/use-user-role"
-import { useConfig } from "@/hooks/use-config"
+import type { AppConfig } from "@/hooks/use-config"
 import { TinyPngBadge } from "@/components/tinypng/tinypng-key-viewer"
 import { getMaxEmailsForRole, isUnlimitedEmailLimit } from "@/lib/email-limits"
 
@@ -36,6 +36,7 @@ interface EmailListProps {
   onEmailSelect: (email: Email | null) => void
   selectedEmailId?: string
   searchQuery?: string
+  config: AppConfig | null
 }
 
 interface EmailResponse {
@@ -44,9 +45,13 @@ interface EmailResponse {
   total: number
 }
 
-export function EmailList({ onEmailSelect, selectedEmailId, searchQuery = "" }: EmailListProps) {
+export function EmailList({
+  onEmailSelect,
+  selectedEmailId,
+  searchQuery = "",
+  config,
+}: EmailListProps) {
   const { data: session } = useSession()
-  const { config } = useConfig()
   const { role } = useUserRole()
   const t = useTranslations("emails.list")
   const tCommon = useTranslations("common.actions")
@@ -214,7 +219,7 @@ export function EmailList({ onEmailSelect, selectedEmailId, searchQuery = "" }: 
               )}
             </span>
           </div>
-          <CreateDialog onEmailCreated={handleRefresh} />
+          <CreateDialog onEmailCreated={handleRefresh} config={config} />
         </div>
         
         <div className="flex-1 overflow-auto p-2" onScroll={handleScroll}>

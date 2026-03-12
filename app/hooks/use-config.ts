@@ -5,7 +5,7 @@ import { Role, ROLES } from "@/lib/permissions"
 import { useEffect } from "react"
 import { resolveRoleMaxEmails, type RoleEmailLimitConfig } from "@/lib/email-limits"
 
-interface Config {
+export interface AppConfig {
   defaultRole: Exclude<Role, typeof ROLES.EMPEROR>
   emailDomains: string
   emailDomainsArray: string[]
@@ -23,7 +23,7 @@ interface ConfigResponse {
 }
 
 interface ConfigStore {
-  config: Config | null
+  config: AppConfig | null
   loading: boolean
   error: string | null
   fetch: () => Promise<void>

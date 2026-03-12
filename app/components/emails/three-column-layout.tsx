@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useTranslations } from "next-intl"
 import { EmailList } from "./email-list"
 import { MessageListContainer } from "./message-list-container"
@@ -11,20 +11,25 @@ import { useCopy } from "@/hooks/use-copy"
 import { useSendPermission } from "@/hooks/use-send-permission"
 import { Copy, Search } from "lucide-react"
 import { Input } from "@/components/ui/input"
+import { useConfig } from "@/hooks/use-config"
 
 interface Email {
   id: string
   address: string
 }
 
+const DESKTOP_MEDIA_QUERY = "(min-width: 1024px)"
+
 export function ThreeColumnLayout() {
   const t = useTranslations("emails.layout")
   const tList = useTranslations("emails.list")
+  const { config } = useConfig()
   const [selectedEmail, setSelectedEmail] = useState<Email | null>(null)
   const [selectedMessageId, setSelectedMessageId] = useState<string | null>(null)
   const [selectedMessageType, setSelectedMessageType] = useState<'received' | 'sent'>('received')
   const [refreshTrigger, setRefreshTrigger] = useState(0)
   const [emailSearch, setEmailSearch] = useState("")
+  const [isDesktop, setIsDesktop] = useState<boolean | null>(null)
   const { copyToClipboard } = useCopy()
   const { canSend: canSendEmails } = useSendPermission()
 
@@ -54,6 +59,20 @@ export function ThreeColumnLayout() {
     setRefreshTrigger(prev => prev + 1)
   }
 
+  useEffect(() => {
+    const mediaQuery = window.matchMedia(DESKTOP_MEDIA_QUERY)
+    const updateViewport = () => {
+      setIsDesktop(mediaQuery.matches)
+    }
+
+    updateViewport()
+    mediaQuery.addEventListener("change", updateViewport)
+
+    return () => {
+      mediaQuery.removeEventListener("change", updateViewport)
+    }
+  }, [])
+
   const renderEmailSearch = (className?: string) => (
     <div className={cn("relative flex-1 min-w-0", className)}>
       <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -69,84 +88,83 @@ export function ThreeColumnLayout() {
 
   return (
     <div className="pb-5 pt-20 h-full flex flex-col">
-      {/* 桌面端三栏布局 */}
-      <div className="hidden lg:grid grid-cols-12 gap-4 h-full min-h-0">
-        <div className={cn("col-span-3", columnClass)}>
-          <div className={headerClass}>
-            <div className="flex w-full items-center gap-2 min-w-0">
-              <h2 className={cn(titleClass, "w-auto shrink-0")}>{t("myEmails")}</h2>
-              {renderEmailSearch("max-w-[220px]")}
+      {isDesktop === null ? null : isDesktop ? (
+        <div className="grid grid-cols-12 gap-4 h-full min-h-0">
+          <div className={cn("col-span-3", columnClass)}>
+            <div className={headerClass}>
+              <div className="flex w-full items-center gap-2 min-w-0">
+                <h2 className={cn(titleClass, "w-auto shrink-0")}>{t("myEmails")}</h2>
+                {renderEmailSearch("max-w-[220px]")}
+              </div>
+            </div>
+            <div className="flex-1 overflow-auto">
+              <EmailList
+                config={config}
+                searchQuery={emailSearch}
+                onEmailSelect={(email) => {
+                  setSelectedEmail(email)
+                  setSelectedMessageId(null)
+                }}
+                selectedEmailId={selectedEmail?.id}
+              />
             </div>
           </div>
-          <div className="flex-1 overflow-auto">
-            <EmailList
-              searchQuery={emailSearch}
-              onEmailSelect={(email) => {
-                setSelectedEmail(email)
-                setSelectedMessageId(null)
-              }}
-              selectedEmailId={selectedEmail?.id}
-            />
-          </div>
-        </div>
 
-        <div className={cn("col-span-4", columnClass)}>
-          <div className={headerClass}>
-            <h2 className={titleClass}>
-              {selectedEmail ? (
-                <div className="w-full flex justify-between items-center gap-2">
-                  <div className="flex items-center gap-2">
-                    <span className="truncate min-w-0">{selectedEmail.address}</span>
-                    <div className="shrink-0 cursor-pointer text-primary" onClick={copyEmailAddress}>
-                      <Copy className="size-4" />
+          <div className={cn("col-span-4", columnClass)}>
+            <div className={headerClass}>
+              <h2 className={titleClass}>
+                {selectedEmail ? (
+                  <div className="w-full flex justify-between items-center gap-2">
+                    <div className="flex items-center gap-2">
+                      <span className="truncate min-w-0">{selectedEmail.address}</span>
+                      <div className="shrink-0 cursor-pointer text-primary" onClick={copyEmailAddress}>
+                        <Copy className="size-4" />
+                      </div>
                     </div>
+                    {selectedEmail && canSendEmails && (
+                      <SendDialog
+                        emailId={selectedEmail.id}
+                        fromAddress={selectedEmail.address}
+                        onSendSuccess={handleSendSuccess}
+                      />
+                    )}
                   </div>
-                  {selectedEmail && canSendEmails && (
-                    <SendDialog 
-                      emailId={selectedEmail.id} 
-                      fromAddress={selectedEmail.address}
-                      onSendSuccess={handleSendSuccess}
-                    />
-                  )}
-                </div>
-              ) : (
-                t("selectEmail")
-              )}
-            </h2>
-          </div>
-          {selectedEmail && (
-            <div className="flex-1 overflow-auto">
-              <MessageListContainer
-                email={selectedEmail}
-                onMessageSelect={handleMessageSelect}
-                selectedMessageId={selectedMessageId}
-                refreshTrigger={refreshTrigger}
-              />
+                ) : (
+                  t("selectEmail")
+                )}
+              </h2>
             </div>
-          )}
-        </div>
-
-        <div className={cn("col-span-5", columnClass)}>
-          <div className={headerClass}>
-            <h2 className={titleClass}>
-              {selectedMessageId ? t("messageContent") : t("selectMessage")}
-            </h2>
+            {selectedEmail && (
+              <div className="flex-1 overflow-auto">
+                <MessageListContainer
+                  email={selectedEmail}
+                  onMessageSelect={handleMessageSelect}
+                  selectedMessageId={selectedMessageId}
+                  refreshTrigger={refreshTrigger}
+                />
+              </div>
+            )}
           </div>
-          {selectedEmail && selectedMessageId && (
-            <div className="flex-1 overflow-auto">
-              <MessageView
-                emailId={selectedEmail.id}
-                messageId={selectedMessageId}
-                messageType={selectedMessageType}
-                onClose={() => setSelectedMessageId(null)}
-              />
-            </div>
-          )}
-        </div>
-      </div>
 
-      {/* 移动端单栏布局 */}
-      <div className="lg:hidden h-full min-h-0">
+          <div className={cn("col-span-5", columnClass)}>
+            <div className={headerClass}>
+              <h2 className={titleClass}>
+                {selectedMessageId ? t("messageContent") : t("selectMessage")}
+              </h2>
+            </div>
+            {selectedEmail && selectedMessageId && (
+              <div className="flex-1 overflow-auto">
+                <MessageView
+                  emailId={selectedEmail.id}
+                  messageId={selectedMessageId}
+                  messageType={selectedMessageType}
+                  onClose={() => setSelectedMessageId(null)}
+                />
+              </div>
+            )}
+          </div>
+        </div>
+      ) : (
         <div className={cn("h-full", columnClass)}>
           {mobileView === "list" && (
             <>
@@ -158,6 +176,7 @@ export function ThreeColumnLayout() {
               </div>
               <div className="flex-1 overflow-auto">
                 <EmailList
+                  config={config}
                   searchQuery={emailSearch}
                   onEmailSelect={(email) => {
                     setSelectedEmail(email)
@@ -187,8 +206,8 @@ export function ThreeColumnLayout() {
                     </div>
                   </div>
                   {canSendEmails && (
-                    <SendDialog 
-                      emailId={selectedEmail.id} 
+                    <SendDialog
+                      emailId={selectedEmail.id}
                       fromAddress={selectedEmail.address}
                       onSendSuccess={handleSendSuccess}
                     />
@@ -228,7 +247,7 @@ export function ThreeColumnLayout() {
             </div>
           )}
         </div>
-      </div>
+      )}
     </div>
   )
-} 
+}

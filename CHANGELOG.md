@@ -1,6 +1,13 @@
 # Changelog
 
 All notable changes to this project will be documented in this file.
+## [1.13.8] - 2026-03-12
+
+### Improvements
+
+- **性能优化**：`/home` 页面改为只渲染当前视口对应的邮箱布局，避免桌面端与移动端同时挂载造成重复请求
+- **数据请求**：`config` 获取提升到父层共享，进入 `/home` 时将 `config` 收敛为 1 次请求、`emails` 收敛为 1 次首屏请求
+
 ## [1.13.7] - 2026-03-11
 
 ### Features

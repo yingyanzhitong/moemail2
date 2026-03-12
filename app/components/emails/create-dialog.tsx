@@ -13,14 +13,14 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { EXPIRY_OPTIONS } from "@/types/email"
 import { useCopy } from "@/hooks/use-copy"
-import { useConfig } from "@/hooks/use-config"
+import type { AppConfig } from "@/hooks/use-config"
 
 interface CreateDialogProps {
   onEmailCreated: () => void
+  config: AppConfig | null
 }
 
-export function CreateDialog({ onEmailCreated }: CreateDialogProps) {
-  const { config } = useConfig()
+export function CreateDialog({ onEmailCreated, config }: CreateDialogProps) {
   const t = useTranslations("emails.create")
   const tList = useTranslations("emails.list")
   const tCommon = useTranslations("common.actions")
@@ -39,10 +39,14 @@ export function CreateDialog({ onEmailCreated }: CreateDialogProps) {
   }
 
   const createEmail = async () => {
-    const finalName = emailName.trim() || nanoid(8)
-
-
-    // 移除之前的错误逻辑，不在请求前复制
+    if (!emailName.trim()) {
+      toast({
+        title: tList("error"),
+        description: t("namePlaceholder"),
+        variant: "destructive"
+      })
+      return
+    }
 
     setLoading(true)
     try {
@@ -50,7 +54,7 @@ export function CreateDialog({ onEmailCreated }: CreateDialogProps) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          name: finalName,
+          name: emailName,
           domain: currentDomain,
           expiryTime: parseInt(expiryTime)
         })
@@ -72,10 +76,6 @@ export function CreateDialog({ onEmailCreated }: CreateDialogProps) {
       })
       onEmailCreated()
       setOpen(false)
-      // 使用 setTimeout 确保在 Dialog 关闭后执行，避免焦点问题
-      setTimeout(() => {
-        copyToClipboard(`${finalName}@${currentDomain}`)
-      }, 100)
       setEmailName("")
     } catch {
       toast({
