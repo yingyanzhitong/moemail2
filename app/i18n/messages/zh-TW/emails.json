@@ -31,7 +31,7 @@
     "deleteFailed": "刪除郵箱失敗",
     "bulkDeleteButton": "批量刪除郵箱",
     "bulkDeleteTitle": "批量刪除郵箱",
-    "bulkDeleteDescription": "按建立時間批量刪除郵箱。只會刪除目前仍有效且建立時間早於所選天數的郵箱。",
+    "bulkDeleteDescription": "按建立時間批量刪除郵箱。會直接從資料庫中查找並刪除所有建立時間早於所選天數的郵箱。",
     "bulkDeleteThirtyDays": "刪除 30 天前建立的郵箱",
     "bulkDeleteNinetyDays": "刪除 3 個月前建立的郵箱",
     "bulkDeleteOlderThan": "刪除早於 {days} 天前建立的郵箱",

@@ -31,7 +31,7 @@
     "deleteFailed": "删除邮箱失败",
     "bulkDeleteButton": "批量删除邮箱",
     "bulkDeleteTitle": "批量删除邮箱",
-    "bulkDeleteDescription": "按创建时间批量删除邮箱。只会删除当前仍有效且创建时间早于所选天数的邮箱。",
+    "bulkDeleteDescription": "按创建时间批量删除邮箱。会直接从数据库中查找并删除所有创建时间早于所选天数的邮箱。",
     "bulkDeleteThirtyDays": "删除 30 天前创建的邮箱",
     "bulkDeleteNinetyDays": "删除 3 个月前创建的邮箱",
     "bulkDeleteOlderThan": "删除早于 {days} 天前创建的邮箱",

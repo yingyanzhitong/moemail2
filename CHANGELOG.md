@@ -1,6 +1,12 @@
 # Changelog
 
 All notable changes to this project will be documented in this file.
+## [1.13.10] - 2026-03-20
+
+### Bug Fixes
+
+- **批量删除**：修复按创建时间批量删除邮箱时错误过滤已过期账号的问题，改为直接从数据库全量查找并删除符合条件的邮箱
+
 ## [1.13.9] - 2026-03-20
 
 ### Features

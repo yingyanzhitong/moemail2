@@ -31,7 +31,7 @@
     "deleteFailed": "メールボックスの削除に失敗しました",
     "bulkDeleteButton": "メールボックスを一括削除",
     "bulkDeleteTitle": "メールボックスを一括削除",
-    "bulkDeleteDescription": "作成日時に基づいてメールボックスを一括削除します。現在も有効で、選択した日数より前に作成されたメールボックスのみが削除されます。",
+    "bulkDeleteDescription": "作成日時に基づいてメールボックスを一括削除します。データベース内から選択日数より前に作成されたメールボックスをすべて検索して削除します。",
     "bulkDeleteThirtyDays": "30 日以上前に作成したメールボックスを削除",
     "bulkDeleteNinetyDays": "3 か月以上前に作成したメールボックスを削除",
     "bulkDeleteOlderThan": "{days} 日以上前に作成したメールボックスを削除",

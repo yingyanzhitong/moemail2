@@ -1,5 +1,5 @@
 import { createDb } from "@/lib/db"
-import { and, eq, gt, inArray, lt, or, sql } from "drizzle-orm"
+import { and, eq, gt, lt, or, sql } from "drizzle-orm"
 import { NextResponse } from "next/server"
 import { emails, emailShares, messages, messageShares } from "@/lib/schema"
 import { encodeCursor, decodeCursor } from "@/lib/cursor"
@@ -97,40 +97,45 @@ export async function DELETE(request: Request) {
     }
 
     const thresholdDate = new Date(Date.now() - olderThanDays * 24 * 60 * 60 * 1000)
+    const deleteCondition = and(
+      eq(emails.userId, userId!),
+      lt(emails.createdAt, thresholdDate)
+    )
 
-    const targetEmails = await db.query.emails.findMany({
-      columns: {
-        id: true,
-      },
-      where: and(
-        eq(emails.userId, userId!),
-        lt(emails.createdAt, thresholdDate),
-        gt(emails.expiresAt, new Date())
-      ),
-    })
+    const targetCountResult = await db.select({ count: sql<number>`count(*)` })
+      .from(emails)
+      .where(deleteCondition)
+    const deletedCount = Number(targetCountResult[0]?.count ?? 0)
 
-    if (targetEmails.length === 0) {
+    if (deletedCount === 0) {
       return NextResponse.json({ deletedCount: 0 })
     }
 
-    const emailIds = targetEmails.map((email) => email.id)
-    const relatedMessages = await db.query.messages.findMany({
-      columns: {
-        id: true,
-      },
-      where: inArray(messages.emailId, emailIds),
+    const targetEmailsSubquery = sql`
+      select ${emails.id}
+      from ${emails}
+      where ${deleteCondition}
+    `
+    const targetMessagesSubquery = sql`
+      select ${messages.id}
+      from ${messages}
+      where ${messages.emailId} in (${targetEmailsSubquery})
+    `
+
+    await db.transaction(async (tx) => {
+      await tx.delete(messageShares).where(
+        sql`${messageShares.messageId} in (${targetMessagesSubquery})`
+      )
+      await tx.delete(emailShares).where(
+        sql`${emailShares.emailId} in (${targetEmailsSubquery})`
+      )
+      await tx.delete(messages).where(
+        sql`${messages.emailId} in (${targetEmailsSubquery})`
+      )
+      await tx.delete(emails).where(deleteCondition)
     })
-    const messageIds = relatedMessages.map((message) => message.id)
 
-    if (messageIds.length > 0) {
-      await db.delete(messageShares).where(inArray(messageShares.messageId, messageIds))
-    }
-
-    await db.delete(emailShares).where(inArray(emailShares.emailId, emailIds))
-    await db.delete(messages).where(inArray(messages.emailId, emailIds))
-    await db.delete(emails).where(inArray(emails.id, emailIds))
-
-    return NextResponse.json({ deletedCount: emailIds.length })
+    return NextResponse.json({ deletedCount })
   } catch (error) {
     console.error("Failed to bulk delete emails:", error)
     return NextResponse.json(

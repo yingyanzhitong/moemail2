@@ -31,7 +31,7 @@
     "deleteFailed": "Failed to delete email",
     "bulkDeleteButton": "Bulk delete emails",
     "bulkDeleteTitle": "Bulk delete emails",
-    "bulkDeleteDescription": "Delete mailboxes by creation date. Only active mailboxes created earlier than the selected age will be removed.",
+    "bulkDeleteDescription": "Delete mailboxes by creation date. The API will scan the database and remove all mailboxes created earlier than the selected age.",
     "bulkDeleteThirtyDays": "Delete mailboxes created more than 30 days ago",
     "bulkDeleteNinetyDays": "Delete mailboxes created more than 3 months ago",
     "bulkDeleteOlderThan": "Delete mailboxes created earlier than {days} days ago",
