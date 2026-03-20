@@ -1,6 +1,16 @@
 # Changelog
 
 All notable changes to this project will be documented in this file.
+## [1.13.9] - 2026-03-20
+
+### Features
+
+- **邮箱列表**：新增批量删除入口，支持快捷删除 30 天前、3 个月前创建的邮箱，并支持自定义天数
+
+### Improvements
+
+- **邮箱接口**：新增按创建时间批量删除邮箱能力，并统一返回时间戳字段供前端筛选使用
+
 ## [1.13.8] - 2026-03-12
 
 ### Improvements
@@ -331,4 +341,3 @@ All notable changes to this project will be documented in this file.
 ### Bug Fixes
 
 - 优化邮箱选择逻辑和send-permission请求缓存 (1a6509d)
-

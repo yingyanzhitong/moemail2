@@ -1,7 +1,7 @@
 import { createDb } from "@/lib/db"
-import { and, eq, gt, lt, or, sql } from "drizzle-orm"
+import { and, eq, gt, inArray, lt, or, sql } from "drizzle-orm"
 import { NextResponse } from "next/server"
-import { emails } from "@/lib/schema"
+import { emails, emailShares, messages, messageShares } from "@/lib/schema"
 import { encodeCursor, decodeCursor } from "@/lib/cursor"
 import { getUserId } from "@/lib/apiKey"
 
@@ -61,7 +61,11 @@ export async function GET(request: Request) {
           results[PAGE_SIZE - 1].id
         )
       : null
-    const emailList = hasMore ? results.slice(0, PAGE_SIZE) : results
+    const emailList = (hasMore ? results.slice(0, PAGE_SIZE) : results).map((email) => ({
+      ...email,
+      createdAt: email.createdAt.getTime(),
+      expiresAt: email.expiresAt.getTime(),
+    }))
 
     return NextResponse.json({ 
       emails: emailList,
@@ -76,3 +80,62 @@ export async function GET(request: Request) {
     )
   }
 } 
+
+export async function DELETE(request: Request) {
+  const userId = await getUserId()
+  const db = createDb()
+
+  try {
+    const body = (await request.json()) as { olderThanDays?: number | string }
+    const olderThanDays = Number.parseInt(String(body.olderThanDays ?? ""), 10)
+
+    if (!Number.isInteger(olderThanDays) || olderThanDays <= 0) {
+      return NextResponse.json(
+        { error: "删除天数必须是大于 0 的整数" },
+        { status: 400 }
+      )
+    }
+
+    const thresholdDate = new Date(Date.now() - olderThanDays * 24 * 60 * 60 * 1000)
+
+    const targetEmails = await db.query.emails.findMany({
+      columns: {
+        id: true,
+      },
+      where: and(
+        eq(emails.userId, userId!),
+        lt(emails.createdAt, thresholdDate),
+        gt(emails.expiresAt, new Date())
+      ),
+    })
+
+    if (targetEmails.length === 0) {
+      return NextResponse.json({ deletedCount: 0 })
+    }
+
+    const emailIds = targetEmails.map((email) => email.id)
+    const relatedMessages = await db.query.messages.findMany({
+      columns: {
+        id: true,
+      },
+      where: inArray(messages.emailId, emailIds),
+    })
+    const messageIds = relatedMessages.map((message) => message.id)
+
+    if (messageIds.length > 0) {
+      await db.delete(messageShares).where(inArray(messageShares.messageId, messageIds))
+    }
+
+    await db.delete(emailShares).where(inArray(emailShares.emailId, emailIds))
+    await db.delete(messages).where(inArray(messages.emailId, emailIds))
+    await db.delete(emails).where(inArray(emails.id, emailIds))
+
+    return NextResponse.json({ deletedCount: emailIds.length })
+  } catch (error) {
+    console.error("Failed to bulk delete emails:", error)
+    return NextResponse.json(
+      { error: "批量删除邮箱失败" },
+      { status: 500 }
+    )
+  }
+}

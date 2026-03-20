@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react"
 import { useSession } from "next-auth/react"
 import { useTranslations } from "next-intl"
 import { CreateDialog } from "./create-dialog"
+import { BulkDeleteDialog } from "./bulk-delete-dialog"
 import { ShareDialog } from "./share-dialog"
 import { Mail, RefreshCw, Trash2 } from "lucide-react"
 import { cn } from "@/lib/utils"
@@ -195,6 +196,20 @@ export function EmailList({
     }
   }
 
+  const handleBulkDeleteSuccess = async ({
+    selectedEmailDeleted,
+  }: {
+    selectedEmailDeleted: boolean
+  }) => {
+    if (selectedEmailDeleted) {
+      onEmailSelect(null)
+    }
+
+    setLoading(true)
+    setLoadingMore(false)
+    await fetchEmails({ reset: true })
+  }
+
   if (!session) return null
 
   return (
@@ -219,7 +234,14 @@ export function EmailList({
               )}
             </span>
           </div>
-          <CreateDialog onEmailCreated={handleRefresh} config={config} />
+          <div className="flex items-center gap-2">
+            <BulkDeleteDialog
+              emails={emails}
+              selectedEmailId={selectedEmailId}
+              onDeleted={handleBulkDeleteSuccess}
+            />
+            <CreateDialog onEmailCreated={handleRefresh} config={config} />
+          </div>
         </div>
         
         <div className="flex-1 overflow-auto p-2" onScroll={handleScroll}>
