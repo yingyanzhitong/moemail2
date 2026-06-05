@@ -17,6 +17,7 @@ const DATABASE_NAME = process.env.DATABASE_NAME || "moemail-db";
 const KV_NAMESPACE_NAME = process.env.KV_NAMESPACE_NAME || "moemail-kv";
 const CUSTOM_DOMAIN = process.env.CUSTOM_DOMAIN;
 const KV_NAMESPACE_ID = process.env.KV_NAMESPACE_ID;
+const WRANGLER_COMMAND = "pnpm exec wrangler";
 
 /**
  * 验证必要的环境变量
@@ -342,7 +343,7 @@ const pushPagesSecret = () => {
     console.log(`📝 Found ${Object.keys(secrets).length} secrets to push:`, Object.keys(secrets).join(', '));
 
     // 使用临时文件推送secrets
-    execSync(`pnpm dlx wrangler pages secret bulk ${runtimeEnvFile}`, { 
+    execSync(`${WRANGLER_COMMAND} pages secret bulk "${runtimeEnvFile}"`, {
       stdio: "inherit" 
     });
 
@@ -389,7 +390,7 @@ const deployPages = () => {
 const deployEmailWorker = () => {
   console.log("🚧 Deploying Email Worker...");
   try {
-    execSync("pnpm dlx wrangler deploy --config wrangler.email.json", { stdio: "inherit" });
+    execSync(`${WRANGLER_COMMAND} deploy --config wrangler.email.json`, { stdio: "inherit" });
     console.log("✅ Email Worker deployed successfully");
   } catch (error) {
     console.error("❌ Email Worker deployment failed:", error);
@@ -403,7 +404,7 @@ const deployEmailWorker = () => {
 const deployCleanupWorker = () => {
   console.log("🚧 Deploying Cleanup Worker...");
   try {
-    execSync("pnpm dlx wrangler deploy --config wrangler.cleanup.json", { stdio: "inherit" });
+    execSync(`${WRANGLER_COMMAND} deploy --config wrangler.cleanup.json`, { stdio: "inherit" });
     console.log("✅ Cleanup Worker deployed successfully");
   } catch (error) {
     console.error("❌ Cleanup Worker deployment failed:", error);
@@ -417,7 +418,7 @@ const deployCleanupWorker = () => {
 const deployTinyPngWorker = () => {
   console.log("🚧 Deploying TinyPNG Pool Worker...");
   try {
-    execSync("pnpm dlx wrangler deploy --config wrangler.tinypng.json", { stdio: "inherit" });
+    execSync(`${WRANGLER_COMMAND} deploy --config wrangler.tinypng.json`, { stdio: "inherit" });
     console.log("✅ TinyPNG Pool Worker deployed successfully");
   } catch (error) {
     console.error("❌ TinyPNG Pool Worker deployment failed:", error);

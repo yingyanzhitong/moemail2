@@ -1,6 +1,12 @@
 # Changelog
 
 All notable changes to this project will be documented in this file.
+## [1.13.12] - 2026-06-05
+
+### Bug Fixes
+
+- **部署流程**：部署脚本改为使用项目锁定的本地 Wrangler，避免 GitHub Actions 临时拉取新版 Wrangler 导致 Node.js 版本不兼容
+
 ## [1.13.11] - 2026-06-05
 
 ### Features
