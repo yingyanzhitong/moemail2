@@ -1,0 +1,42 @@
+app/api/tinypng/generate/route.ts
+  s_a99659e2059b87::t_8588bf53564086 9-13,52-57
+app/api/tinypng/generate/batch/route.ts
+  s_a99659e2059b87::t_ed7ef67fd6698a 9-13,56-61
+app/i18n/messages/ja/profile.json
+  s_a99659e2059b87::t_1e76e3a957072a 110,124-125
+app/i18n/messages/en/profile.json
+  s_a99659e2059b87::t_0d4d0592ae8fc0 110,124-125
+app/components/profile/website-config-panel.tsx
+  s_a99659e2059b87::t_8796b3306e9e47 25-29,37,51-56,70-81,91-94,114,123-132,142,151,163,267-316
+app/i18n/messages/zh-CN/profile.json
+  s_a99659e2059b87::t_ec5914e0028895 110,124-125
+app/api/config/route.ts
+  s_a99659e2059b87::t_b576c0200990be 10-15,29,39,46,54,77-85,92,118,127-130
+app/lib/tinypng-limits.ts
+  s_a99659e2059b87::t_503d33a90a6728 3-4,10-15,17-21,27-99
+app/api/tinypng/generate-front/route.ts
+  s_a99659e2059b87::t_ff0a88dc0239d6 10-14,39-44
+app/i18n/messages/zh-TW/profile.json
+  s_a99659e2059b87::t_63b792f1ec8da4 110,124-125
+app/i18n/messages/ko/profile.json
+  s_a99659e2059b87::t_f9ab614582696b 110,124-125
+CHANGELOG.md
+  s_a99659e2059b87::t_da16038cfb418a 4-9
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.3",
+  "base_commit_sha": "e7e86fcd923287009a24c273414cafec21083b6b",
+  "prompts": {},
+  "logical_commit_id": "e7e86fcd923287009a24c273414cafec21083b6b",
+  "sessions": {
+    "s_a99659e2059b87": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019e975d-bd82-71e0-9eb0-a55c4399b1b6",
+        "model": "gpt-5.5"
+      },
+      "human_author": "masongzhi <masongzhi@bigo.sg>"
+    }
+  }
+}
