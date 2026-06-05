@@ -1,6 +1,12 @@
 # Changelog
 
 All notable changes to this project will be documented in this file.
+## [1.13.13] - 2026-06-05
+
+### Features
+
+- **网站配置**：新增各角色单次 TinyPNG Token 批量生成数量配置，并让弹窗展示与生成接口校验读取同一份后台配置
+
 ## [1.13.12] - 2026-06-05
 
 ### Bug Fixes

@@ -108,6 +108,7 @@
     "adminContactPlaceholder": "이메일 또는 기타 연락 방법",
     "maxEmails": "역할별 최대 이메일 수",
     "tinypngDailyLimits": "역할별 일일 TinyPNG Token 수",
+    "tinypngPerRequestLimits": "역할별 1회 TinyPNG Token 수",
     "turnstile": {
       "enable": "Cloudflare Turnstile 활성화",
       "enableDescription": "활성화되면 사용자 이름/비밀번호 로그인 및 회원가입에 Turnstile 인증이 필요합니다",
@@ -122,7 +123,8 @@
     "saveSuccess": "설정이 성공적으로 저장되었습니다",
     "saveFailed": "설정 저장에 실패했습니다",
     "maxEmailsDescription": "공작, 기사, 평민의 이메일 생성 한도를 각각 설정할 수 있으며, 황제는 항상 무제한입니다.",
-    "tinypngDailyLimitsDescription": "공작, 기사, 평민이 하루에 생성할 수 있는 TinyPNG Token 수를 각각 설정합니다. 0은 일일 제한 없음을 의미합니다."
+    "tinypngDailyLimitsDescription": "공작, 기사, 평민이 하루에 생성할 수 있는 TinyPNG Token 수를 각각 설정합니다. 0은 일일 제한 없음을 의미합니다.",
+    "tinypngPerRequestLimitsDescription": "각 역할이 한 번에 생성할 수 있는 TinyPNG Token 수를 설정합니다. 0은 제한 없음을 의미하며, 팝업은 안전 기본 상한으로 50을 사용합니다."
   },
   "promote": {
     "title": "역할 관리",

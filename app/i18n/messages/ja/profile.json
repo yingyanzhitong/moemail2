@@ -108,6 +108,7 @@
     "adminContactPlaceholder": "メールまたはその他の連絡先",
     "maxEmails": "ロール別メールボックス上限",
     "tinypngDailyLimits": "ロール別 TinyPNG Token 日次上限",
+    "tinypngPerRequestLimits": "ロール別 TinyPNG Token 1回上限",
     "turnstile": {
       "enable": "Cloudflare Turnstile を有効化",
       "enableDescription": "有効にすると、ユーザー名とパスワードでのログイン・登録に Turnstile 認証が必要になります",
@@ -122,7 +123,8 @@
     "saveSuccess": "設定を保存しました",
     "saveFailed": "設定の保存に失敗しました",
     "maxEmailsDescription": "公爵・騎士・平民ごとに作成できるメールボックス上限を設定できます。皇帝は常に無制限です。",
-    "tinypngDailyLimitsDescription": "公爵・騎士・平民が 1 日に生成できる TinyPNG Token 数を設定できます。0 は日次上限なしを意味します。"
+    "tinypngDailyLimitsDescription": "公爵・騎士・平民が 1 日に生成できる TinyPNG Token 数を設定できます。0 は日次上限なしを意味します。",
+    "tinypngPerRequestLimitsDescription": "各ロールが 1 回に生成できる TinyPNG Token 数を設定できます。0 は無制限を意味し、ダイアログでは安全な既定上限として 50 を使用します。"
   },
   "promote": {
     "title": "ロール管理",

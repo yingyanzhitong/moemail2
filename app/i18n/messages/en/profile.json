@@ -108,6 +108,7 @@
     "adminContactPlaceholder": "Email or other contact method",
     "maxEmails": "Role-Based Mailbox Limits",
     "tinypngDailyLimits": "Daily TinyPNG Token Limits",
+    "tinypngPerRequestLimits": "Per-Batch TinyPNG Token Limits",
     "turnstile": {
       "enable": "Enable Cloudflare Turnstile",
       "enableDescription": "When enabled, username/password login and registration require Turnstile verification",
@@ -122,7 +123,8 @@
     "saveSuccess": "Configuration saved successfully",
     "saveFailed": "Failed to save configuration",
     "maxEmailsDescription": "Configure mailbox creation limits separately for Duke, Knight, and Civilian. Emperor always remains unlimited.",
-    "tinypngDailyLimitsDescription": "Configure how many TinyPNG Tokens Duke, Knight, and Civilian users can generate per day. 0 means no daily limit."
+    "tinypngDailyLimitsDescription": "Configure how many TinyPNG Tokens Duke, Knight, and Civilian users can generate per day. 0 means no daily limit.",
+    "tinypngPerRequestLimitsDescription": "Configure how many TinyPNG Tokens each role can generate per batch. 0 means unlimited; the dialog uses 50 as the safe default cap."
   },
   "promote": {
     "title": "Role Management",

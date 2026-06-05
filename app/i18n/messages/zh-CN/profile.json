@@ -108,6 +108,7 @@
     "adminContactPlaceholder": "邮箱或其他联系方式",
     "maxEmails": "各角色最大邮箱数",
     "tinypngDailyLimits": "各角色每日 TinyPNG Token 数",
+    "tinypngPerRequestLimits": "各角色单次 TinyPNG Token 数",
     "turnstile": {
       "enable": "启用 Cloudflare Turnstile",
       "enableDescription": "开启后，账号登录与注册将需要通过 Turnstile 验证",
@@ -122,7 +123,8 @@
     "saveSuccess": "配置保存成功",
     "saveFailed": "保存配置失败",
     "maxEmailsDescription": "支持分别配置公爵、骑士、平民的可创建邮箱上限，皇帝始终不受限制。",
-    "tinypngDailyLimitsDescription": "支持分别配置公爵、骑士、平民每天可生成的 TinyPNG Token 数量，0 表示不限制每日数量。"
+    "tinypngDailyLimitsDescription": "支持分别配置公爵、骑士、平民每天可生成的 TinyPNG Token 数量，0 表示不限制每日数量。",
+    "tinypngPerRequestLimitsDescription": "支持配置每次最多可批量生成的 TinyPNG Token 数量。0 表示不限制，弹窗默认按 50 作为安全上限。"
   },
   "promote": {
     "title": "角色管理",

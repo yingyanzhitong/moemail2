@@ -8,8 +8,10 @@ import { ROLES, type Role } from "@/lib/permissions"
 import { generateTinyPngApiKey } from "@/lib/tinypng"
 import {
   TINYPNG_DAILY_LIMIT_CONFIG_KEY,
+  TINYPNG_PER_REQUEST_LIMIT_CONFIG_KEY,
   getTinyPngLimitConfigForRole,
   parseRoleTinyPngDailyLimits,
+  parseRoleTinyPngPerRequestLimits,
 } from "@/lib/tinypng-limits"
 import { eq, sql, and, gte } from "drizzle-orm"
 
@@ -50,10 +52,14 @@ export async function POST(request: Request) {
     }
 
     const env = getRequestContext().env
-    const tinypngDailyLimitsConfig = await env.SITE_CONFIG.get(TINYPNG_DAILY_LIMIT_CONFIG_KEY)
+    const [tinypngDailyLimitsConfig, tinypngPerRequestLimitsConfig] = await Promise.all([
+      env.SITE_CONFIG.get(TINYPNG_DAILY_LIMIT_CONFIG_KEY),
+      env.SITE_CONFIG.get(TINYPNG_PER_REQUEST_LIMIT_CONFIG_KEY),
+    ])
     const limitConfig = getTinyPngLimitConfigForRole(
       userRole as Role,
       parseRoleTinyPngDailyLimits(tinypngDailyLimitsConfig),
+      parseRoleTinyPngPerRequestLimits(tinypngPerRequestLimitsConfig),
     )
     const db = createDb()
 

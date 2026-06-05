@@ -4,6 +4,12 @@ import { create } from "zustand"
 import { Role, ROLES } from "@/lib/permissions"
 import { useEffect } from "react"
 import { resolveRoleMaxEmails, type RoleEmailLimitConfig } from "@/lib/email-limits"
+import {
+  resolveRoleTinyPngDailyLimits,
+  resolveRoleTinyPngPerRequestLimits,
+  type RoleTinyPngDailyLimitConfig,
+  type RoleTinyPngPerRequestLimitConfig,
+} from "@/lib/tinypng-limits"
 
 export interface AppConfig {
   defaultRole: Exclude<Role, typeof ROLES.EMPEROR>
@@ -12,6 +18,8 @@ export interface AppConfig {
   adminContact: string
   maxEmails: number
   roleMaxEmails: RoleEmailLimitConfig
+  tinypngDailyLimits: RoleTinyPngDailyLimitConfig
+  tinypngPerRequestLimits: RoleTinyPngPerRequestLimitConfig
 }
 
 interface ConfigResponse {
@@ -20,6 +28,8 @@ interface ConfigResponse {
   adminContact: string
   maxEmails?: string | number
   roleMaxEmails?: Partial<RoleEmailLimitConfig>
+  tinypngDailyLimits?: Partial<RoleTinyPngDailyLimitConfig>
+  tinypngPerRequestLimits?: Partial<RoleTinyPngPerRequestLimitConfig>
 }
 
 interface ConfigStore {
@@ -40,6 +50,10 @@ const useConfigStore = create<ConfigStore>((set) => ({
       if (!res.ok) throw new Error("获取配置失败")
       const data = (await res.json()) as ConfigResponse
       const roleMaxEmails = resolveRoleMaxEmails(data.roleMaxEmails, data.maxEmails)
+      const tinypngDailyLimits = resolveRoleTinyPngDailyLimits(data.tinypngDailyLimits)
+      const tinypngPerRequestLimits = resolveRoleTinyPngPerRequestLimits(
+        data.tinypngPerRequestLimits,
+      )
 
       set({
         config: {
@@ -49,6 +63,8 @@ const useConfigStore = create<ConfigStore>((set) => ({
           adminContact: data.adminContact || "",
           maxEmails: roleMaxEmails.civilian,
           roleMaxEmails,
+          tinypngDailyLimits,
+          tinypngPerRequestLimits,
         },
         loading: false,
       })

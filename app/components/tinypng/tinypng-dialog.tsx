@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useEffect, useState, useMemo } from "react"
 import { useSession } from "next-auth/react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -10,6 +10,9 @@ import { useToast } from "@/components/ui/use-toast"
 import { Loader2, Copy } from "lucide-react"
 import { useCopy } from "@/hooks/use-copy"
 import { useRolePermission } from "@/hooks/use-role-permission"
+import { useConfig } from "@/hooks/use-config"
+import { ROLES, type Role } from "@/lib/permissions"
+import { getTinyPngLimitConfigForRole } from "@/lib/tinypng-limits"
 
 import { useTranslations } from "next-intl"
 
@@ -17,14 +20,6 @@ interface GeneratedApiKey {
   email: string
   apiKey: string
 }
-
-// 每次请求的限制配置（需要与后端保持一致）
-const PER_REQUEST_LIMITS = {
-  emperor: 0,  // 0 表示无限制，但 UI 上限制为 50
-  duke: 10,
-  knight: 5,
-  civilian: 0,
-} as const
 
 export function TinyPngDialog() {
   const { data: session } = useSession()
@@ -39,12 +34,13 @@ export function TinyPngDialog() {
   const { toast } = useToast()
   const { copyToClipboard } = useCopy()
   const { roles } = useRolePermission()
+  const { config } = useConfig()
   const t = useTranslations("common.tinypng")
 
   // 获取用户最高角色
   const highestRole = useMemo(() => {
     if (!roles?.length) return null
-    const priority = ['emperor', 'duke', 'knight', 'civilian']
+    const priority = [ROLES.EMPEROR, ROLES.DUKE, ROLES.KNIGHT, ROLES.CIVILIAN]
     for (const role of priority) {
       if (roles.some(r => r.name === role)) return role
     }
@@ -54,10 +50,20 @@ export function TinyPngDialog() {
   // 根据用户角色计算最大生成数量
   const maxCount = useMemo(() => {
     if (!highestRole) return 0
-    const limit = PER_REQUEST_LIMITS[highestRole as keyof typeof PER_REQUEST_LIMITS]
-    if (limit === 0) return 50  // 皇帝无限制，UI 上限为 50
-    return limit
-  }, [highestRole])
+    const limitConfig = getTinyPngLimitConfigForRole(
+      highestRole as Role,
+      config?.tinypngDailyLimits,
+      config?.tinypngPerRequestLimits,
+    )
+
+    return limitConfig.perRequest > 0 ? limitConfig.perRequest : 50
+  }, [config?.tinypngDailyLimits, config?.tinypngPerRequestLimits, highestRole])
+
+  useEffect(() => {
+    if (maxCount > 0 && count > maxCount) {
+      setCount(maxCount)
+    }
+  }, [count, maxCount])
 
   const handleCountChange = (value: string) => {
     const num = parseInt(value) || 1

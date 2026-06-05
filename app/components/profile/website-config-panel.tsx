@@ -24,8 +24,11 @@ import {
 } from "@/lib/email-limits"
 import {
   DEFAULT_TINYPNG_DAILY_LIMITS,
+  DEFAULT_TINYPNG_PER_REQUEST_LIMITS,
   resolveRoleTinyPngDailyLimits,
+  resolveRoleTinyPngPerRequestLimits,
   type RoleTinyPngDailyLimitConfig,
+  type RoleTinyPngPerRequestLimitConfig,
 } from "@/lib/tinypng-limits"
 
 interface WebsiteConfigResponse {
@@ -35,6 +38,7 @@ interface WebsiteConfigResponse {
   maxEmails?: string | number
   roleMaxEmails?: Partial<RoleEmailLimitConfig>
   tinypngDailyLimits?: Partial<RoleTinyPngDailyLimitConfig>
+  tinypngPerRequestLimits?: Partial<RoleTinyPngPerRequestLimitConfig>
   turnstile?: {
     enabled: boolean
     siteKey: string
@@ -49,6 +53,13 @@ interface RoleMaxEmailFormState {
 }
 
 interface RoleTinyPngDailyLimitFormState {
+  duke: string
+  knight: string
+  civilian: string
+}
+
+interface RoleTinyPngPerRequestLimitFormState {
+  emperor: string
   duke: string
   knight: string
   civilian: string
@@ -79,6 +90,19 @@ function createRoleTinyPngDailyLimitFormState(
   }
 }
 
+function createRoleTinyPngPerRequestLimitFormState(
+  roleLimits?: Partial<RoleTinyPngPerRequestLimitConfig>,
+): RoleTinyPngPerRequestLimitFormState {
+  const resolvedRoleLimits = resolveRoleTinyPngPerRequestLimits(roleLimits)
+
+  return {
+    emperor: resolvedRoleLimits.emperor.toString(),
+    duke: resolvedRoleLimits.duke.toString(),
+    knight: resolvedRoleLimits.knight.toString(),
+    civilian: resolvedRoleLimits.civilian.toString(),
+  }
+}
+
 export function WebsiteConfigPanel() {
   const t = useTranslations("profile.website")
   const tCard = useTranslations("profile.card")
@@ -91,6 +115,10 @@ export function WebsiteConfigPanel() {
   const [tinypngDailyLimits, setTinypngDailyLimits] =
     useState<RoleTinyPngDailyLimitFormState>(() =>
       createRoleTinyPngDailyLimitFormState(DEFAULT_TINYPNG_DAILY_LIMITS),
+    )
+  const [tinypngPerRequestLimits, setTinypngPerRequestLimits] =
+    useState<RoleTinyPngPerRequestLimitFormState>(() =>
+      createRoleTinyPngPerRequestLimitFormState(DEFAULT_TINYPNG_PER_REQUEST_LIMITS),
     )
   const [turnstileEnabled, setTurnstileEnabled] = useState(false)
   const [turnstileSiteKey, setTurnstileSiteKey] = useState("")
@@ -112,6 +140,9 @@ export function WebsiteConfigPanel() {
       setAdminContact(data.adminContact)
       setRoleMaxEmails(createRoleMaxEmailFormState(data.roleMaxEmails, data.maxEmails))
       setTinypngDailyLimits(createRoleTinyPngDailyLimitFormState(data.tinypngDailyLimits))
+      setTinypngPerRequestLimits(
+        createRoleTinyPngPerRequestLimitFormState(data.tinypngPerRequestLimits),
+      )
       setTurnstileEnabled(Boolean(data.turnstile?.enabled))
       setTurnstileSiteKey(data.turnstile?.siteKey ?? "")
       setTurnstileSecretKey(data.turnstile?.secretKey ?? "")
@@ -135,11 +166,23 @@ export function WebsiteConfigPanel() {
     }))
   }
 
+  const handleTinypngPerRequestLimitChange = (
+    role: keyof RoleTinyPngPerRequestLimitFormState,
+    value: string,
+  ) => {
+    setTinypngPerRequestLimits((prev) => ({
+      ...prev,
+      [role]: value,
+    }))
+  }
+
   const handleSave = async () => {
     setLoading(true)
     try {
       const resolvedRoleMaxEmails = resolveRoleMaxEmails(roleMaxEmails, roleMaxEmails.civilian)
       const resolvedTinyPngDailyLimits = resolveRoleTinyPngDailyLimits(tinypngDailyLimits)
+      const resolvedTinyPngPerRequestLimits =
+        resolveRoleTinyPngPerRequestLimits(tinypngPerRequestLimits)
       const res = await fetch("/api/config", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -149,6 +192,7 @@ export function WebsiteConfigPanel() {
           adminContact,
           roleMaxEmails: resolvedRoleMaxEmails,
           tinypngDailyLimits: resolvedTinyPngDailyLimits,
+          tinypngPerRequestLimits: resolvedTinyPngPerRequestLimits,
           turnstile: {
             enabled: turnstileEnabled,
             siteKey: turnstileSiteKey,
@@ -161,6 +205,9 @@ export function WebsiteConfigPanel() {
 
       setRoleMaxEmails(createRoleMaxEmailFormState(resolvedRoleMaxEmails))
       setTinypngDailyLimits(createRoleTinyPngDailyLimitFormState(resolvedTinyPngDailyLimits))
+      setTinypngPerRequestLimits(
+        createRoleTinyPngPerRequestLimitFormState(resolvedTinyPngPerRequestLimits),
+      )
       toast({
         title: t("saveSuccess"),
         description: t("saveSuccess"),
@@ -314,6 +361,72 @@ export function WebsiteConfigPanel() {
                   value={tinypngDailyLimits.civilian}
                   onChange={(e) => handleTinypngDailyLimitChange("civilian", e.target.value)}
                   placeholder={DEFAULT_TINYPNG_DAILY_LIMITS.civilian.toString()}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex items-start gap-4">
+          <span className="pt-2 text-sm">{t("tinypngPerRequestLimits")}:</span>
+          <div className="flex-1 space-y-3">
+            <p className="text-xs text-muted-foreground">
+              {t("tinypngPerRequestLimitsDescription")}
+            </p>
+            <div className="grid gap-3 md:grid-cols-4">
+              <div className="space-y-2">
+                <Label htmlFor="emperor-tinypng-per-request-limit" className="text-sm font-medium">
+                  {tCard("roles.EMPEROR")}
+                </Label>
+                <Input
+                  id="emperor-tinypng-per-request-limit"
+                  type="number"
+                  min="0"
+                  value={tinypngPerRequestLimits.emperor}
+                  onChange={(e) => handleTinypngPerRequestLimitChange("emperor", e.target.value)}
+                  placeholder={DEFAULT_TINYPNG_PER_REQUEST_LIMITS.emperor.toString()}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="duke-tinypng-per-request-limit" className="text-sm font-medium">
+                  {tCard("roles.DUKE")}
+                </Label>
+                <Input
+                  id="duke-tinypng-per-request-limit"
+                  type="number"
+                  min="0"
+                  value={tinypngPerRequestLimits.duke}
+                  onChange={(e) => handleTinypngPerRequestLimitChange("duke", e.target.value)}
+                  placeholder={DEFAULT_TINYPNG_PER_REQUEST_LIMITS.duke.toString()}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="knight-tinypng-per-request-limit" className="text-sm font-medium">
+                  {tCard("roles.KNIGHT")}
+                </Label>
+                <Input
+                  id="knight-tinypng-per-request-limit"
+                  type="number"
+                  min="0"
+                  value={tinypngPerRequestLimits.knight}
+                  onChange={(e) => handleTinypngPerRequestLimitChange("knight", e.target.value)}
+                  placeholder={DEFAULT_TINYPNG_PER_REQUEST_LIMITS.knight.toString()}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="civilian-tinypng-per-request-limit" className="text-sm font-medium">
+                  {tCard("roles.CIVILIAN")}
+                </Label>
+                <Input
+                  id="civilian-tinypng-per-request-limit"
+                  type="number"
+                  min="0"
+                  value={tinypngPerRequestLimits.civilian}
+                  onChange={(e) => handleTinypngPerRequestLimitChange("civilian", e.target.value)}
+                  placeholder={DEFAULT_TINYPNG_PER_REQUEST_LIMITS.civilian.toString()}
                 />
               </div>
             </div>
