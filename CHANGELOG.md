@@ -1,6 +1,12 @@
 # Changelog
 
 All notable changes to this project will be documented in this file.
+## [1.13.11] - 2026-06-05
+
+### Features
+
+- **网站配置**：新增公爵、骑士、平民每日 TinyPNG Token 生成数量配置，生成接口改为读取后台配置并兼容默认限额
+
 ## [1.13.10] - 2026-03-20
 
 ### Bug Fixes

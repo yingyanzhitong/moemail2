@@ -22,6 +22,11 @@ import {
   resolveRoleMaxEmails,
   type RoleEmailLimitConfig,
 } from "@/lib/email-limits"
+import {
+  DEFAULT_TINYPNG_DAILY_LIMITS,
+  resolveRoleTinyPngDailyLimits,
+  type RoleTinyPngDailyLimitConfig,
+} from "@/lib/tinypng-limits"
 
 interface WebsiteConfigResponse {
   defaultRole: Exclude<Role, typeof ROLES.EMPEROR>
@@ -29,6 +34,7 @@ interface WebsiteConfigResponse {
   adminContact: string
   maxEmails?: string | number
   roleMaxEmails?: Partial<RoleEmailLimitConfig>
+  tinypngDailyLimits?: Partial<RoleTinyPngDailyLimitConfig>
   turnstile?: {
     enabled: boolean
     siteKey: string
@@ -37,6 +43,12 @@ interface WebsiteConfigResponse {
 }
 
 interface RoleMaxEmailFormState {
+  duke: string
+  knight: string
+  civilian: string
+}
+
+interface RoleTinyPngDailyLimitFormState {
   duke: string
   knight: string
   civilian: string
@@ -55,6 +67,18 @@ function createRoleMaxEmailFormState(
   }
 }
 
+function createRoleTinyPngDailyLimitFormState(
+  roleLimits?: Partial<RoleTinyPngDailyLimitConfig>,
+): RoleTinyPngDailyLimitFormState {
+  const resolvedRoleLimits = resolveRoleTinyPngDailyLimits(roleLimits)
+
+  return {
+    duke: resolvedRoleLimits.duke.toString(),
+    knight: resolvedRoleLimits.knight.toString(),
+    civilian: resolvedRoleLimits.civilian.toString(),
+  }
+}
+
 export function WebsiteConfigPanel() {
   const t = useTranslations("profile.website")
   const tCard = useTranslations("profile.card")
@@ -64,6 +88,10 @@ export function WebsiteConfigPanel() {
   const [roleMaxEmails, setRoleMaxEmails] = useState<RoleMaxEmailFormState>(() =>
     createRoleMaxEmailFormState(DEFAULT_ROLE_MAX_ACTIVE_EMAILS),
   )
+  const [tinypngDailyLimits, setTinypngDailyLimits] =
+    useState<RoleTinyPngDailyLimitFormState>(() =>
+      createRoleTinyPngDailyLimitFormState(DEFAULT_TINYPNG_DAILY_LIMITS),
+    )
   const [turnstileEnabled, setTurnstileEnabled] = useState(false)
   const [turnstileSiteKey, setTurnstileSiteKey] = useState("")
   const [turnstileSecretKey, setTurnstileSecretKey] = useState("")
@@ -83,6 +111,7 @@ export function WebsiteConfigPanel() {
       setEmailDomains(data.emailDomains)
       setAdminContact(data.adminContact)
       setRoleMaxEmails(createRoleMaxEmailFormState(data.roleMaxEmails, data.maxEmails))
+      setTinypngDailyLimits(createRoleTinyPngDailyLimitFormState(data.tinypngDailyLimits))
       setTurnstileEnabled(Boolean(data.turnstile?.enabled))
       setTurnstileSiteKey(data.turnstile?.siteKey ?? "")
       setTurnstileSecretKey(data.turnstile?.secretKey ?? "")
@@ -96,10 +125,21 @@ export function WebsiteConfigPanel() {
     }))
   }
 
+  const handleTinypngDailyLimitChange = (
+    role: keyof RoleTinyPngDailyLimitFormState,
+    value: string,
+  ) => {
+    setTinypngDailyLimits((prev) => ({
+      ...prev,
+      [role]: value,
+    }))
+  }
+
   const handleSave = async () => {
     setLoading(true)
     try {
       const resolvedRoleMaxEmails = resolveRoleMaxEmails(roleMaxEmails, roleMaxEmails.civilian)
+      const resolvedTinyPngDailyLimits = resolveRoleTinyPngDailyLimits(tinypngDailyLimits)
       const res = await fetch("/api/config", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -108,6 +148,7 @@ export function WebsiteConfigPanel() {
           emailDomains,
           adminContact,
           roleMaxEmails: resolvedRoleMaxEmails,
+          tinypngDailyLimits: resolvedTinyPngDailyLimits,
           turnstile: {
             enabled: turnstileEnabled,
             siteKey: turnstileSiteKey,
@@ -119,6 +160,7 @@ export function WebsiteConfigPanel() {
       if (!res.ok) throw new Error(t("saveFailed"))
 
       setRoleMaxEmails(createRoleMaxEmailFormState(resolvedRoleMaxEmails))
+      setTinypngDailyLimits(createRoleTinyPngDailyLimitFormState(resolvedTinyPngDailyLimits))
       toast({
         title: t("saveSuccess"),
         description: t("saveSuccess"),
@@ -222,6 +264,56 @@ export function WebsiteConfigPanel() {
                   value={roleMaxEmails.civilian}
                   onChange={(e) => handleRoleLimitChange("civilian", e.target.value)}
                   placeholder={DEFAULT_ROLE_MAX_ACTIVE_EMAILS.civilian.toString()}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex items-start gap-4">
+          <span className="pt-2 text-sm">{t("tinypngDailyLimits")}:</span>
+          <div className="flex-1 space-y-3">
+            <p className="text-xs text-muted-foreground">{t("tinypngDailyLimitsDescription")}</p>
+            <div className="grid gap-3 md:grid-cols-3">
+              <div className="space-y-2">
+                <Label htmlFor="duke-tinypng-daily-limit" className="text-sm font-medium">
+                  {tCard("roles.DUKE")}
+                </Label>
+                <Input
+                  id="duke-tinypng-daily-limit"
+                  type="number"
+                  min="0"
+                  value={tinypngDailyLimits.duke}
+                  onChange={(e) => handleTinypngDailyLimitChange("duke", e.target.value)}
+                  placeholder={DEFAULT_TINYPNG_DAILY_LIMITS.duke.toString()}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="knight-tinypng-daily-limit" className="text-sm font-medium">
+                  {tCard("roles.KNIGHT")}
+                </Label>
+                <Input
+                  id="knight-tinypng-daily-limit"
+                  type="number"
+                  min="0"
+                  value={tinypngDailyLimits.knight}
+                  onChange={(e) => handleTinypngDailyLimitChange("knight", e.target.value)}
+                  placeholder={DEFAULT_TINYPNG_DAILY_LIMITS.knight.toString()}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="civilian-tinypng-daily-limit" className="text-sm font-medium">
+                  {tCard("roles.CIVILIAN")}
+                </Label>
+                <Input
+                  id="civilian-tinypng-daily-limit"
+                  type="number"
+                  min="0"
+                  value={tinypngDailyLimits.civilian}
+                  onChange={(e) => handleTinypngDailyLimitChange("civilian", e.target.value)}
+                  placeholder={DEFAULT_TINYPNG_DAILY_LIMITS.civilian.toString()}
                 />
               </div>
             </div>

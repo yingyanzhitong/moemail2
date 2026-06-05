@@ -107,6 +107,7 @@
     "adminContact": "管理員聯絡方式",
     "adminContactPlaceholder": "郵箱或其他聯絡方式",
     "maxEmails": "各角色最大郵箱數",
+    "tinypngDailyLimits": "各角色每日 TinyPNG Token 數",
     "turnstile": {
       "enable": "啟用 Cloudflare Turnstile",
       "enableDescription": "啟用後，使用者名稱與密碼的登入／註冊需要通過 Turnstile 驗證",
@@ -120,7 +121,8 @@
     "saving": "儲存中...",
     "saveSuccess": "設定儲存成功",
     "saveFailed": "儲存設定失敗",
-    "maxEmailsDescription": "支援分別設定公爵、騎士、平民的可建立郵箱上限，皇帝始終不受限制。"
+    "maxEmailsDescription": "支援分別設定公爵、騎士、平民的可建立郵箱上限，皇帝始終不受限制。",
+    "tinypngDailyLimitsDescription": "支援分別設定公爵、騎士、平民每天可生成的 TinyPNG Token 數量，0 表示不限制每日數量。"
   },
   "promote": {
     "title": "角色管理",

@@ -6,7 +6,11 @@ import { getUserId } from "@/lib/apiKey"
 import { getUserRole } from "@/lib/auth"
 import { ROLES, type Role } from "@/lib/permissions"
 import { generateTinyPngApiKeysBatch } from "@/lib/tinypng"
-import { TINYPNG_KEY_LIMITS } from "@/lib/tinypng-limits"
+import {
+  TINYPNG_DAILY_LIMIT_CONFIG_KEY,
+  getTinyPngLimitConfigForRole,
+  parseRoleTinyPngDailyLimits,
+} from "@/lib/tinypng-limits"
 import { eq, sql, and, gte } from "drizzle-orm"
 
 export const runtime = "edge"
@@ -49,8 +53,13 @@ export async function POST(request: Request) {
       )
     }
 
+    const env = getRequestContext().env
+    const tinypngDailyLimitsConfig = await env.SITE_CONFIG.get(TINYPNG_DAILY_LIMIT_CONFIG_KEY)
+    const limitConfig = getTinyPngLimitConfigForRole(
+      userRole as Role,
+      parseRoleTinyPngDailyLimits(tinypngDailyLimitsConfig),
+    )
     const db = createDb()
-    const limitConfig = TINYPNG_KEY_LIMITS[userRole as Role]
 
     // 解析请求参数
     const body = await request.json().catch(() => ({})) as { count?: number; domain?: string; expiresInHours?: number }
@@ -110,7 +119,6 @@ export async function POST(request: Request) {
     }
 
     // 获取可用的邮箱域名
-    const env = getRequestContext().env
     const domainString = await env.SITE_CONFIG.get("EMAIL_DOMAINS")
     const domains = domainString ? domainString.split(',').map((d: string) => d.trim()) : []
     

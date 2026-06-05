@@ -7,6 +7,12 @@ import {
   parseRoleMaxEmails,
   type RoleEmailLimitConfig,
 } from "@/lib/email-limits"
+import {
+  TINYPNG_DAILY_LIMIT_CONFIG_KEY,
+  parseRoleTinyPngDailyLimits,
+  resolveRoleTinyPngDailyLimits,
+  type RoleTinyPngDailyLimitConfig,
+} from "@/lib/tinypng-limits"
 
 export const runtime = "edge"
 
@@ -20,6 +26,7 @@ export async function GET() {
     adminContact,
     maxEmails,
     roleMaxEmails,
+    tinypngDailyLimits,
     turnstileEnabled,
     turnstileSiteKey,
     turnstileSecretKey,
@@ -29,12 +36,14 @@ export async function GET() {
     env.SITE_CONFIG.get("ADMIN_CONTACT"),
     env.SITE_CONFIG.get("MAX_EMAILS"),
     env.SITE_CONFIG.get(EMAIL_ROLE_LIMIT_CONFIG_KEY),
+    env.SITE_CONFIG.get(TINYPNG_DAILY_LIMIT_CONFIG_KEY),
     env.SITE_CONFIG.get("TURNSTILE_ENABLED"),
     env.SITE_CONFIG.get("TURNSTILE_SITE_KEY"),
     env.SITE_CONFIG.get("TURNSTILE_SECRET_KEY"),
   ])
 
   const resolvedRoleMaxEmails = parseRoleMaxEmails(roleMaxEmails, maxEmails)
+  const resolvedTinyPngDailyLimits = parseRoleTinyPngDailyLimits(tinypngDailyLimits)
 
   return Response.json({
     defaultRole: defaultRole || ROLES.CIVILIAN,
@@ -42,6 +51,7 @@ export async function GET() {
     adminContact: adminContact || "",
     maxEmails: resolvedRoleMaxEmails.civilian.toString(),
     roleMaxEmails: resolvedRoleMaxEmails,
+    tinypngDailyLimits: resolvedTinyPngDailyLimits,
     turnstile: canManageConfig
       ? {
           enabled: turnstileEnabled === "true",
@@ -64,13 +74,22 @@ export async function POST(request: Request) {
     )
   }
 
-  const { defaultRole, emailDomains, adminContact, maxEmails, roleMaxEmails, turnstile } =
+  const {
+    defaultRole,
+    emailDomains,
+    adminContact,
+    maxEmails,
+    roleMaxEmails,
+    tinypngDailyLimits,
+    turnstile,
+  } =
     (await request.json()) as {
       defaultRole: Exclude<Role, typeof ROLES.EMPEROR>
       emailDomains: string
       adminContact: string
       maxEmails?: string
       roleMaxEmails?: Partial<Record<keyof RoleEmailLimitConfig, number | string>>
+      tinypngDailyLimits?: Partial<Record<keyof RoleTinyPngDailyLimitConfig, number | string>>
       turnstile?: {
         enabled: boolean
         siteKey: string
@@ -96,6 +115,7 @@ export async function POST(request: Request) {
   }
 
   const resolvedRoleMaxEmails = resolveRoleMaxEmails(roleMaxEmails, maxEmails)
+  const resolvedTinyPngDailyLimits = resolveRoleTinyPngDailyLimits(tinypngDailyLimits)
   const env = getRequestContext().env
 
   await Promise.all([
@@ -104,6 +124,10 @@ export async function POST(request: Request) {
     env.SITE_CONFIG.put("ADMIN_CONTACT", adminContact),
     env.SITE_CONFIG.put("MAX_EMAILS", resolvedRoleMaxEmails.civilian.toString()),
     env.SITE_CONFIG.put(EMAIL_ROLE_LIMIT_CONFIG_KEY, JSON.stringify(resolvedRoleMaxEmails)),
+    env.SITE_CONFIG.put(
+      TINYPNG_DAILY_LIMIT_CONFIG_KEY,
+      JSON.stringify(resolvedTinyPngDailyLimits),
+    ),
     env.SITE_CONFIG.put("TURNSTILE_ENABLED", turnstileConfig.enabled.toString()),
     env.SITE_CONFIG.put("TURNSTILE_SITE_KEY", turnstileConfig.siteKey),
     env.SITE_CONFIG.put("TURNSTILE_SECRET_KEY", turnstileConfig.secretKey),
