@@ -1,0 +1,98 @@
+app/api/tinypng/desktop/grants/preview/route.ts
+  s_5f5841f18f5bde::t_dbd9be1ba8edad 1-18
+app/api/tinypng/desktop/grants/route.ts
+  s_5f5841f18f5bde::t_5bd39de48c3a1a 7,20,24-28,35
+app/lib/desktop-license-types.ts
+  s_5f5841f18f5bde::t_73be6b795a2359 4-7,14-19,25
+app/lib/schema.ts
+  s_5f5841f18f5bde::t_554b5c1cfbf4f5 274,304-306
+app/lib/tinypng-pool-task.ts
+  s_6c5511064010f0::t_e60f36b81a9480 8,201-202
+desktop/smart-image-compressor/src-tauri/src/commands.rs
+  s_5f5841f18f5bde::t_c1fb9398f2124a 21-22,86-97
+desktop/smart-image-compressor/src-tauri/src/lib.rs
+  s_5f5841f18f5bde::t_395c9f94c3cfad 72
+desktop/smart-image-compressor/src-tauri/src/license_api.rs
+  s_5f5841f18f5bde::t_1a68abedb7ea0f 10,176-191
+desktop/smart-image-compressor/src-tauri/src/models.rs
+  s_5f5841f18f5bde::t_ac5b89ce7131c8 17,32-33,40-49
+desktop/smart-image-compressor/src/App.tsx
+  s_5f5841f18f5bde::t_a138ab8851bcad 1,7,12,15,37-38,69,105-112,118,147-150
+desktop/smart-image-compressor/src/components/activation-dialog.tsx
+  s_5f5841f18f5bde::t_18e9f498f796e9 5,24
+desktop/smart-image-compressor/src/components/activation-screen.tsx
+  s_5f5841f18f5bde::t_08ee260c1d4e4a 1-140
+desktop/smart-image-compressor/src/components/license-panel.tsx
+  s_5f5841f18f5bde::t_e6d4ad4fcc8202 1,57,60-63
+desktop/smart-image-compressor/src/lib/activation.ts
+  s_5f5841f18f5bde::t_65eaee467b79cf 1-12
+desktop/smart-image-compressor/src/lib/desktop-api.ts
+  s_5f5841f18f5bde::t_92ea16334b35aa 2,9,26-36
+desktop/smart-image-compressor/src/types.ts
+  s_5f5841f18f5bde::t_357e49cfff45d3 9,14-21
+drizzle/0027_dynamic-desktop-grants.sql
+  s_5f5841f18f5bde::t_c1826cc775015d 1-4
+app/api/admin/tinypng-pool/config/route.ts
+  s_99e671d78654a7::t_30dc6d62db6212 4-8,22,25-28,30-44,46-75,78,80-83
+app/api/admin/tinypng-pool/stats/route.ts
+  s_99e671d78654a7::t_5a46a9d1a5ab6a 5-10,20,56,68,93,110,112-113,123-126
+app/components/profile/desktop-license-admin.tsx
+  s_5f5841f18f5bde::t_c8bc9cb1c451d0 15,155
+app/components/profile/tinypng-pool-stats-card.tsx
+  s_99e671d78654a7::t_e3d99fed0d881e 39,57,66-70,109-110,113-115,117,137,183,188,210,217,311-343,395-446,487,500-505,561,567-579,581,591,625-629
+app/lib/desktop-license-service.ts
+  s_5f5841f18f5bde::t_e7bf4e1ed147de 16,18-20,26,30,56-73,123,130,132-133,139-140,142-143,167-168,177,184,190,196-202,210-212,216-234,262-263,330,341,353,357,514-515,541-542
+app/lib/tinypng-pool-schedule.ts
+  s_99e671d78654a7::t_6fe18a6ce50a18 1-189
+app/lib/tinypng-pool-success-rate.ts
+  s_99e671d78654a7::t_00ae16f893cb86 1-8
+desktop/smart-image-compressor/src/App.test.tsx
+  s_5f5841f18f5bde::t_eb8121b2c1d6b2 1-93
+desktop/smart-image-compressor/src/components/license-panel.test.tsx
+  s_5f5841f18f5bde::t_7ae1f8f72e093f 10-11,22,26-29
+tests/desktop-license-sql.test.mjs
+  s_5f5841f18f5bde::t_e69333ac1fefec 19,28,33-34,55-63,68
+tests/tinypng-pool-schedule.test.mjs
+  s_99e671d78654a7::t_279734215e5c68 1-45
+tests/tinypng-pool-success-rate.test.mjs
+  s_99e671d78654a7::t_915ba8f7acd5f4 1-14
+workers/tinypng-pool.ts
+  s_99e671d78654a7::t_7c70eafd1f30e9 5-8,11-23
+wrangler.tinypng.example.json
+  s_99e671d78654a7::t_417bfc7dc44679 11
+wrangler.tinypng.json
+  s_99e671d78654a7::t_058b2c2428d3ad 11
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.12",
+  "base_commit_sha": "57f82d5340b5b50a9a1ab6072920cb3f7fc9500a",
+  "prompts": {},
+  "logical_commit_id": "57f82d5340b5b50a9a1ab6072920cb3f7fc9500a",
+  "sessions": {
+    "s_5f5841f18f5bde": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f5a71-61ad-7790-a2b9-69f9f31876a2",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "masongzhi <masongzhi@bigo.sg>"
+    },
+    "s_6c5511064010f0": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f5adf-ff14-7d70-87d8-b760c6b72bd0",
+        "model": "gpt-5.5"
+      },
+      "human_author": "masongzhi <masongzhi@bigo.sg>"
+    },
+    "s_99e671d78654a7": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f5a3b-0398-7fe0-b196-0c011ca70ed8",
+        "model": "unknown"
+      },
+      "human_author": "masongzhi <masongzhi@bigo.sg>"
+    }
+  }
+}
