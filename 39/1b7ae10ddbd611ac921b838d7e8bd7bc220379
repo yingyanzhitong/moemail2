@@ -1,0 +1,32 @@
+CHANGELOG.md
+  s_99e671d78654a7::t_5dc36bb53808f2 5-10
+app/lib/tinypng-pool-task.ts
+  s_5f5841f18f5bde::t_9d4f1feb1e6183 7,27-30,131-136,150-154
+package.json
+  s_99e671d78654a7::t_ec9fc94b372346 3
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.12",
+  "base_commit_sha": "391b7ae10ddbd611ac921b838d7e8bd7bc220379",
+  "prompts": {},
+  "logical_commit_id": "391b7ae10ddbd611ac921b838d7e8bd7bc220379",
+  "sessions": {
+    "s_5f5841f18f5bde": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f5a71-61ad-7790-a2b9-69f9f31876a2",
+        "model": "unknown"
+      },
+      "human_author": "masongzhi <masongzhi@bigo.sg>"
+    },
+    "s_99e671d78654a7": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f5a3b-0398-7fe0-b196-0c011ca70ed8",
+        "model": "unknown"
+      },
+      "human_author": "masongzhi <masongzhi@bigo.sg>"
+    }
+  }
+}
