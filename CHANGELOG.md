@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.14.2] - 2026-07-13
+
+### Improvements
+
+- **TinyPNG 缓冲池**：同一批次内的相邻账号注册间隔调整为 1 分钟，并在任务完整日志中记录每次等待。
+
 ## [1.14.1] - 2026-07-13
 
 ### Bug Fixes

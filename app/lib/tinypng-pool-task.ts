@@ -4,6 +4,7 @@ import { emails, tinypngKeyPool, tinypngTaskRuns } from './schema'
 
 const POOL_LIMIT = 100000
 const BATCH_SIZE = 5
+const REGISTRATION_INTERVAL_MS = 60 * 1000
 
 type TaskRunStatus = 'success' | 'partial_failure' | 'skipped' | 'failed'
 
@@ -21,6 +22,10 @@ export interface TinyPngPoolTaskResult {
 
 function getErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error)
+}
+
+function waitForNextRegistration(): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, REGISTRATION_INTERVAL_MS))
 }
 
 export async function runTinyPngPoolTask(
@@ -124,14 +129,13 @@ export async function runTinyPngPoolTask(
                 updatedAt: new Date()
               })
               .where(eq(tinypngKeyPool.email, emailAddress))
-            continue
+          } else {
+            successfulCount++
+            logs.push(`注册成功：${emailAddress}\nHTTP ${response.status} ${response.statusText}`)
+            await db.update(tinypngKeyPool)
+              .set({ status: 'registered', updatedAt: new Date() })
+              .where(eq(tinypngKeyPool.email, emailAddress))
           }
-
-          successfulCount++
-          logs.push(`注册成功：${emailAddress}\nHTTP ${response.status} ${response.statusText}`)
-          await db.update(tinypngKeyPool)
-            .set({ status: 'registered', updatedAt: new Date() })
-            .where(eq(tinypngKeyPool.email, emailAddress))
         } catch (error) {
           failedCount++
           const detail = getErrorMessage(error)
@@ -143,6 +147,11 @@ export async function runTinyPngPoolTask(
               updatedAt: new Date()
             })
             .where(eq(tinypngKeyPool.email, emailAddress))
+        }
+
+        if (i < BATCH_SIZE - 1) {
+          logs.push('等待 1 分钟后执行下一个注册任务。')
+          await waitForNextRegistration()
         }
       }
 
