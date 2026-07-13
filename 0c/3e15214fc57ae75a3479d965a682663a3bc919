@@ -1,0 +1,40 @@
+app/api/admin/tinypng-pool/stats/route.ts
+  s_5f5841f18f5bde::t_e71a9b664cfb0c 18-25,63-65,106
+drizzle/0027_numerous_thing.sql
+  s_99e671d78654a7::t_ca432702315a0f 1-2
+drizzle/meta/0027_snapshot.json
+  s_99e671d78654a7::t_771cf42abe8824 1-1680
+drizzle/meta/_journal.json
+  s_99e671d78654a7::t_3c32e480c6bd4b 193-199
+workers/email-receiver.ts
+  s_5f5841f18f5bde::t_a2bf0f3b88063d 8-11,17,21,40,49,59-60,69,71,73-89,91-119,121-128,130-191,193-239,248,251
+app/lib/schema.ts
+  s_99e671d78654a7::t_735a4bb5add7c3 245,252,257
+app/lib/tinypng-pool-task-log.ts
+  s_99e671d78654a7::t_2b8557b2548a73 1-23
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.12",
+  "base_commit_sha": "0c3e15214fc57ae75a3479d965a682663a3bc919",
+  "prompts": {},
+  "logical_commit_id": "0c3e15214fc57ae75a3479d965a682663a3bc919",
+  "sessions": {
+    "s_5f5841f18f5bde": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f5a71-61ad-7790-a2b9-69f9f31876a2",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "masongzhi <masongzhi@bigo.sg>"
+    },
+    "s_99e671d78654a7": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f5a3b-0398-7fe0-b196-0c011ca70ed8",
+        "model": "gpt-5.6-terra"
+      },
+      "human_author": "masongzhi <masongzhi@bigo.sg>"
+    }
+  }
+}
