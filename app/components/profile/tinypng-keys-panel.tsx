@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react"
 import { Button } from "@/components/ui/button"
-import { ImageIcon, Loader2, Copy, Trash2, RefreshCw, Clock3, History } from "lucide-react"
+import { ImageIcon, Loader2, Copy, Trash2, RefreshCw, Clock3, History, Play } from "lucide-react"
 import { useToast } from "@/components/ui/use-toast"
 import { useCopy } from "@/hooks/use-copy"
 import { useRolePermission } from "@/hooks/use-role-permission"
@@ -71,10 +71,12 @@ export function TinyPngKeysPanel() {
   const [taskStatus, setTaskStatus] = useState<TinyPngTaskStatus | null>(null)
   const [loading, setLoading] = useState(true)
   const [deleting, setDeleting] = useState<string | null>(null)
+  const [running, setRunning] = useState(false)
   const { toast } = useToast()
   const { copyToClipboard } = useCopy()
   const { checkPermission } = useRolePermission()
   const canManageApiKey = checkPermission(PERMISSIONS.MANAGE_API_KEY)
+  const canRunTask = checkPermission(PERMISSIONS.MANAGE_CONFIG)
 
   const fetchKeys = useCallback(async () => {
     try {
@@ -135,6 +137,37 @@ export function TinyPngKeysPanel() {
     copyToClipboard(text)
   }
 
+  const runTaskNow = async () => {
+    try {
+      setRunning(true)
+      const res = await fetch("/api/admin/tinypng-pool/run", { method: "POST" })
+      const data = await res.json() as {
+        error?: string
+        result?: { status: TinyPngTaskRunStatus; message: string }
+      }
+
+      if (!res.ok || !data.result) {
+        throw new Error(data.error || "任务执行失败")
+      }
+
+      toast({
+        title: data.result.status === 'skipped' ? '本次任务已跳过' : '任务执行完成',
+        description: data.result.message,
+        variant: data.result.status === 'failed' ? 'destructive' : 'default',
+      })
+      await fetchKeys()
+    } catch (error) {
+      console.error(error)
+      toast({
+        title: "任务执行失败",
+        description: error instanceof Error ? error.message : "请稍后重试",
+        variant: "destructive"
+      })
+    } finally {
+      setRunning(false)
+    }
+  }
+
   const lastRun = taskStatus?.lastRun ?? null
   const lastRunMeta = lastRun ? TASK_STATUS_META[lastRun.status] : null
 
@@ -149,7 +182,19 @@ export function TinyPngKeysPanel() {
           <ImageIcon className="w-5 h-5 text-primary" />
           <h2 className="text-lg font-semibold">TinyPNG API Keys</h2>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap justify-end gap-2">
+          {canRunTask ? (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={runTaskNow}
+              disabled={running || loading}
+              className="gap-2"
+            >
+              {running ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
+              {running ? '执行中…' : '立即执行'}
+            </Button>
+          ) : null}
           {keys.length > 0 && (
             <Button
               variant="outline"

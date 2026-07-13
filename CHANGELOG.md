@@ -1,6 +1,14 @@
 # Changelog
 
 All notable changes to this project will be documented in this file.
+
+## [1.13.15] - 2026-07-13
+
+### Features
+
+- **TinyPNG 缓冲池**：个人中心新增“立即执行”按钮，仅皇帝可手动运行账号池补充任务。
+- **TinyPNG 任务执行**：定时任务与手动任务复用同一执行逻辑，统一记录任务结果。
+
 ## [1.13.14] - 2026-07-13
 
 ### Features
