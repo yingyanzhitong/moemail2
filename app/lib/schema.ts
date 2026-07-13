@@ -249,3 +249,17 @@ export const tinypngKeyPool = sqliteTable('tinypng_key_pool', {
 }, (table) => ({
   statusIdx: index('tinypng_key_pool_status_idx').on(table.status),
 }));
+
+export const tinypngTaskRuns = sqliteTable('tinypng_task_runs', {
+  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  status: text('status', { enum: ['success', 'partial_failure', 'skipped', 'failed'] }).notNull(),
+  message: text('message').notNull(),
+  createdCount: integer('created_count').notNull().default(0),
+  cleanedCount: integer('cleaned_count').notNull().default(0),
+  failedCount: integer('failed_count').notNull().default(0),
+  successfulCount: integer('successful_count').notNull().default(0),
+  startedAt: integer('started_at', { mode: 'timestamp_ms' }).notNull(),
+  completedAt: integer('completed_at', { mode: 'timestamp_ms' }).notNull(),
+}, (table) => ({
+  completedAtIdx: index('tinypng_task_runs_completed_at_idx').on(table.completedAt),
+}));

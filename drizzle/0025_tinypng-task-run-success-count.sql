@@ -1,0 +1,1 @@
+ALTER TABLE `tinypng_task_runs` ADD `successful_count` integer DEFAULT 0 NOT NULL;

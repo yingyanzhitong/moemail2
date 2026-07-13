@@ -1,6 +1,17 @@
 # Changelog
 
 All notable changes to this project will be documented in this file.
+## [1.13.14] - 2026-07-13
+
+### Features
+
+- **TinyPNG 任务状态**：API Key 卡片展示上次任务的执行结果、执行时间、耗时、成功账号数与下次计划时间
+- **TinyPNG 缓冲池**：定时 Worker 持久化任务执行结果，方便追踪成功、跳过和失败状态
+
+### Improvements
+
+- **TinyPNG 缓冲池**：账号数量上限从 10,000 提升至 100,000
+
 ## [1.13.13] - 2026-06-05
 
 ### Features
