@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.14.3] - 2026-07-13
+
+### Bug Fixes
+
+- **Windows 发行**：为桌面工作区增加独立 PostCSS 配置，避免 Windows runner 向上加载根项目配置并在隔离依赖环境中找不到 Tailwind CSS。
+
 ## [1.14.2] - 2026-07-13
 
 ### Improvements
