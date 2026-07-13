@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.14.7] - 2026-07-13
+
+### Bug Fixes
+
+- **数据库迁移**：同步动态桌面授权字段的 Drizzle 快照，避免部署时重复生成 `token_count` 等已存在字段的迁移。
+
 ## [1.14.6] - 2026-07-13
 
 ### Features

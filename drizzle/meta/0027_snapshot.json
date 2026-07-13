@@ -333,6 +333,30 @@
           "autoincrement": false,
           "default": "'issued'"
         },
+        "token_count": {
+          "name": "token_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 40
+        },
+        "quota_total": {
+          "name": "quota_total",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 10000
+        },
+        "duration_days": {
+          "name": "duration_days",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 30
+        },
         "expires_at": {
           "name": "expires_at",
           "type": "integer",
@@ -604,6 +628,14 @@
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false
+        },
+        "initial_key_count": {
+          "name": "initial_key_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 40
         },
         "key_limit": {
           "name": "key_limit",
