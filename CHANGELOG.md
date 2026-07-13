@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.14.4] - 2026-07-13
+
+### Features
+
+- **TinyPNG 缓冲池日志**：立即执行时以弹窗每 2 秒刷新任务日志；上次任务日志改为点击后在弹窗中查看。
+- **TinyPNG Token 流程**：串联创建邮箱、注册、验证邮件、Magic Link、Token、Bearer Token 和 API Key 入池全链路日志，并对敏感值进行脱敏。
+
+### Improvements
+
+- **任务追踪**：Pool 记录关联任务 ID，邮件 Worker 的异步处理步骤会原子追加到对应任务日志。
+
 ## [1.14.3] - 2026-07-13
 
 ### Bug Fixes

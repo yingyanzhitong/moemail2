@@ -15,7 +15,14 @@ import { and, count, desc, eq, gte, lte } from "drizzle-orm"
 
 export const runtime = "edge"
 
-function splitTaskMessage(message: string) {
+function splitTaskMessage(message: string, status: string) {
+  if (status === 'running') {
+    return {
+      summary: '任务执行中',
+      logs: message ? [message] : [],
+    }
+  }
+
   const [summary, ...logLines] = message.split("\n")
   const log = logLines.join("\n").trim()
 
@@ -53,7 +60,9 @@ export async function GET() {
       env.SITE_CONFIG.get("EMAIL_DOMAINS"),
       env.SITE_CONFIG.get(TINYPNG_POOL_EMAIL_DOMAIN_CONFIG_KEY),
     ])
-    const parsedLastRun = lastTaskRun ? splitTaskMessage(lastTaskRun.message) : null
+    const parsedLastRun = lastTaskRun
+      ? splitTaskMessage(lastTaskRun.message, lastTaskRun.status)
+      : null
     const failedItems = lastTaskRun && parsedLastRun?.logs.length === 0
       ? await db.select({
         email: tinypngKeyPool.email,
@@ -94,6 +103,7 @@ export async function GET() {
         scheduleLabel: TINYPNG_POOL_SCHEDULE_LABEL,
         nextRunAt: getNextTinyPngPoolRunAt().toISOString(),
         lastRun: lastTaskRun ? {
+          id: lastTaskRun.id,
           status: lastTaskRun.status,
           message: parsedLastRun?.summary || lastTaskRun.message,
           logs: lastRunLogs,

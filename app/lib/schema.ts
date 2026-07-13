@@ -242,17 +242,19 @@ export const tinypngKeyPool = sqliteTable('tinypng_key_pool', {
   id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
   email: text('email').notNull().unique(), // The generated email address
   apiKey: text('api_key'), // The acquired API key
+  taskRunId: text('task_run_id'),
   status: text('status', { enum: ['pending', 'registered', 'link_received', 'active', 'reserved', 'assigned', 'invalid', 'used', 'registration_failed'] }).notNull().default('pending'),
   errorMessage: text('error_message'),
   createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull().$defaultFn(() => new Date()),
   updatedAt: integer('updated_at', { mode: 'timestamp_ms' }).notNull().$defaultFn(() => new Date()),
 }, (table) => ({
   statusIdx: index('tinypng_key_pool_status_idx').on(table.status),
+  taskRunIdx: index('tinypng_key_pool_task_run_idx').on(table.taskRunId),
 }));
 
 export const tinypngTaskRuns = sqliteTable('tinypng_task_runs', {
   id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
-  status: text('status', { enum: ['success', 'partial_failure', 'skipped', 'failed'] }).notNull(),
+  status: text('status', { enum: ['running', 'success', 'partial_failure', 'skipped', 'failed'] }).notNull(),
   message: text('message').notNull(),
   createdCount: integer('created_count').notNull().default(0),
   cleanedCount: integer('cleaned_count').notNull().default(0),

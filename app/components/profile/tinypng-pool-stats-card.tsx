@@ -1,7 +1,7 @@
 "use client"
 
-import { useCallback, useEffect, useState } from "react"
-import { Database, Link, Copy, Check, Loader2, Clock3, History, Play } from "lucide-react"
+import { useCallback, useEffect, useRef, useState } from "react"
+import { Database, Link, Copy, Check, Loader2, Clock3, History, Play, ScrollText } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useLocale, useTranslations } from "next-intl"
 import { Button } from "@/components/ui/button"
@@ -23,12 +23,13 @@ import {
 } from "@/components/ui/select"
 import { useToast } from "@/components/ui/use-toast"
 
-type TinyPngTaskRunStatus = 'success' | 'partial_failure' | 'skipped' | 'failed'
+type TinyPngTaskRunStatus = 'running' | 'success' | 'partial_failure' | 'skipped' | 'failed'
 
 interface TinyPngTaskStatus {
   scheduleLabel: string
   nextRunAt: string
   lastRun: {
+    id: string
     status: TinyPngTaskRunStatus
     message: string
     createdCount: number
@@ -64,6 +65,7 @@ interface GenerateResponse {
 }
 
 const TASK_STATUS_META: Record<TinyPngTaskRunStatus, { label: string; className: string }> = {
+  running: { label: '执行中', className: 'text-sky-600 dark:text-sky-400' },
   success: { label: '执行成功', className: 'text-emerald-600 dark:text-emerald-400' },
   partial_failure: { label: '部分失败', className: 'text-amber-600 dark:text-amber-400' },
   skipped: { label: '本次跳过', className: 'text-muted-foreground' },
@@ -102,6 +104,10 @@ export function TinyPngPoolStatsCard() {
   const [generatedLink, setGeneratedLink] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [taskLogDialogOpen, setTaskLogDialogOpen] = useState(false)
+  const [taskLogTitle, setTaskLogTitle] = useState('TinyPNG Pool 执行日志')
+  const [taskLogs, setTaskLogs] = useState<string[]>([])
+  const lastTaskLogValueRef = useRef('')
   const router = useRouter()
   const locale = useLocale()
   const tWebsite = useTranslations("profile.website")
@@ -115,9 +121,11 @@ export function TinyPngPoolStatsCard() {
       const data = await res.json() as PoolStats
       setStats(data)
       setEmailDomain(data.emailDomain)
+      return data
     } catch (error) {
       console.error(error)
       setStats(null)
+      return null
     } finally {
       if (showLoading) setLoading(false)
     }
@@ -126,6 +134,30 @@ export function TinyPngPoolStatsCard() {
   useEffect(() => {
     fetchStats()
   }, [fetchStats])
+
+  useEffect(() => {
+    if (!running) return
+
+    const refreshTaskLogs = async () => {
+      const data = await fetchStats(false)
+      const lastRun = data?.taskStatus.lastRun
+      if (!lastRun || lastRun.status !== 'running') return
+
+      const nextLogs = lastRun.logs.length > 0 ? lastRun.logs : [lastRun.message]
+      const nextValue = nextLogs.join("\n\n")
+      if (nextValue !== lastTaskLogValueRef.current) {
+        lastTaskLogValueRef.current = nextValue
+        setTaskLogs(nextLogs)
+      }
+    }
+
+    void refreshTaskLogs()
+    const timer = window.setInterval(() => {
+      void refreshTaskLogs()
+    }, 2000)
+
+    return () => window.clearInterval(timer)
+  }, [fetchStats, running])
 
   const handleGenerate = async () => {
     setGenerateLoading(true)
@@ -164,12 +196,27 @@ export function TinyPngPoolStatsCard() {
   }
 
   const handleRunTask = async () => {
+    const pendingLogs = [
+      '正在创建任务记录，日志会自动刷新。',
+      '本批次包含 5 个账号，相邻注册间隔 1 分钟。',
+      '验证邮件、Magic Link、Bearer Token 与 API Key 步骤将在收到邮件后继续写入。',
+    ]
+
     try {
       setRunning(true)
+      setTaskLogTitle('正在执行 TinyPNG Pool 任务')
+      setTaskLogs(pendingLogs)
+      lastTaskLogValueRef.current = pendingLogs.join("\n\n")
+      setTaskLogDialogOpen(true)
       const res = await fetch("/api/admin/tinypng-pool/run", { method: "POST" })
       const data = await res.json() as {
         error?: string
-        result?: { status: TinyPngTaskRunStatus; message: string }
+        result?: {
+          taskRunId: string
+          status: Exclude<TinyPngTaskRunStatus, 'running'>
+          message: string
+          logs: string[]
+        }
       }
 
       if (!res.ok || !data.result) {
@@ -181,17 +228,38 @@ export function TinyPngPoolStatsCard() {
         description: data.result.message,
         variant: data.result.status === 'failed' ? 'destructive' : 'default',
       })
-      await fetchStats(false)
+      setTaskLogTitle('本次 TinyPNG Pool 执行日志')
+      const updatedStats = await fetchStats(false)
+      const completedLogs = updatedStats?.taskStatus.lastRun?.id === data.result.taskRunId
+        ? updatedStats.taskStatus.lastRun.logs
+        : undefined
+      const nextLogs = completedLogs?.length ? completedLogs : data.result.logs
+      setTaskLogs(nextLogs.length > 0 ? nextLogs : [data.result.message])
+      lastTaskLogValueRef.current = nextLogs.join("\n\n")
     } catch (error) {
       console.error(error)
+      const errorMessage = error instanceof Error ? error.message : "请稍后重试"
+      setTaskLogTitle('TinyPNG Pool 任务执行失败')
+      setTaskLogs((currentLogs) => [...currentLogs, `任务执行失败：${errorMessage}`])
       toast({
         title: "任务执行失败",
-        description: error instanceof Error ? error.message : "请稍后重试",
+        description: errorMessage,
         variant: "destructive",
       })
     } finally {
       setRunning(false)
     }
+  }
+
+  const handleOpenLastTaskLogs = () => {
+    const lastRun = stats?.taskStatus.lastRun
+    if (!lastRun) return
+
+    const nextLogs = lastRun.logs.length > 0 ? lastRun.logs : [lastRun.message]
+    setTaskLogTitle('上次 TinyPNG Pool 完整执行日志')
+    setTaskLogs(nextLogs)
+    lastTaskLogValueRef.current = nextLogs.join("\n\n")
+    setTaskLogDialogOpen(true)
   }
 
   const handleEmailDomainChange = async (nextEmailDomain: string) => {
@@ -353,12 +421,15 @@ export function TinyPngPoolStatsCard() {
                       </p>
                     </div>
                   </div>
-                  <div className="mt-3 border-t border-yellow-500/15 pt-3">
-                    <p className="text-xs font-medium text-muted-foreground">完整执行日志</p>
-                    <pre className="mt-1 max-h-44 overflow-y-auto whitespace-pre-wrap break-words rounded-md bg-background/70 p-2 font-mono text-[11px] leading-5 text-muted-foreground">
-                      {lastRun.logs.length > 0 ? lastRun.logs.join("\n\n") : lastRun.message}
-                    </pre>
-                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleOpenLastTaskLogs}
+                    className="mt-3 h-8 gap-1.5 text-xs"
+                  >
+                    <ScrollText className="h-3.5 w-3.5" />
+                    查看完整执行日志
+                  </Button>
                 </>
               ) : null}
             </div>
@@ -377,6 +448,25 @@ export function TinyPngPoolStatsCard() {
           </div>
         </div>
       </div>
+
+      <Dialog open={taskLogDialogOpen} onOpenChange={setTaskLogDialogOpen}>
+        <DialogContent className="max-h-[85vh] sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              {running ? <Loader2 className="h-4 w-4 animate-spin text-sky-600" /> : <ScrollText className="h-4 w-4 text-yellow-600" />}
+              {taskLogTitle}
+            </DialogTitle>
+            <DialogDescription>
+              {running
+                ? '日志每 2 秒自动刷新；验证邮件到达后会继续显示 Token 与 API Key 获取步骤。'
+                : '已隐藏 Magic Link、Token、Bearer Token 与 API Key 的敏感内容。'}
+            </DialogDescription>
+          </DialogHeader>
+          <pre className="max-h-[58vh] overflow-auto whitespace-pre-wrap break-words rounded-lg border border-yellow-500/20 bg-muted/30 p-4 font-mono text-xs leading-6 text-foreground">
+            {taskLogs.length > 0 ? taskLogs.join("\n\n") : '暂无执行日志。'}
+          </pre>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={showDialog} onOpenChange={setShowDialog}>
         <DialogContent className="sm:max-w-md">
