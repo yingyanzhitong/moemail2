@@ -1,0 +1,40 @@
+app/components/profile/desktop-license-admin.tsx
+  s_016fa4053668b5::t_3949dce667ca87 4,6-13,15,31-33,36-45,51,54-65,76-83,102-107,110-114,120,125,134-139,148,150,153-176,180-185,201,246-253,256-261,263-268,277-359
+app/components/profile/tinypng-pool-stats-card.tsx
+  s_016fa4053668b5::t_cfd45d19fbed85 63,190
+CHANGELOG.md
+  s_5f5841f18f5bde::t_f5d0f6c0963df6 5-21
+app/api/admin/tinypng-desktop/licenses/[id]/keys/route.ts
+  s_5f5841f18f5bde::t_828a06640b78bf 1-27
+app/lib/desktop-license-service.ts
+  s_5f5841f18f5bde::t_3c4e08275aee10 98,573-593,595-596,600-606,609-637,642-665
+package.json
+  s_5f5841f18f5bde::t_68d1aebf7b9ea1 3
+tests/desktop-license-sql.test.mjs
+  s_5f5841f18f5bde::t_884c4ae543569b 46-64,134,137-149
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.12",
+  "base_commit_sha": "737a3a8221a0880480d1537e2fe11a728ff9aa72",
+  "prompts": {},
+  "logical_commit_id": "737a3a8221a0880480d1537e2fe11a728ff9aa72",
+  "sessions": {
+    "s_016fa4053668b5": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f4cce-0e1e-7a00-b270-cd79fbd1f593",
+        "model": "gpt-5.6-terra"
+      },
+      "human_author": "masongzhi <masongzhi@bigo.sg>"
+    },
+    "s_5f5841f18f5bde": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f5a71-61ad-7790-a2b9-69f9f31876a2",
+        "model": "unknown"
+      },
+      "human_author": "masongzhi <masongzhi@bigo.sg>"
+    }
+  }
+}
