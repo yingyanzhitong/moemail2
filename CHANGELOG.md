@@ -2,6 +2,23 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.14.6] - 2026-07-13
+
+### Features
+
+- **桌面授权记录**：Auth Link 生成后在 TinyPNG Pool 详情页展示对应授权、动态 Token 数量、逻辑额度、有效期和设备绑定状态。
+- **授权续费与停止**：续费时可重新指定压缩张数和有效天数；停止未兑换授权会立即使链接失效并释放尚未下发的预留 Token。
+- **真实 Key 管理**：皇帝管理员可按需打开 Token 列表弹窗，查看并复制单个或全部真实 TinyPNG Key；敏感 Key 不进入普通授权列表响应。
+
+### Improvements
+
+- **授权记录留存**：24 小时未兑换的 Auth Link 释放预留 Token 后保留失效记录，便于管理端继续审计。
+- **Key 回收边界**：仅待激活且从未下发的预留 Token 可以释放；已绑定设备的 Token 在停止授权后仍永久保留。
+
+### Tests
+
+- **自动化验证**：新增停止待激活授权释放 Token、停止已激活授权保留 Key 的 SQL 测试，并通过 Next.js 生产构建。
+
 ## [1.14.5] - 2026-07-13
 
 ### Features

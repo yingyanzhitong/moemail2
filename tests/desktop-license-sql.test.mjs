@@ -43,6 +43,25 @@ function issueNewGrant(db, licenseId, keyCount = 40, quotaTotal = 10000, duratio
   }
 }
 
+function stopLicense(db, licenseId) {
+  const license = db.prepare('SELECT status FROM desktop_licenses WHERE id = ?').get(licenseId)
+  if (!license || license.status === 'revoked') return
+
+  db.exec('BEGIN IMMEDIATE')
+  try {
+    if (license.status === 'pending') {
+      db.prepare("UPDATE tinypng_key_pool SET status = 'active' WHERE status = 'reserved' AND id IN (SELECT pool_key_id FROM desktop_license_keys WHERE license_id = ?) AND EXISTS (SELECT 1 FROM desktop_licenses WHERE id = ? AND status = 'pending')").run(licenseId, licenseId)
+      db.prepare("DELETE FROM desktop_license_keys WHERE license_id = ? AND EXISTS (SELECT 1 FROM desktop_licenses WHERE id = ? AND status = 'pending')").run(licenseId, licenseId)
+    }
+    db.prepare("UPDATE desktop_activation_grants SET status = 'expired' WHERE license_id = ? AND status = 'issued'").run(licenseId)
+    db.prepare("UPDATE desktop_licenses SET status = 'revoked', access_token_hash = NULL WHERE id = ?").run(licenseId)
+    db.exec('COMMIT')
+  } catch (error) {
+    db.exec('ROLLBACK')
+    throw error
+  }
+}
+
 test('新授权原子预留 40 个 Key，Pool 不足时不残留授权', () => {
   const db = database()
   seedKeys(db, 59)
@@ -112,7 +131,20 @@ test('撤销授权会清除访问令牌但不回收已分配 Key', () => {
   issueNewGrant(db, 'license-a')
   db.prepare("UPDATE desktop_licenses SET status = 'active', access_token_hash = 'token' WHERE id = 'license-a'").run()
   db.prepare("UPDATE tinypng_key_pool SET status = 'assigned' WHERE status = 'reserved'").run()
-  db.prepare("UPDATE desktop_licenses SET status = 'revoked', access_token_hash = NULL WHERE id = 'license-a'").run()
+  stopLicense(db, 'license-a')
   assert.equal(db.prepare("SELECT access_token_hash token FROM desktop_licenses WHERE id = 'license-a'").get().token, null)
   assert.equal(db.prepare("SELECT COUNT(*) count FROM tinypng_key_pool WHERE status = 'assigned'").get().count, 40)
+  assert.equal(db.prepare("SELECT COUNT(*) count FROM desktop_license_keys WHERE license_id = 'license-a'").get().count, 40)
+})
+
+test('停止未兑换授权会使 Auth Link 失效并释放预留 Token', () => {
+  const db = database()
+  seedKeys(db, 12)
+  issueNewGrant(db, 'license-pending', 12, 3456, 45)
+  stopLicense(db, 'license-pending')
+
+  assert.equal(db.prepare("SELECT status FROM desktop_licenses WHERE id = 'license-pending'").get().status, 'revoked')
+  assert.equal(db.prepare("SELECT status FROM desktop_activation_grants WHERE license_id = 'license-pending'").get().status, 'expired')
+  assert.equal(db.prepare("SELECT COUNT(*) count FROM desktop_license_keys WHERE license_id = 'license-pending'").get().count, 0)
+  assert.equal(db.prepare("SELECT COUNT(*) count FROM tinypng_key_pool WHERE status = 'active'").get().count, 12)
 })

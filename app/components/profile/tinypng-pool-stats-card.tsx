@@ -60,6 +60,7 @@ interface PoolStats {
 
 interface GenerateResponse {
   success: boolean
+  licenseId?: string
   authLink?: string
   expiresAt?: string
   code?: string
@@ -186,6 +187,7 @@ export function TinyPngPoolStatsCard() {
       if (res.ok && data.authLink) {
         setGeneratedLink(data.authLink)
         setGeneratedPlan(data.plan)
+        window.dispatchEvent(new CustomEvent('desktop-license-created', { detail: { licenseId: data.licenseId } }))
       } else {
         setError(data.error || "Failed to generate link")
       }
