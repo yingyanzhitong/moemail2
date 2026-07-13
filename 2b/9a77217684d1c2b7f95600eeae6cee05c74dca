@@ -1,0 +1,26 @@
+CHANGELOG.md
+  s_016fa4053668b5::t_eba1e33853736b 5-10
+drizzle/meta/0027_snapshot.json
+  s_016fa4053668b5::t_565ff39a29c127 336-359,631-638,1712
+drizzle/meta/_journal.json
+  s_016fa4053668b5::t_132f059f10c95e 202
+package.json
+  s_016fa4053668b5::t_9c5f459dc9b119 3
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.12",
+  "base_commit_sha": "2b9a77217684d1c2b7f95600eeae6cee05c74dca",
+  "prompts": {},
+  "logical_commit_id": "2b9a77217684d1c2b7f95600eeae6cee05c74dca",
+  "sessions": {
+    "s_016fa4053668b5": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f4cce-0e1e-7a00-b270-cd79fbd1f593",
+        "model": "gpt-5.6-terra"
+      },
+      "human_author": "masongzhi <masongzhi@bigo.sg>"
+    }
+  }
+}
