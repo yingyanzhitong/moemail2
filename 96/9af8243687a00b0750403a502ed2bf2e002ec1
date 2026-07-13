@@ -1,0 +1,72 @@
+app/api/admin/tinypng-pool/run/route.ts
+  s_016fa4053668b5::t_1d3f4e098cb116 3,22-23
+app/api/admin/tinypng-pool/stats/route.ts
+  s_4b842b1fbac602::t_0b23390587b7fb 3-4,8,26-32,39-52
+app/api/tinypng/keys/route.ts
+  s_4b842b1fbac602::t_5b8f84e3f7dc16 3,54-57
+app/components/profile/tinypng-keys-panel.tsx
+  s_4b842b1fbac602::t_f28b4de0287ed5 5
+app/i18n/messages/en/profile.json
+  s_016fa4053668b5::t_2fd1e5b75d9afd 107-109
+app/i18n/messages/ja/profile.json
+  s_016fa4053668b5::t_cb83fcaba068bd 107-109
+app/i18n/messages/ko/profile.json
+  s_016fa4053668b5::t_8ff58488a631e8 107-109
+app/i18n/messages/zh-CN/profile.json
+  s_016fa4053668b5::t_10e3164bae34f2 107-109
+app/i18n/messages/zh-TW/profile.json
+  s_016fa4053668b5::t_4df10a2ad42035 107-109
+scripts/deploy/index.ts
+  s_016fa4053668b5::t_d809823eaf6078 150-158,165,167
+workers/tinypng-pool.ts
+  s_016fa4053668b5::t_61e293cda2630e 2,7-8
+wrangler.tinypng.example.json
+  s_016fa4053668b5::t_7c647842eb7a0a 22-27
+wrangler.tinypng.json
+  s_016fa4053668b5::t_301a1fd838c927 22-27,31
+CHANGELOG.md
+  s_99e671d78654a7::t_1197db051b3d9a 5-15
+app/api/config/route.ts
+  s_99e671d78654a7::t_d6283bbf31120d 20-24,43,55,58,66-71,108,120,149-161,167
+app/components/profile/tinypng-pool-stats-card.tsx
+  s_99e671d78654a7::t_da474834ad4f33 3-4,17,19-35,41,51-78,84,93,95-106,109-112,148-178,186-188,193,198-208,245-291
+app/components/profile/website-config-panel.tsx
+  s_99e671d78654a7::t_7d59c57217dd06 37,112,142,162-178,212,274,277-301
+app/lib/tinypng-pool-domain.ts
+  s_99e671d78654a7::t_85467f7a8f15de 1-37
+package.json
+  s_99e671d78654a7::t_266d4237be8044 3
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.12",
+  "base_commit_sha": "969af8243687a00b0750403a502ed2bf2e002ec1",
+  "prompts": {},
+  "logical_commit_id": "969af8243687a00b0750403a502ed2bf2e002ec1",
+  "sessions": {
+    "s_016fa4053668b5": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f4cce-0e1e-7a00-b270-cd79fbd1f593",
+        "model": "gpt-5.6-terra"
+      },
+      "human_author": "masongzhi <masongzhi@bigo.sg>"
+    },
+    "s_4b842b1fbac602": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f4b95-bf33-7300-9b99-90bd70532a43",
+        "model": "gpt-5.6-terra"
+      },
+      "human_author": "masongzhi <masongzhi@bigo.sg>"
+    },
+    "s_99e671d78654a7": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f5a3b-0398-7fe0-b196-0c011ca70ed8",
+        "model": "unknown"
+      },
+      "human_author": "masongzhi <masongzhi@bigo.sg>"
+    }
+  }
+}
