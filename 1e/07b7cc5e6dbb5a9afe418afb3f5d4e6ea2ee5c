@@ -1,0 +1,36 @@
+app/api/admin/tinypng-pool/config/route.ts
+  s_016fa4053668b5::t_0c245547474b35 1-35
+app/components/profile/website-config-panel.tsx
+  s_016fa4053668b5::t_bfbc1e1551bf00 253
+app/api/admin/tinypng-pool/stats/route.ts
+  s_99e671d78654a7::t_81a20667966297 5-10,14,18-27,41,43,49-50,52-72,79-84,90-91
+app/components/profile/tinypng-pool-stats-card.tsx
+  s_99e671d78654a7::t_74fc74b431bb89 6,17-23,40,49-50,95-96,105,113-115,193-225,274-282,284-299,346-351
+app/lib/tinypng-pool-task.ts
+  s_99e671d78654a7::t_a83618c0657426 17,38,50-52,67-69,80,116-119,123,131,137-138,142,155,167,173-182
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.12",
+  "base_commit_sha": "1e07b7cc5e6dbb5a9afe418afb3f5d4e6ea2ee5c",
+  "prompts": {},
+  "logical_commit_id": "1e07b7cc5e6dbb5a9afe418afb3f5d4e6ea2ee5c",
+  "sessions": {
+    "s_016fa4053668b5": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f4cce-0e1e-7a00-b270-cd79fbd1f593",
+        "model": "gpt-5.6-terra"
+      },
+      "human_author": "masongzhi <masongzhi@bigo.sg>"
+    },
+    "s_99e671d78654a7": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f5a3b-0398-7fe0-b196-0c011ca70ed8",
+        "model": "unknown"
+      },
+      "human_author": "masongzhi <masongzhi@bigo.sg>"
+    }
+  }
+}
