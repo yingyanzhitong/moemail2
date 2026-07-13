@@ -7,7 +7,7 @@ use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
 use crate::{
     models::{
-        BootstrapView, CompleteResponse, CredentialBundle, KeyState, LicenseView,
+        ActivationPlanPreview, BootstrapView, CompleteResponse, CredentialBundle, KeyState, LicenseView,
         PendingReservation, RedeemResponse, ReservationResponse, TopUpResponse,
     },
     vault::CredentialVault,
@@ -173,6 +173,22 @@ impl LicenseApi {
             Ok(())
         })?;
         Ok(redeemed.license)
+    }
+
+    pub async fn preview(&self, code: &str) -> Result<ActivationPlanPreview> {
+        #[derive(Serialize)]
+        struct Body<'a> {
+            code: &'a str,
+        }
+
+        let response = self
+            .client
+            .post(format!("{}/api/tinypng/desktop/grants/preview", self.base_url))
+            .json(&Body { code })
+            .send()
+            .await
+            .context("无法连接授权服务")?;
+        Self::parse(response).await
     }
 
     pub async fn refresh(&self) -> Result<LicenseView> {

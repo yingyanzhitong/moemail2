@@ -2,25 +2,13 @@ import { useEffect, useState } from 'react'
 import { KeyRound, Loader2, ShieldCheck } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { extractActivationCode } from '@/lib/activation'
 
 interface ActivationDialogProps {
   open: boolean
   initialCode: string
   onOpenChange: (open: boolean) => void
   onRedeem: (code: string) => Promise<void>
-}
-
-function extractCode(value: string): string {
-  const trimmed = value.trim()
-  try {
-    const url = new URL(trimmed)
-    if (url.protocol === 'smartcompress:') return url.searchParams.get('code') ?? trimmed
-    const segments = url.pathname.split('/').filter(Boolean)
-    if (segments.at(-2) === 'activate') return segments.at(-1) ?? trimmed
-  } catch {
-    // 手动粘贴的纯授权码无需按 URL 解析。
-  }
-  return trimmed
 }
 
 export function ActivationDialog({ open, initialCode, onOpenChange, onRedeem }: ActivationDialogProps) {
@@ -33,7 +21,7 @@ export function ActivationDialog({ open, initialCode, onOpenChange, onRedeem }: 
   }, [initialCode])
 
   const submit = async () => {
-    const code = extractCode(value)
+    const code = extractActivationCode(value)
     if (!code) {
       setError('请粘贴授权链接或授权码。')
       return

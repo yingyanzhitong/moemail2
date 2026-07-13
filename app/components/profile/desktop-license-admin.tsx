@@ -12,6 +12,7 @@ interface DesktopLicenseAdminItem {
   status: 'active' | 'pending' | 'expired' | 'exhausted' | 'revoked'
   used: number
   limit: number
+  tokenCount: number
   startsAt: string | null
   expiresAt: string | null
   scheduledPeriods: Array<{ startsAt: string; expiresAt: string }>
@@ -151,7 +152,7 @@ export function DesktopLicenseAdmin() {
               <TableRow key={license.id}>
                 <TableCell>
                   <p className="font-mono text-xs">{license.id.slice(0, 12)}…</p>
-                  <p className="mt-1 text-xs text-muted-foreground">{license.deviceBound ? '已绑定设备' : '未绑定设备'} · {license.keyCount} Key</p>
+                  <p className="mt-1 text-xs text-muted-foreground">{license.deviceBound ? '已绑定设备' : '未绑定设备'} · 授权 {license.tokenCount} Token · 当前 {license.keyCount} Key</p>
                 </TableCell>
                 <TableCell><span className="rounded-full bg-muted px-2 py-1 text-xs">{STATUS_LABEL[license.status]}</span></TableCell>
                 <TableCell className="font-mono text-xs">{license.used.toLocaleString()} / {license.limit.toLocaleString()}</TableCell>

@@ -14,6 +14,7 @@ pub struct LicenseView {
     pub status: String,
     pub used: u32,
     pub limit: u32,
+    pub token_count: u32,
     pub starts_at: Option<String>,
     pub expires_at: Option<String>,
     #[serde(default)]
@@ -28,13 +29,24 @@ impl LicenseView {
             id: None,
             status: "unlicensed".into(),
             used: 0,
-            limit: 10_000,
+            limit: 0,
+            token_count: 0,
             starts_at: None,
             expires_at: None,
             scheduled_periods: Vec::new(),
             message: None,
         }
     }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ActivationPlanPreview {
+    pub kind: String,
+    pub token_count: u32,
+    pub compression_limit: u32,
+    pub duration_days: u32,
+    pub redeem_expires_at: String,
 }
 
 #[derive(Debug, Clone, Serialize)]

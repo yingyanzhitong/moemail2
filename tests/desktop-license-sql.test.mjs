@@ -16,6 +16,7 @@ function database() {
     updated_at INTEGER NOT NULL
   )`)
   db.exec(readFileSync(new URL('../drizzle/0026_desktop-licenses.sql', import.meta.url), 'utf8'))
+  db.exec(readFileSync(new URL('../drizzle/0027_dynamic-desktop-grants.sql', import.meta.url), 'utf8'))
   return db
 }
 
@@ -24,13 +25,13 @@ function seedKeys(db, count) {
   for (let index = 0; index < count; index += 1) insert.run(`key-${index}`, `user-${index}@example.test`, `api-${index}`)
 }
 
-function issueNewGrant(db, licenseId, keyCount = 40) {
+function issueNewGrant(db, licenseId, keyCount = 40, quotaTotal = 10000, durationDays = 30) {
   const available = db.prepare("SELECT id FROM tinypng_key_pool WHERE status = 'active' LIMIT ?").all(keyCount)
   if (available.length !== keyCount) throw new Error('POOL_CAPACITY_INSUFFICIENT')
   db.exec('BEGIN IMMEDIATE')
   try {
-    db.prepare("INSERT INTO desktop_licenses VALUES (?, 'pending', NULL, NULL, 60, 1, NULL, 1)").run(licenseId)
-    db.prepare("INSERT INTO desktop_activation_grants VALUES (?, ?, 'new', ?, 'issued', 1000, NULL, 1)").run(`grant-${licenseId}`, licenseId, `hash-${licenseId}`)
+    db.prepare("INSERT INTO desktop_licenses (id, status, device_id, access_token_hash, key_limit, created_at, activated_at, updated_at, initial_key_count) VALUES (?, 'pending', NULL, NULL, ?, 1, NULL, 1, ?)").run(licenseId, keyCount + 20, keyCount)
+    db.prepare("INSERT INTO desktop_activation_grants (id, license_id, kind, code_hash, status, expires_at, redeemed_at, created_at, token_count, quota_total, duration_days) VALUES (?, ?, 'new', ?, 'issued', 1000, NULL, 1, ?, ?, ?)").run(`grant-${licenseId}`, licenseId, `hash-${licenseId}`, keyCount, quotaTotal, durationDays)
     for (const { id } of available) {
       db.prepare("UPDATE tinypng_key_pool SET status = 'reserved' WHERE id = ? AND status = 'active'").run(id)
       db.prepare('INSERT INTO desktop_license_keys VALUES (?, ?, 0, 1)').run(licenseId, id)
@@ -51,11 +52,20 @@ test('新授权原子预留 40 个 Key，Pool 不足时不残留授权', () => {
   assert.equal(db.prepare("SELECT COUNT(*) count FROM desktop_licenses").get().count, 1)
 })
 
+test('Auth Link grant 保存动态 Token、压缩额度和有效天数', () => {
+  const db = database()
+  seedKeys(db, 12)
+  issueNewGrant(db, 'license-dynamic', 12, 3456, 45)
+  const grant = db.prepare("SELECT token_count tokenCount, quota_total quotaTotal, duration_days durationDays FROM desktop_activation_grants WHERE license_id = 'license-dynamic'").get()
+  assert.deepEqual({ ...grant }, { tokenCount: 12, quotaTotal: 3456, durationDays: 45 })
+  assert.equal(db.prepare("SELECT COUNT(*) count FROM tinypng_key_pool WHERE status = 'reserved'").get().count, 12)
+})
+
 test('同一个 Pool Key 不能绑定两个授权', () => {
   const db = database()
   seedKeys(db, 40)
   issueNewGrant(db, 'license-a')
-  db.prepare("INSERT INTO desktop_licenses VALUES ('license-b', 'pending', NULL, NULL, 60, 1, NULL, 1)").run()
+  db.prepare("INSERT INTO desktop_licenses (id, status, device_id, access_token_hash, key_limit, created_at, activated_at, updated_at, initial_key_count) VALUES ('license-b', 'pending', NULL, NULL, 60, 1, NULL, 1, 40)").run()
   assert.throws(() => db.prepare("INSERT INTO desktop_license_keys VALUES ('license-b', 'key-0', 0, 1)").run(), /UNIQUE/)
 })
 

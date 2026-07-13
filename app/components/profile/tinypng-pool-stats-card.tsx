@@ -36,6 +36,7 @@ interface TinyPngTaskStatus {
     cleanedCount: number
     failedCount: number
     successfulCount: number
+    successRate: number | null
     durationMs: number
     completedAt: string
     logs: string[]
@@ -53,6 +54,7 @@ interface PoolStats {
   desktopLicenses: number
   emailDomains: string[]
   emailDomain: string
+  cronExpression: string
   taskStatus: TinyPngTaskStatus
 }
 
@@ -61,6 +63,11 @@ interface GenerateResponse {
   authLink?: string
   expiresAt?: string
   code?: string
+  plan?: {
+    tokenCount: number
+    compressionLimit: number
+    durationDays: number
+  }
   error?: string
 }
 
@@ -99,9 +106,15 @@ export function TinyPngPoolStatsCard() {
   const [running, setRunning] = useState(false)
   const [emailDomain, setEmailDomain] = useState("")
   const [savingEmailDomain, setSavingEmailDomain] = useState(false)
+  const [cronExpression, setCronExpression] = useState("0 * * * *")
+  const [savingCronExpression, setSavingCronExpression] = useState(false)
   const [generateLoading, setGenerateLoading] = useState(false)
   const [showDialog, setShowDialog] = useState(false)
+  const [tokenCount, setTokenCount] = useState(40)
+  const [compressionLimit, setCompressionLimit] = useState(10000)
+  const [durationDays, setDurationDays] = useState(30)
   const [generatedLink, setGeneratedLink] = useState<string | null>(null)
+  const [generatedPlan, setGeneratedPlan] = useState<GenerateResponse['plan']>(undefined)
   const [copied, setCopied] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [taskLogDialogOpen, setTaskLogDialogOpen] = useState(false)
@@ -121,6 +134,7 @@ export function TinyPngPoolStatsCard() {
       const data = await res.json() as PoolStats
       setStats(data)
       setEmailDomain(data.emailDomain)
+      setCronExpression(data.cronExpression)
       return data
     } catch (error) {
       console.error(error)
@@ -166,11 +180,12 @@ export function TinyPngPoolStatsCard() {
       const res = await fetch("/api/tinypng/desktop/grants", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ kind: "new" })
+        body: JSON.stringify({ kind: "new", tokenCount, compressionLimit, durationDays })
       })
       const data = await res.json() as GenerateResponse
       if (res.ok && data.authLink) {
         setGeneratedLink(data.authLink)
+        setGeneratedPlan(data.plan)
       } else {
         setError(data.error || "Failed to generate link")
       }
@@ -192,13 +207,14 @@ export function TinyPngPoolStatsCard() {
   const handleOpenDialog = () => {
     setShowDialog(true)
     setGeneratedLink(null)
+    setGeneratedPlan(undefined)
     setError(null)
   }
 
   const handleRunTask = async () => {
     const pendingLogs = [
       '正在创建任务记录，日志会自动刷新。',
-      '本批次包含 5 个账号，相邻注册间隔 1 分钟。',
+      '本批次包含 5 个账号，将连续提交注册请求。',
       '验证邮件、Magic Link、Bearer Token 与 API Key 步骤将在收到邮件后继续写入。',
     ]
 
@@ -295,6 +311,39 @@ export function TinyPngPoolStatsCard() {
     }
   }
 
+  const handleSaveCronExpression = async () => {
+    const previousCronExpression = stats?.cronExpression ?? "0 * * * *"
+    setSavingCronExpression(true)
+
+    try {
+      const res = await fetch("/api/admin/tinypng-pool/config", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ cronExpression }),
+      })
+      const data = await res.json() as { cronExpression?: string; error?: string }
+      if (!res.ok || !data.cronExpression) {
+        throw new Error(data.error || "保存定时计划失败")
+      }
+
+      setCronExpression(data.cronExpression)
+      await fetchStats(false)
+      toast({
+        title: "定时计划已更新",
+        description: `后续将按 ${data.cronExpression}（北京时间）执行`,
+      })
+    } catch (error) {
+      setCronExpression(previousCronExpression)
+      toast({
+        title: "保存定时计划失败",
+        description: error instanceof Error ? error.message : "请稍后重试",
+        variant: "destructive",
+      })
+    } finally {
+      setSavingCronExpression(false)
+    }
+  }
+
   if (loading) return null // Or a skeleton
 
   // Only render if we have stats (implies permission check passed on backend, 
@@ -343,29 +392,59 @@ export function TinyPngPoolStatsCard() {
           </div>
         </div>
 
-        <div className="mb-4 flex flex-col gap-3 rounded-lg border border-yellow-500/20 bg-yellow-500/[0.025] p-3 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <p className="text-sm font-medium">{tWebsite("tinypngPoolEmailDomain")}</p>
-            <p className="mt-1 text-xs text-muted-foreground">
-              {tWebsite("tinypngPoolEmailDomainDescription")}
-            </p>
+        <div className="mb-4 grid gap-3 lg:grid-cols-2">
+          <div className="flex flex-col gap-3 rounded-lg border border-yellow-500/20 bg-yellow-500/[0.025] p-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-sm font-medium">{tWebsite("tinypngPoolEmailDomain")}</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {tWebsite("tinypngPoolEmailDomainDescription")}
+              </p>
+            </div>
+            <Select
+              value={emailDomain}
+              onValueChange={handleEmailDomainChange}
+              disabled={savingEmailDomain || stats.emailDomains.length === 0}
+            >
+              <SelectTrigger className="w-full sm:w-64">
+                <SelectValue placeholder={tWebsite("tinypngPoolEmailDomainPlaceholder")} />
+              </SelectTrigger>
+              <SelectContent>
+                {stats.emailDomains.map((domain) => (
+                  <SelectItem key={domain} value={domain}>
+                    @{domain}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
-          <Select
-            value={emailDomain}
-            onValueChange={handleEmailDomainChange}
-            disabled={savingEmailDomain || stats.emailDomains.length === 0}
-          >
-            <SelectTrigger className="w-full sm:w-64">
-              <SelectValue placeholder={tWebsite("tinypngPoolEmailDomainPlaceholder")} />
-            </SelectTrigger>
-            <SelectContent>
-              {stats.emailDomains.map((domain) => (
-                <SelectItem key={domain} value={domain}>
-                  @{domain}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className="flex flex-col gap-3 rounded-lg border border-yellow-500/20 bg-yellow-500/[0.025] p-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-sm font-medium">定时任务 Cron</p>
+              <p className="mt-1 text-xs text-muted-foreground">Linux 五段 Cron，按北京时间执行；支持数字、*、,、-、/。</p>
+            </div>
+            <div className="flex w-full gap-2 sm:w-auto">
+              <Input
+                value={cronExpression}
+                onChange={(event) => setCronExpression(event.target.value)}
+                disabled={savingCronExpression || running}
+                placeholder="0 * * * *"
+                className="w-full font-mono sm:w-48"
+                aria-label="TinyPNG Pool 定时任务 Cron 表达式"
+              />
+              <Button
+                variant="outline"
+                onClick={handleSaveCronExpression}
+                disabled={
+                  savingCronExpression
+                  || running
+                  || !cronExpression.trim()
+                  || cronExpression.trim() === stats.cronExpression
+                }
+              >
+                {savingCronExpression ? <Loader2 className="h-4 w-4 animate-spin" /> : '保存'}
+              </Button>
+            </div>
+          </div>
         </div>
 
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
@@ -405,7 +484,7 @@ export function TinyPngPoolStatsCard() {
               </p>
               {lastRun ? (
                 <>
-                  <div className="mt-2 grid grid-cols-3 gap-3 text-xs">
+                  <div className="mt-2 grid grid-cols-2 gap-3 text-xs sm:grid-cols-4">
                     <div>
                       <p className="text-muted-foreground">执行时间</p>
                       <p className="mt-0.5 font-medium">{formatTaskTime(lastRun.completedAt)}</p>
@@ -418,6 +497,12 @@ export function TinyPngPoolStatsCard() {
                       <p className="text-muted-foreground">成功账号</p>
                       <p className="mt-0.5 font-medium text-emerald-600 dark:text-emerald-400">
                         {lastRun.successfulCount} 个
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground">注册成功率</p>
+                      <p className="mt-0.5 font-medium text-emerald-600 dark:text-emerald-400">
+                        {lastRun.successRate === null ? '—' : `${lastRun.successRate}%`}
                       </p>
                     </div>
                   </div>
@@ -473,16 +558,27 @@ export function TinyPngPoolStatsCard() {
           <DialogHeader>
             <DialogTitle>生成“智能压缩工具”授权链接</DialogTitle>
             <DialogDescription>
-              新授权固定包含 30 天、10,000 张逻辑额度，并原子预留 40 个 TinyPNG Key。链接 24 小时内有效。
+              Token 数量、压缩额度和授权有效期均写入本次 Auth Link；链接 24 小时内有效且只能兑换一次。
             </DialogDescription>
           </DialogHeader>
           
           {!generatedLink ? (
             <div className="space-y-4">
-              <div className="rounded-lg border bg-muted/30 p-3 text-sm">
-                <p className="font-medium">标准授权</p>
-                <p className="mt-1 text-muted-foreground">30 天 · 10,000 张 · 首次绑定一台设备</p>
+              <div className="grid grid-cols-3 gap-3">
+                <div className="space-y-2">
+                  <Label htmlFor="desktopTokenCount">Token 数量</Label>
+                  <Input id="desktopTokenCount" type="number" min={1} max={200} value={tokenCount} onChange={(event) => setTokenCount(Number(event.target.value))} />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="desktopCompressionLimit">可压缩张数</Label>
+                  <Input id="desktopCompressionLimit" type="number" min={1} max={1000000} value={compressionLimit} onChange={(event) => setCompressionLimit(Number(event.target.value))} />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="desktopDurationDays">有效天数</Label>
+                  <Input id="desktopDurationDays" type="number" min={1} max={365} value={durationDays} onChange={(event) => setDurationDays(Number(event.target.value))} />
+                </div>
               </div>
+              <p className="text-xs text-muted-foreground">生成链接时将原子预留 {Number.isFinite(tokenCount) ? tokenCount : 0} 个 Token；兑换后创建对应额度与时长的授权周期。</p>
               
               {error && (
                 <div className="text-sm text-red-500 bg-red-500/10 p-3 rounded-lg">
@@ -492,7 +588,7 @@ export function TinyPngPoolStatsCard() {
               
               <Button 
                 onClick={handleGenerate} 
-                disabled={generateLoading}
+                disabled={generateLoading || !Number.isInteger(tokenCount) || tokenCount < 1 || tokenCount > 200 || !Number.isInteger(compressionLimit) || compressionLimit < 1 || compressionLimit > 1000000 || !Number.isInteger(durationDays) || durationDays < 1 || durationDays > 365}
                 className="w-full"
               >
                 {generateLoading ? (
@@ -526,6 +622,11 @@ export function TinyPngPoolStatsCard() {
                 <p className="text-xs text-muted-foreground">
                   此链接将在 24 小时后失效，且只能兑换一次。
                 </p>
+                {generatedPlan ? (
+                  <p className="rounded-md border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
+                    {generatedPlan.tokenCount} Token · {generatedPlan.compressionLimit.toLocaleString()} 张 · 激活后 {generatedPlan.durationDays} 天有效
+                  </p>
+                ) : null}
               </div>
               
               <Button 

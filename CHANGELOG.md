@@ -2,6 +2,24 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.14.5] - 2026-07-13
+
+### Features
+
+- **TinyPNG 定时计划**：Pool 卡片支持配置北京时间的五段 Linux Cron 表达式，统一驱动下一次计划展示和定时 Worker 实际执行。
+- **TinyPNG 任务统计**：上次任务新增注册成功率，任务汇总同步记录成功账号数、失败数和成功率。
+- **桌面授权方案**：管理端可为 Auth Link 自定义 Token 数量、压缩额度和有效天数，并在兑换前预览完整授权方案。
+- **桌面首次激活**：未授权设备启动后进入独立激活页，激活成功后才开放图片压缩工作台。
+
+### Improvements
+
+- **TinyPNG 执行策略**：移除批次内账号之间固定等待 1 分钟的逻辑；Cloudflare Worker 每分钟检查动态 Cron，到期后才执行 Pool 任务。
+- **桌面授权持久化**：授权和周期记录保存动态 Token、额度与天数，续费和应急 Token 上限按具体授权方案计算。
+
+### Tests
+
+- **自动化验证**：新增 Cron 语法、北京时间匹配、下一次执行时间、注册成功率、动态授权 SQL 和桌面首次激活流程测试。
+
 ## [1.14.4] - 2026-07-13
 
 ### Features

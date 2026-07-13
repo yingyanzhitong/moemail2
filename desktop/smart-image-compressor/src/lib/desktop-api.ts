@@ -1,11 +1,12 @@
 import { invoke, isTauri } from '@tauri-apps/api/core'
-import type { BootstrapView, CompressionSummary, ImageJob, LicenseView } from '@/types'
+import type { ActivationPlanPreview, BootstrapView, CompressionSummary, ImageJob, LicenseView } from '@/types'
 
 const demoLicense: LicenseView = {
   id: 'preview',
   status: 'active',
   used: 3284,
   limit: 10000,
+  tokenCount: 40,
   startsAt: new Date().toISOString(),
   expiresAt: new Date(Date.now() + 18 * 86400000).toISOString(),
   scheduledPeriods: [],
@@ -22,6 +23,17 @@ export async function takeActivationCode(): Promise<string | null> {
 
 export async function redeem(code: string): Promise<LicenseView> {
   return invoke<LicenseView>('redeem_activation', { code })
+}
+
+export async function previewActivation(code: string): Promise<ActivationPlanPreview> {
+  if (!isTauri()) return {
+    kind: 'new',
+    tokenCount: 40,
+    compressionLimit: 10000,
+    durationDays: 30,
+    redeemExpiresAt: new Date(Date.now() + 86400000).toISOString(),
+  }
+  return invoke<ActivationPlanPreview>('preview_activation', { code })
 }
 
 export async function refreshLicense(): Promise<LicenseView> {

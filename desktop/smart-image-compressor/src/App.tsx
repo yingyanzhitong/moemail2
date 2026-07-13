@@ -1,17 +1,18 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { listen } from '@tauri-apps/api/event'
 import { isTauri } from '@tauri-apps/api/core'
 import { getCurrentWebviewWindow } from '@tauri-apps/api/webviewWindow'
 import { Aperture, Loader2, Pause, Play, WifiOff } from 'lucide-react'
 import { ActivationDialog } from '@/components/activation-dialog'
+import { ActivationScreen } from '@/components/activation-screen'
 import { DropZone } from '@/components/drop-zone'
 import { FileQueue } from '@/components/file-queue'
 import { LicensePanel } from '@/components/license-panel'
 import { Button } from '@/components/ui/button'
-import { addDroppedPaths, bootstrap, cancelCompression, pickFolder, pickImages, redeem, refreshLicense, startCompression, takeActivationCode } from '@/lib/desktop-api'
+import { addDroppedPaths, bootstrap, cancelCompression, pickFolder, pickImages, previewActivation, redeem, refreshLicense, startCompression, takeActivationCode } from '@/lib/desktop-api'
 import type { CompressionProgress, ImageJob, LicenseView, QueueItem } from '@/types'
 
-const emptyLicense: LicenseView = { id: null, status: 'unlicensed', used: 0, limit: 10000, startsAt: null, expiresAt: null, scheduledPeriods: [] }
+const emptyLicense: LicenseView = { id: null, status: 'unlicensed', used: 0, limit: 0, tokenCount: 0, startsAt: null, expiresAt: null, scheduledPeriods: [] }
 
 function messageFromError(error: unknown) {
   const value = error instanceof Error ? error.message : String(error)
@@ -33,6 +34,8 @@ export function App() {
   const [activationOpen, setActivationOpen] = useState(false)
   const [activationCode, setActivationCode] = useState('')
   const [notice, setNotice] = useState<string | null>(null)
+  const licenseIdRef = useRef<string | null>(null)
+  licenseIdRef.current = license.id
 
   const mergeJobs = useCallback((jobs: ImageJob[]) => {
     setQueue((current) => {
@@ -63,6 +66,7 @@ export function App() {
         setQueue((current) => current.map((item) => item.id === event.payload.id ? { ...item, ...event.payload } : item))
       }),
       getCurrentWebviewWindow().onDragDropEvent((event) => {
+        if (licenseIdRef.current === null) return
         if (event.payload.type === 'enter' || event.payload.type === 'over') setDropActive(true)
         if (event.payload.type === 'leave') setDropActive(false)
         if (event.payload.type === 'drop') {
@@ -98,11 +102,20 @@ export function App() {
     finally { setRefreshing(false) }
   }
 
+  const doPreview = useCallback(async (code: string) => {
+    try {
+      return await previewActivation(code)
+    } catch (error) {
+      throw new Error(messageFromError(error))
+    }
+  }, [])
+
   const doRedeem = async (code: string) => {
     try {
       const next = await redeem(code)
       setLicense(next)
       setActivationCode('')
+      setActivationOpen(false)
       setNotice('授权已更新，可以开始新的压缩批次。')
     } catch (error) {
       throw new Error(messageFromError(error))
@@ -131,6 +144,10 @@ export function App() {
 
   if (booting) {
     return <main className="flex min-h-screen items-center justify-center bg-[#F3F6FA] text-[#42506A]"><Loader2 className="mr-3 h-5 w-5 animate-spin text-[#2956D8]" />正在校验授权并恢复任务…</main>
+  }
+
+  if (license.id === null) {
+    return <ActivationScreen initialCode={activationCode} serviceMessage={notice} onPreview={doPreview} onRedeem={doRedeem} />
   }
 
   return (

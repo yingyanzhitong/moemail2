@@ -69,6 +69,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             commands::take_activation_code,
             commands::bootstrap,
+            commands::preview_activation,
             commands::redeem_activation,
             commands::refresh_license,
             commands::pick_images,

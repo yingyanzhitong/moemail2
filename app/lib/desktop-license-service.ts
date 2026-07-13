@@ -13,17 +13,21 @@ import { createDesktopSecret, sha256Hex } from '@/lib/desktop-license-crypto'
 import { calculateEmergencyKeyCount, getDesktopRedeemConflict, getNextDesktopPeriodWindow } from '@/lib/desktop-license-domain'
 import {
   DESKTOP_GRANT_TTL_MS,
+  DESKTOP_EMERGENCY_KEY_COUNT,
   DESKTOP_INITIAL_KEY_COUNT,
-  DESKTOP_MAX_KEY_COUNT,
+  DESKTOP_MAX_GRANT_KEY_COUNT,
+  DESKTOP_MAX_PERIOD_DAYS,
+  DESKTOP_MAX_PERIOD_QUOTA,
   DESKTOP_PERIOD_DAYS,
   DESKTOP_PERIOD_QUOTA,
   DESKTOP_RESERVATION_LIMIT,
   DESKTOP_RESERVATION_TTL_MS,
   type DesktopGrantKind,
+  type DesktopGrantPlan,
   type DesktopLicenseView,
 } from '@/lib/desktop-license-types'
 
-const PERIOD_MS = DESKTOP_PERIOD_DAYS * 24 * 60 * 60 * 1000
+const DAY_MS = 24 * 60 * 60 * 1000
 
 export class DesktopLicenseError extends Error {
   constructor(
@@ -47,6 +51,24 @@ function assertDeviceId(deviceId: string): void {
   if (!/^[A-Za-z0-9_-]{32,160}$/.test(deviceId)) {
     throw new DesktopLicenseError('设备标识格式无效', 400, 'INVALID_DEVICE_ID')
   }
+}
+
+function normalizeGrantPlan(input: Partial<DesktopGrantPlan> = {}): DesktopGrantPlan {
+  const plan = {
+    tokenCount: input.tokenCount ?? DESKTOP_INITIAL_KEY_COUNT,
+    compressionLimit: input.compressionLimit ?? DESKTOP_PERIOD_QUOTA,
+    durationDays: input.durationDays ?? DESKTOP_PERIOD_DAYS,
+  }
+  if (!Number.isInteger(plan.tokenCount) || plan.tokenCount < 1 || plan.tokenCount > DESKTOP_MAX_GRANT_KEY_COUNT) {
+    throw new DesktopLicenseError(`Token 数量必须为 1 到 ${DESKTOP_MAX_GRANT_KEY_COUNT}`, 400, 'INVALID_TOKEN_COUNT')
+  }
+  if (!Number.isInteger(plan.compressionLimit) || plan.compressionLimit < 1 || plan.compressionLimit > DESKTOP_MAX_PERIOD_QUOTA) {
+    throw new DesktopLicenseError(`压缩额度必须为 1 到 ${DESKTOP_MAX_PERIOD_QUOTA}`, 400, 'INVALID_COMPRESSION_LIMIT')
+  }
+  if (!Number.isInteger(plan.durationDays) || plan.durationDays < 1 || plan.durationDays > DESKTOP_MAX_PERIOD_DAYS) {
+    throw new DesktopLicenseError(`授权天数必须为 1 到 ${DESKTOP_MAX_PERIOD_DAYS}`, 400, 'INVALID_DURATION_DAYS')
+  }
+  return plan
 }
 
 export async function cleanupExpiredDesktopState(database: D1Database): Promise<void> {
@@ -98,27 +120,27 @@ export async function cleanupExpiredDesktopState(database: D1Database): Promise<
 
 async function insertNewGrantWithReservedKeys(
   database: D1Database,
-  grant: { id: string; licenseId: string; codeHash: string; expiresAt: Date },
+  grant: { id: string; licenseId: string; codeHash: string; expiresAt: Date; plan: DesktopGrantPlan },
 ): Promise<void> {
   const db = getDb(database)
   for (let attempt = 0; attempt < 3; attempt += 1) {
     const available = await db.select({ id: tinypngKeyPool.id })
       .from(tinypngKeyPool)
       .where(and(eq(tinypngKeyPool.status, 'active'), gt(tinypngKeyPool.apiKey, '')))
-      .limit(DESKTOP_INITIAL_KEY_COUNT)
+      .limit(grant.plan.tokenCount)
 
-    if (available.length < DESKTOP_INITIAL_KEY_COUNT) {
-      throw new DesktopLicenseError('TinyPNG Pool 可用容量不足，至少需要 40 个 Key', 409, 'POOL_CAPACITY_INSUFFICIENT')
+    if (available.length < grant.plan.tokenCount) {
+      throw new DesktopLicenseError(`TinyPNG Pool 可用容量不足，至少需要 ${grant.plan.tokenCount} 个 Token`, 409, 'POOL_CAPACITY_INSUFFICIENT')
     }
 
     const now = Date.now()
     const statements = [
       database.prepare(
-        "INSERT INTO desktop_licenses (id, status, key_limit, created_at, updated_at) VALUES (?, 'pending', ?, ?, ?)",
-      ).bind(grant.licenseId, DESKTOP_MAX_KEY_COUNT, now, now),
+        "INSERT INTO desktop_licenses (id, status, initial_key_count, key_limit, created_at, updated_at) VALUES (?, 'pending', ?, ?, ?, ?)",
+      ).bind(grant.licenseId, grant.plan.tokenCount, grant.plan.tokenCount + DESKTOP_EMERGENCY_KEY_COUNT, now, now),
       database.prepare(
-        "INSERT INTO desktop_activation_grants (id, license_id, kind, code_hash, status, expires_at, created_at) VALUES (?, ?, 'new', ?, 'issued', ?, ?)",
-      ).bind(grant.id, grant.licenseId, grant.codeHash, grant.expiresAt.getTime(), now),
+        "INSERT INTO desktop_activation_grants (id, license_id, kind, code_hash, status, token_count, quota_total, duration_days, expires_at, created_at) VALUES (?, ?, 'new', ?, 'issued', ?, ?, ?, ?, ?)",
+      ).bind(grant.id, grant.licenseId, grant.codeHash, grant.plan.tokenCount, grant.plan.compressionLimit, grant.plan.durationDays, grant.expiresAt.getTime(), now),
       ...available.flatMap(({ id }) => [
       database.prepare(
         "UPDATE tinypng_key_pool SET status = 'reserved', updated_at = ? WHERE id = ? AND status = 'active'",
@@ -142,7 +164,8 @@ export async function createDesktopGrant(
   database: D1Database,
   kind: DesktopGrantKind,
   targetLicenseId?: string,
-): Promise<{ code: string; licenseId: string; expiresAt: Date }> {
+  requestedPlan: Partial<DesktopGrantPlan> = {},
+): Promise<{ code: string; licenseId: string; expiresAt: Date; plan: DesktopGrantPlan }> {
   await cleanupExpiredDesktopState(database)
   const db = getDb(database)
   const now = new Date()
@@ -151,22 +174,32 @@ export async function createDesktopGrant(
   const codeHash = await sha256Hex(code)
   const grantId = crypto.randomUUID()
   const licenseId = kind === 'new' ? crypto.randomUUID() : targetLicenseId
+  let plan: DesktopGrantPlan
 
   if (!licenseId) {
     throw new DesktopLicenseError('续费或换机必须指定授权', 400, 'LICENSE_REQUIRED')
   }
 
   if (kind === 'new') {
+    plan = normalizeGrantPlan(requestedPlan)
     await insertNewGrantWithReservedKeys(database, {
       id: grantId,
       licenseId,
       codeHash,
       expiresAt,
+      plan,
     })
   } else {
     const license = await db.select().from(desktopLicenses).where(eq(desktopLicenses.id, licenseId)).get()
     if (!license || license.status !== 'active') {
       throw new DesktopLicenseError('授权不存在或不可用', 404, 'LICENSE_NOT_ACTIVE')
+    }
+    plan = normalizeGrantPlan({
+      ...requestedPlan,
+      tokenCount: requestedPlan.tokenCount ?? license.initialKeyCount,
+    })
+    if (plan.tokenCount !== license.initialKeyCount) {
+      throw new DesktopLicenseError('续费和换机不能改变已永久绑定的 Token 数量', 400, 'TOKEN_COUNT_IMMUTABLE')
     }
     await db.insert(desktopActivationGrants).values({
       id: grantId,
@@ -174,10 +207,31 @@ export async function createDesktopGrant(
       kind,
       codeHash,
       expiresAt,
+      tokenCount: plan.tokenCount,
+      quotaTotal: plan.compressionLimit,
+      durationDays: plan.durationDays,
     })
   }
 
-  return { code, licenseId, expiresAt }
+  return { code, licenseId, expiresAt, plan }
+}
+
+export async function previewDesktopGrant(database: D1Database, code: string) {
+  await cleanupExpiredDesktopState(database)
+  const codeHash = await sha256Hex(code)
+  const grant = await getDb(database).select().from(desktopActivationGrants).where(and(
+    eq(desktopActivationGrants.codeHash, codeHash),
+    eq(desktopActivationGrants.status, 'issued'),
+    gt(desktopActivationGrants.expiresAt, new Date()),
+  )).get()
+  if (!grant) throw new DesktopLicenseError('授权码无效或已过期', 410, 'GRANT_EXPIRED')
+  return {
+    kind: grant.kind,
+    tokenCount: grant.tokenCount,
+    compressionLimit: grant.quotaTotal,
+    durationDays: grant.durationDays,
+    redeemExpiresAt: grant.expiresAt.toISOString(),
+  }
 }
 
 export async function getDesktopLicenseView(
@@ -205,7 +259,8 @@ export async function getDesktopLicenseView(
     id: license.id,
     status,
     used: current?.usedCount ?? periods.at(-1)?.usedCount ?? 0,
-    limit: current?.quotaTotal ?? DESKTOP_PERIOD_QUOTA,
+    limit: current?.quotaTotal ?? periods.at(-1)?.quotaTotal ?? 0,
+    tokenCount: license.initialKeyCount,
     startsAt: toIso(current?.startsAt ?? null),
     expiresAt: toIso(current?.expiresAt ?? periods.at(-1)?.expiresAt ?? null),
     scheduledPeriods: scheduled.map((period) => ({
@@ -272,6 +327,7 @@ export async function redeemDesktopGrant(
   const accessToken = createDesktopSecret(36)
   const accessTokenHash = await sha256Hex(accessToken)
   const now = new Date()
+  const periodMs = grant.durationDays * DAY_MS
 
   try {
     if (grant.kind === 'new') {
@@ -282,7 +338,7 @@ export async function redeemDesktopGrant(
         ).bind(deviceId, accessTokenHash, now.getTime(), now.getTime(), license.id),
         database.prepare(
           'INSERT INTO desktop_license_periods (id, license_id, starts_at, expires_at, quota_total, used_count, reserved_count, created_at) VALUES (?, ?, ?, ?, ?, 0, 0, ?)',
-        ).bind(periodId, license.id, now.getTime(), now.getTime() + PERIOD_MS, DESKTOP_PERIOD_QUOTA, now.getTime()),
+        ).bind(periodId, license.id, now.getTime(), now.getTime() + periodMs, grant.quotaTotal, now.getTime()),
         database.prepare(
           "UPDATE tinypng_key_pool SET status = 'assigned', updated_at = ? WHERE id IN (SELECT pool_key_id FROM desktop_license_keys WHERE license_id = ?) AND status = 'reserved'",
         ).bind(now.getTime(), license.id),
@@ -294,11 +350,11 @@ export async function redeemDesktopGrant(
         .limit(1)
         .get()
       if (!latest) throw new DesktopLicenseError('授权周期数据缺失', 409, 'PERIOD_MISSING')
-      const window = getNextDesktopPeriodWindow(now.getTime(), latest.expiresAt.getTime(), PERIOD_MS)
+      const window = getNextDesktopPeriodWindow(now.getTime(), latest.expiresAt.getTime(), periodMs)
       await database.batch([
         database.prepare(
           'INSERT INTO desktop_license_periods (id, license_id, starts_at, expires_at, quota_total, used_count, reserved_count, created_at) VALUES (?, ?, ?, ?, ?, 0, 0, ?)',
-        ).bind(crypto.randomUUID(), license.id, window.startsAt, window.expiresAt, DESKTOP_PERIOD_QUOTA, now.getTime()),
+        ).bind(crypto.randomUUID(), license.id, window.startsAt, window.expiresAt, grant.quotaTotal, now.getTime()),
         database.prepare(
           'UPDATE desktop_licenses SET access_token_hash = ?, updated_at = ? WHERE id = ? AND status = ?',
         ).bind(accessTokenHash, now.getTime(), license.id, 'active'),
@@ -455,7 +511,8 @@ export async function topUpDesktopKeys(request: Request, database: D1Database) {
     .where(eq(desktopLicenseKeys.licenseId, license.id))
 
   const emergencyCount = bindings.filter((binding) => binding.isEmergency).length
-  if (bindings.length >= DESKTOP_MAX_KEY_COUNT || emergencyCount >= DESKTOP_MAX_KEY_COUNT - DESKTOP_INITIAL_KEY_COUNT) {
+  const maxEmergency = Math.max(0, license.keyLimit - license.initialKeyCount)
+  if (bindings.length >= license.keyLimit || emergencyCount >= maxEmergency) {
     throw new DesktopLicenseError('应急 Key 已达到上限', 409, 'KEY_LIMIT_REACHED')
   }
 
@@ -481,6 +538,8 @@ export async function topUpDesktopKeys(request: Request, database: D1Database) {
     realRemaining,
     assignedCount: bindings.length,
     emergencyCount,
+    maxAssigned: license.keyLimit,
+    maxEmergency,
   })
   const available = await db.select({ id: tinypngKeyPool.id, apiKey: tinypngKeyPool.apiKey })
     .from(tinypngKeyPool)

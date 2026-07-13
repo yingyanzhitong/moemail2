@@ -4,7 +4,7 @@ import { getUserId } from '@/lib/apiKey'
 import { getUserRole } from '@/lib/auth'
 import { createDesktopGrant } from '@/lib/desktop-license-service'
 import { desktopApiError } from '@/lib/desktop-license-http'
-import { DESKTOP_INITIAL_KEY_COUNT, DESKTOP_PERIOD_DAYS, DESKTOP_PERIOD_QUOTA, type DesktopGrantKind } from '@/lib/desktop-license-types'
+import type { DesktopGrantKind, DesktopGrantPlan } from '@/lib/desktop-license-types'
 import { ROLES } from '@/lib/permissions'
 
 export const runtime = 'edge'
@@ -17,22 +17,22 @@ export async function POST(request: Request) {
   }
 
   try {
-    const body = await request.json() as { kind?: DesktopGrantKind; licenseId?: string }
+    const body = await request.json() as { kind?: DesktopGrantKind; licenseId?: string } & Partial<DesktopGrantPlan>
     if (!body.kind || !['new', 'renew', 'rebind'].includes(body.kind)) {
       return NextResponse.json({ error: '凭证类型无效' }, { status: 400 })
     }
-    const result = await createDesktopGrant(getRequestContext().env.DB, body.kind, body.licenseId)
+    const result = await createDesktopGrant(getRequestContext().env.DB, body.kind, body.licenseId, {
+      tokenCount: body.tokenCount,
+      compressionLimit: body.compressionLimit,
+      durationDays: body.durationDays,
+    })
     return NextResponse.json({
       success: true,
       licenseId: result.licenseId,
       authLink: new URL(`/activate/${result.code}`, request.url).toString(),
       code: result.code,
       expiresAt: result.expiresAt.toISOString(),
-      plan: {
-        days: DESKTOP_PERIOD_DAYS,
-        limit: DESKTOP_PERIOD_QUOTA,
-        initialKeyCount: DESKTOP_INITIAL_KEY_COUNT,
-      },
+      plan: result.plan,
     })
   } catch (error) {
     return desktopApiError(error, 'Failed to create desktop grant')

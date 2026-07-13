@@ -7,7 +7,8 @@ const base: LicenseView = {
   id: 'license',
   status: 'active',
   used: 3200,
-  limit: 10000,
+  limit: 12345,
+  tokenCount: 24,
   startsAt: '2026-07-01T00:00:00.000Z',
   expiresAt: '2099-08-01T00:00:00.000Z',
   scheduledPeriods: [],
@@ -18,12 +19,14 @@ function view(overrides: Partial<LicenseView> = {}) {
 }
 
 describe('授权面板', () => {
-  it('有效授权只展示逻辑额度，不展示 Key 或真实计数', () => {
+  it('有效授权展示 Auth Link 授予的 Token 数量和逻辑额度，不展示敏感内容', () => {
     const { container } = view()
     expect(screen.getByText('授权有效')).toBeInTheDocument()
     expect(screen.getByText('3,200')).toBeInTheDocument()
-    expect(screen.getByText('/ 10,000')).toBeInTheDocument()
-    expect(container.textContent).not.toMatch(/api.?key|compression-count|40\s*key/i)
+    expect(screen.getByText('/ 12,345')).toBeInTheDocument()
+    expect(screen.getByText('Token 数量')).toBeInTheDocument()
+    expect(screen.getByText('24')).toBeInTheDocument()
+    expect(container.textContent).not.toMatch(/api.?key|compression-count/i)
   })
 
   it('展示续费已排期', () => {

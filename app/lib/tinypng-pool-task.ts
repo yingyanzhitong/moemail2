@@ -5,10 +5,10 @@ import {
   appendTinyPngTaskRunLog,
   formatTinyPngTaskLog,
 } from './tinypng-pool-task-log'
+import { calculateTinyPngRegistrationSuccessRate } from './tinypng-pool-success-rate'
 
 const POOL_LIMIT = 100000
 const BATCH_SIZE = 5
-const REGISTRATION_INTERVAL_MS = 60 * 1000
 
 type TaskRunStatus = 'success' | 'partial_failure' | 'skipped' | 'failed'
 
@@ -27,10 +27,6 @@ export interface TinyPngPoolTaskResult {
 
 function getErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error)
-}
-
-function waitForNextRegistration(): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, REGISTRATION_INTERVAL_MS))
 }
 
 export async function runTinyPngPoolTask(
@@ -199,14 +195,11 @@ export async function runTinyPngPoolTask(
             .where(eq(tinypngKeyPool.email, emailAddress))
         }
 
-        if (i < BATCH_SIZE - 1) {
-          await recordLog('等待 1 分钟后执行下一个注册任务。')
-          await waitForNextRegistration()
-        }
       }
 
       status = failedCount === 0 ? 'success' : successfulCount === 0 ? 'failed' : 'partial_failure'
-      message = `新增 ${createdCount} 个任务，成功注册 ${successfulCount} 个账号，清理 ${cleanedCount} 个失效记录${failedCount > 0 ? `，失败 ${failedCount} 个` : ''}。`
+      const successRate = calculateTinyPngRegistrationSuccessRate(successfulCount, createdCount)
+      message = `新增 ${createdCount} 个任务，成功注册 ${successfulCount} 个账号，注册成功率 ${successRate ?? 0}%，清理 ${cleanedCount} 个失效记录${failedCount > 0 ? `，失败 ${failedCount} 个` : ''}。`
     }
   } catch (error) {
     status = 'failed'

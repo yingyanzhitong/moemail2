@@ -1,7 +1,12 @@
 import { auth } from "@/lib/auth"
 import { createDb } from "@/lib/db"
 import { desktopLicenses, tinypngKeyPool, tinypngTaskRuns } from "@/lib/schema"
-import { getNextTinyPngPoolRunAt, TINYPNG_POOL_SCHEDULE_LABEL } from "@/lib/tinypng-pool-schedule"
+import {
+  getNextTinyPngPoolRunAt,
+  getTinyPngPoolScheduleLabel,
+  parseTinyPngPoolCronExpression,
+  TINYPNG_POOL_CRON_CONFIG_KEY,
+} from "@/lib/tinypng-pool-schedule"
 import {
   parseEmailDomains,
   resolveTinyPngPoolEmailDomain,
@@ -12,6 +17,7 @@ import { NextResponse } from "next/server"
 import { ROLES } from "@/lib/permissions"
 import { getUserRole } from "@/lib/auth"
 import { and, count, desc, eq, gte, lte } from "drizzle-orm"
+import { calculateTinyPngRegistrationSuccessRate } from "@/lib/tinypng-pool-success-rate"
 
 export const runtime = "edge"
 
@@ -47,7 +53,7 @@ export async function GET() {
     const db = createDb()
     const env = getRequestContext().env
     
-    const [totalResult, activeResult, pendingResult, usedResult, reservedResult, assignedResult, invalidResult, licenseResult, lastTaskRun, emailDomainsValue, selectedEmailDomain] = await Promise.all([
+    const [totalResult, activeResult, pendingResult, usedResult, reservedResult, assignedResult, invalidResult, licenseResult, lastTaskRun, emailDomainsValue, selectedEmailDomain, cronExpressionValue] = await Promise.all([
       db.select({ value: count() }).from(tinypngKeyPool).get(),
       db.select({ value: count() }).from(tinypngKeyPool).where(eq(tinypngKeyPool.status, 'active')).get(),
       db.select({ value: count() }).from(tinypngKeyPool).where(eq(tinypngKeyPool.status, 'pending')).get(),
@@ -59,6 +65,7 @@ export async function GET() {
       db.query.tinypngTaskRuns.findFirst({ orderBy: desc(tinypngTaskRuns.completedAt) }),
       env.SITE_CONFIG.get("EMAIL_DOMAINS"),
       env.SITE_CONFIG.get(TINYPNG_POOL_EMAIL_DOMAIN_CONFIG_KEY),
+      env.SITE_CONFIG.get(TINYPNG_POOL_CRON_CONFIG_KEY),
     ])
     const parsedLastRun = lastTaskRun
       ? splitTaskMessage(lastTaskRun.message, lastTaskRun.status)
@@ -83,6 +90,7 @@ export async function GET() {
         `注册失败：${item.email}\n${item.errorMessage || "未记录失败原因"}`,
       )
     const emailDomains = parseEmailDomains(emailDomainsValue)
+    const cronExpression = parseTinyPngPoolCronExpression(cronExpressionValue)
 
     return NextResponse.json({
       total: totalResult?.value ?? 0,
@@ -99,9 +107,10 @@ export async function GET() {
         selectedEmailDomain,
         env.EMAIL_DOMAIN,
       ) || "",
+      cronExpression,
       taskStatus: {
-        scheduleLabel: TINYPNG_POOL_SCHEDULE_LABEL,
-        nextRunAt: getNextTinyPngPoolRunAt().toISOString(),
+        scheduleLabel: getTinyPngPoolScheduleLabel(cronExpression),
+        nextRunAt: getNextTinyPngPoolRunAt(new Date(), cronExpression).toISOString(),
         lastRun: lastTaskRun ? {
           id: lastTaskRun.id,
           status: lastTaskRun.status,
@@ -111,6 +120,10 @@ export async function GET() {
           cleanedCount: lastTaskRun.cleanedCount,
           failedCount: lastTaskRun.failedCount,
           successfulCount: lastTaskRun.successfulCount,
+          successRate: calculateTinyPngRegistrationSuccessRate(
+            lastTaskRun.successfulCount,
+            lastTaskRun.createdCount,
+          ),
           durationMs: Math.max(lastTaskRun.completedAt.getTime() - lastTaskRun.startedAt.getTime(), 0),
           completedAt: lastTaskRun.completedAt,
         } : null,

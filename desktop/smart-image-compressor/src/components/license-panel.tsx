@@ -1,4 +1,4 @@
-import { CalendarClock, CircleGauge, FolderOutput, RotateCw, ShieldAlert } from 'lucide-react'
+import { CalendarClock, CircleGauge, FolderOutput, KeyRound, RotateCw, ShieldAlert } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
 import type { LicenseView } from '@/types'
@@ -54,9 +54,13 @@ export function LicensePanel({ license, refreshing, onRefresh, onActivate }: Lic
           <p className="font-mono text-sm text-[#667085]">/ {license.limit.toLocaleString()}</p>
         </div>
         <Progress value={percent} className="mt-4" aria-label={`已使用 ${percent.toFixed(1)}%`} />
-        <div className="mt-2 flex justify-between font-mono text-[10px] text-[#8792A5]"><span>0</span><span>10,000</span></div>
+        <div className="mt-2 flex justify-between font-mono text-[10px] text-[#8792A5]"><span>0</span><span>{license.limit.toLocaleString()}</span></div>
 
         <div className="mt-5 grid gap-3 border-t border-[#E1E6EE] pt-4 text-sm">
+          <div className="flex items-center justify-between gap-3">
+            <span className="flex items-center gap-2 text-[#667085]"><KeyRound className="h-4 w-4" />Token 数量</span>
+            <span className="font-mono text-xs">{license.tokenCount.toLocaleString()}</span>
+          </div>
           <div className="flex items-center justify-between gap-3">
             <span className="flex items-center gap-2 text-[#667085]"><CalendarClock className="h-4 w-4" />当前周期</span>
             <span className="font-mono text-xs">至 {formatDate(license.expiresAt)}</span>

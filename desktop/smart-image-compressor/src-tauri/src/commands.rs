@@ -18,7 +18,8 @@ use tokio::sync::Mutex as AsyncMutex;
 use crate::{
     license_api::LicenseApi,
     models::{
-        BootstrapView, CompressionProgress, CompressionSummary, ImageJobView, KeyState, LicenseView,
+        ActivationPlanPreview, BootstrapView, CompressionProgress, CompressionSummary, ImageJobView,
+        KeyState, LicenseView,
     },
     scanner::{scan_paths, ImageJob},
     tinify::{self, TinifyError},
@@ -82,6 +83,18 @@ pub async fn redeem_activation(
         return Err(command_error("授权码格式无效"));
     }
     state.license_api.redeem(code).await.map_err(command_error)
+}
+
+#[tauri::command]
+pub async fn preview_activation(
+    code: String,
+    state: State<'_, AppState>,
+) -> std::result::Result<ActivationPlanPreview, String> {
+    let code = code.trim();
+    if code.len() < 20 || code.len() > 256 {
+        return Err(command_error("授权码格式无效"));
+    }
+    state.license_api.preview(code).await.map_err(command_error)
 }
 
 #[tauri::command]

@@ -6,10 +6,19 @@ export interface LicenseView {
   status: LicenseStatus
   used: number
   limit: number
+  tokenCount: number
   startsAt: string | null
   expiresAt: string | null
   scheduledPeriods: Array<{ startsAt: string; expiresAt: string }>
   message?: string
+}
+
+export interface ActivationPlanPreview {
+  kind: 'new' | 'renew' | 'rebind'
+  tokenCount: number
+  compressionLimit: number
+  durationDays: number
+  redeemExpiresAt: string
 }
 
 export interface ImageJob {
