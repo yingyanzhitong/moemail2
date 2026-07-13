@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react"
 import { Database, Link, Copy, Check, Loader2, Clock3, History, Play } from "lucide-react"
 import { useRouter } from "next/navigation"
-import { useLocale } from "next-intl"
+import { useLocale, useTranslations } from "next-intl"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -14,6 +14,13 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { useToast } from "@/components/ui/use-toast"
 
 type TinyPngTaskRunStatus = 'success' | 'partial_failure' | 'skipped' | 'failed'
@@ -30,6 +37,7 @@ interface TinyPngTaskStatus {
     successfulCount: number
     durationMs: number
     completedAt: string
+    logs: string[]
   } | null
 }
 
@@ -38,6 +46,8 @@ interface PoolStats {
   active: number
   pending: number
   used: number
+  emailDomains: string[]
+  emailDomain: string
   taskStatus: TinyPngTaskStatus
 }
 
@@ -82,6 +92,8 @@ export function TinyPngPoolStatsCard() {
   const [stats, setStats] = useState<PoolStats | null>(null)
   const [loading, setLoading] = useState(true)
   const [running, setRunning] = useState(false)
+  const [emailDomain, setEmailDomain] = useState("")
+  const [savingEmailDomain, setSavingEmailDomain] = useState(false)
   const [generateLoading, setGenerateLoading] = useState(false)
   const [showDialog, setShowDialog] = useState(false)
   const [keyCount, setKeyCount] = useState(1)
@@ -90,6 +102,7 @@ export function TinyPngPoolStatsCard() {
   const [error, setError] = useState<string | null>(null)
   const router = useRouter()
   const locale = useLocale()
+  const tWebsite = useTranslations("profile.website")
   const { toast } = useToast()
 
   const fetchStats = useCallback(async (showLoading = true) => {
@@ -97,7 +110,9 @@ export function TinyPngPoolStatsCard() {
       if (showLoading) setLoading(true)
       const res = await fetch("/api/admin/tinypng-pool/stats")
       if (!res.ok) throw new Error("获取缓冲池状态失败")
-      setStats(await res.json() as PoolStats)
+      const data = await res.json() as PoolStats
+      setStats(data)
+      setEmailDomain(data.emailDomain)
     } catch (error) {
       console.error(error)
       setStats(null)
@@ -178,6 +193,39 @@ export function TinyPngPoolStatsCard() {
     }
   }
 
+  const handleEmailDomainChange = async (nextEmailDomain: string) => {
+    const previousEmailDomain = emailDomain
+    setEmailDomain(nextEmailDomain)
+    setSavingEmailDomain(true)
+
+    try {
+      const res = await fetch("/api/admin/tinypng-pool/config", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ emailDomain: nextEmailDomain }),
+      })
+      const data = await res.json() as { emailDomain?: string; error?: string }
+      if (!res.ok || !data.emailDomain) {
+        throw new Error(data.error || "保存邮箱域名失败")
+      }
+
+      setEmailDomain(data.emailDomain)
+      toast({
+        title: "Pool 邮箱域名已更新",
+        description: `后续注册将使用 @${data.emailDomain}`,
+      })
+    } catch (error) {
+      setEmailDomain(previousEmailDomain)
+      toast({
+        title: "保存邮箱域名失败",
+        description: error instanceof Error ? error.message : "请稍后重试",
+        variant: "destructive",
+      })
+    } finally {
+      setSavingEmailDomain(false)
+    }
+  }
+
   if (loading) return null // Or a skeleton
 
   // Only render if we have stats (implies permission check passed on backend, 
@@ -226,6 +274,31 @@ export function TinyPngPoolStatsCard() {
           </div>
         </div>
 
+        <div className="mb-4 flex flex-col gap-3 rounded-lg border border-yellow-500/20 bg-yellow-500/[0.025] p-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-sm font-medium">{tWebsite("tinypngPoolEmailDomain")}</p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              {tWebsite("tinypngPoolEmailDomainDescription")}
+            </p>
+          </div>
+          <Select
+            value={emailDomain}
+            onValueChange={handleEmailDomainChange}
+            disabled={savingEmailDomain || stats.emailDomains.length === 0}
+          >
+            <SelectTrigger className="w-full sm:w-64">
+              <SelectValue placeholder={tWebsite("tinypngPoolEmailDomainPlaceholder")} />
+            </SelectTrigger>
+            <SelectContent>
+              {stats.emailDomains.map((domain) => (
+                <SelectItem key={domain} value={domain}>
+                  @{domain}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           <div className="p-3 bg-secondary/20 rounded-lg text-center">
               <div className="text-2xl font-bold">{stats.total}</div>
@@ -271,9 +344,12 @@ export function TinyPngPoolStatsCard() {
                       </p>
                     </div>
                   </div>
-                  <p className="mt-2 truncate text-xs text-muted-foreground" title={lastRun.message}>
-                    {lastRun.message}
-                  </p>
+                  <div className="mt-3 border-t border-yellow-500/15 pt-3">
+                    <p className="text-xs font-medium text-muted-foreground">完整执行日志</p>
+                    <pre className="mt-1 max-h-44 overflow-y-auto whitespace-pre-wrap break-words rounded-md bg-background/70 p-2 font-mono text-[11px] leading-5 text-muted-foreground">
+                      {lastRun.logs.length > 0 ? lastRun.logs.join("\n\n") : lastRun.message}
+                    </pre>
+                  </div>
                 </>
               ) : null}
             </div>

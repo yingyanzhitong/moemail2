@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.13.17] - 2026-07-13
+
+### Features
+
+- **TinyPNG 缓冲池**：将 Pool 邮箱域名选择迁移至皇帝专用的 TinyPNG Pool 卡片，并仅允许使用网站已配置的邮箱域名。
+- **TinyPNG 任务诊断**：持久化每个注册请求的完整执行日志，展示 HTTP 状态与服务端返回内容；历史任务兼容回填已保存的失败原因。
+
 ## [1.13.16] - 2026-07-13
 
 ### Features

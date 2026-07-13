@@ -14,6 +14,7 @@ export interface TinyPngPoolTaskResult {
   cleanedCount: number
   failedCount: number
   successfulCount: number
+  logs: string[]
   startedAt: Date
   completedAt: Date
 }
@@ -34,6 +35,7 @@ export async function runTinyPngPoolTask(
   let cleanedCount = 0
   let failedCount = 0
   let successfulCount = 0
+  const logs: string[] = []
 
   try {
     const failedItems = await db.select().from(tinypngKeyPool)
@@ -45,6 +47,9 @@ export async function runTinyPngPoolTask(
       await db.delete(emails).where(eq(emails.address, item.email))
     }
     cleanedCount += failedItems.length
+    if (failedItems.length > 0) {
+      logs.push(`清理 ${failedItems.length} 个上次注册失败的记录。`)
+    }
 
     const staleThreshold = new Date(Date.now() - 30 * 60 * 1000)
     const stalePendingItems = await db.select().from(tinypngKeyPool)
@@ -59,6 +64,9 @@ export async function runTinyPngPoolTask(
       await db.delete(emails).where(eq(emails.address, item.email))
     }
     cleanedCount += stalePendingItems.length
+    if (stalePendingItems.length > 0) {
+      logs.push(`清理 ${stalePendingItems.length} 个超时未完成的注册记录。`)
+    }
 
     const poolCountResult = await db.select({ value: count() })
       .from(tinypngKeyPool)
@@ -69,6 +77,7 @@ export async function runTinyPngPoolTask(
     if (currentSize >= POOL_LIMIT) {
       status = 'skipped'
       message = `缓冲池已满（${currentSize}/${POOL_LIMIT}），本次未生成。`
+      logs.push(`当前可用缓冲池数量：${currentSize}，达到上限 ${POOL_LIMIT}。`)
     } else {
       const domain = emailDomain || 'tinypng-token.site'
 
@@ -104,10 +113,14 @@ export async function runTinyPngPoolTask(
           if (!response.ok) {
             const text = await response.text()
             failedCount++
+            const detail = text || response.statusText || "未返回失败详情"
+            logs.push(
+              `注册失败：${emailAddress}\nHTTP ${response.status} ${response.statusText}\n${detail}`,
+            )
             await db.update(tinypngKeyPool)
               .set({
                 status: 'registration_failed',
-                errorMessage: `${response.status} - ${text.substring(0, 200)}`,
+                errorMessage: `${response.status} - ${detail}`,
                 updatedAt: new Date()
               })
               .where(eq(tinypngKeyPool.email, emailAddress))
@@ -115,15 +128,18 @@ export async function runTinyPngPoolTask(
           }
 
           successfulCount++
+          logs.push(`注册成功：${emailAddress}\nHTTP ${response.status} ${response.statusText}`)
           await db.update(tinypngKeyPool)
             .set({ status: 'registered', updatedAt: new Date() })
             .where(eq(tinypngKeyPool.email, emailAddress))
         } catch (error) {
           failedCount++
+          const detail = getErrorMessage(error)
+          logs.push(`注册异常：${emailAddress}\n${detail}`)
           await db.update(tinypngKeyPool)
             .set({
               status: 'registration_failed',
-              errorMessage: getErrorMessage(error).substring(0, 200),
+              errorMessage: detail,
               updatedAt: new Date()
             })
             .where(eq(tinypngKeyPool.email, emailAddress))
@@ -136,6 +152,7 @@ export async function runTinyPngPoolTask(
   } catch (error) {
     status = 'failed'
     message = `任务异常：${getErrorMessage(error).substring(0, 200)}`
+    logs.push(`任务异常：${getErrorMessage(error)}`)
     console.error('Error in tinypng pool worker:', error)
   }
 
@@ -147,12 +164,22 @@ export async function runTinyPngPoolTask(
     cleanedCount,
     failedCount,
     successfulCount,
+    logs,
     startedAt,
     completedAt,
   }
 
   try {
-    await db.insert(tinypngTaskRuns).values(result)
+    await db.insert(tinypngTaskRuns).values({
+      status,
+      message: [message, ...logs].filter(Boolean).join('\n\n'),
+      createdCount,
+      cleanedCount,
+      failedCount,
+      successfulCount,
+      startedAt,
+      completedAt,
+    })
   } catch (error) {
     console.error('Failed to save tinypng task run:', error)
   }

@@ -17,11 +17,6 @@ import {
   type RoleTinyPngDailyLimitConfig,
   type RoleTinyPngPerRequestLimitConfig,
 } from "@/lib/tinypng-limits"
-import {
-  parseEmailDomains,
-  resolveTinyPngPoolEmailDomain,
-  TINYPNG_POOL_EMAIL_DOMAIN_CONFIG_KEY,
-} from "@/lib/tinypng-pool-domain"
 
 export const runtime = "edge"
 
@@ -40,7 +35,6 @@ export async function GET() {
     turnstileEnabled,
     turnstileSiteKey,
     turnstileSecretKey,
-    tinypngPoolEmailDomain,
   ] = await Promise.all([
     env.SITE_CONFIG.get("DEFAULT_ROLE"),
     env.SITE_CONFIG.get("EMAIL_DOMAINS"),
@@ -52,7 +46,6 @@ export async function GET() {
     env.SITE_CONFIG.get("TURNSTILE_ENABLED"),
     env.SITE_CONFIG.get("TURNSTILE_SITE_KEY"),
     env.SITE_CONFIG.get("TURNSTILE_SECRET_KEY"),
-    env.SITE_CONFIG.get(TINYPNG_POOL_EMAIL_DOMAIN_CONFIG_KEY),
   ])
 
   const resolvedEmailDomains = emailDomains || process.env.DEFAULT_EMAIL_DOMAIN || ""
@@ -64,11 +57,6 @@ export async function GET() {
   return Response.json({
     defaultRole: defaultRole || ROLES.CIVILIAN,
     emailDomains: resolvedEmailDomains,
-    tinypngPoolEmailDomain: resolveTinyPngPoolEmailDomain(
-      resolvedEmailDomains,
-      tinypngPoolEmailDomain,
-      process.env.DEFAULT_EMAIL_DOMAIN,
-    ) || "",
     adminContact: adminContact || "",
     maxEmails: resolvedRoleMaxEmails.civilian.toString(),
     roleMaxEmails: resolvedRoleMaxEmails,
@@ -105,7 +93,6 @@ export async function POST(request: Request) {
     tinypngDailyLimits,
     tinypngPerRequestLimits,
     turnstile,
-    tinypngPoolEmailDomain,
   } =
     (await request.json()) as {
       defaultRole: Exclude<Role, typeof ROLES.EMPEROR>
@@ -117,7 +104,6 @@ export async function POST(request: Request) {
       tinypngPerRequestLimits?: Partial<
         Record<keyof RoleTinyPngPerRequestLimitConfig, number | string>
       >
-      tinypngPoolEmailDomain?: string
       turnstile?: {
         enabled: boolean
         siteKey: string
@@ -146,25 +132,11 @@ export async function POST(request: Request) {
   const resolvedTinyPngDailyLimits = resolveRoleTinyPngDailyLimits(tinypngDailyLimits)
   const resolvedTinyPngPerRequestLimits =
     resolveRoleTinyPngPerRequestLimits(tinypngPerRequestLimits)
-  const emailDomainOptions = parseEmailDomains(emailDomains)
-  const resolvedTinyPngPoolEmailDomain = tinypngPoolEmailDomain?.trim() || emailDomainOptions[0]
-
-  if (
-    !resolvedTinyPngPoolEmailDomain ||
-    !emailDomainOptions.includes(resolvedTinyPngPoolEmailDomain)
-  ) {
-    return Response.json(
-      { error: "TinyPNG Pool 邮箱域名必须从已配置的邮箱域名中选择" },
-      { status: 400 },
-    )
-  }
-
   const env = getRequestContext().env
 
   await Promise.all([
     env.SITE_CONFIG.put("DEFAULT_ROLE", defaultRole),
     env.SITE_CONFIG.put("EMAIL_DOMAINS", emailDomains),
-    env.SITE_CONFIG.put(TINYPNG_POOL_EMAIL_DOMAIN_CONFIG_KEY, resolvedTinyPngPoolEmailDomain),
     env.SITE_CONFIG.put("ADMIN_CONTACT", adminContact),
     env.SITE_CONFIG.put("MAX_EMAILS", resolvedRoleMaxEmails.civilian.toString()),
     env.SITE_CONFIG.put(EMAIL_ROLE_LIMIT_CONFIG_KEY, JSON.stringify(resolvedRoleMaxEmails)),
