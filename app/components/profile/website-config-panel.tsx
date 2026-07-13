@@ -34,6 +34,7 @@ import {
 interface WebsiteConfigResponse {
   defaultRole: Exclude<Role, typeof ROLES.EMPEROR>
   emailDomains: string
+  tinypngPoolEmailDomain: string
   adminContact: string
   maxEmails?: string | number
   roleMaxEmails?: Partial<RoleEmailLimitConfig>
@@ -108,6 +109,7 @@ export function WebsiteConfigPanel() {
   const tCard = useTranslations("profile.card")
   const [defaultRole, setDefaultRole] = useState<string>("")
   const [emailDomains, setEmailDomains] = useState<string>("")
+  const [tinypngPoolEmailDomain, setTinypngPoolEmailDomain] = useState<string>("")
   const [adminContact, setAdminContact] = useState<string>("")
   const [roleMaxEmails, setRoleMaxEmails] = useState<RoleMaxEmailFormState>(() =>
     createRoleMaxEmailFormState(DEFAULT_ROLE_MAX_ACTIVE_EMAILS),
@@ -137,6 +139,7 @@ export function WebsiteConfigPanel() {
       const data = (await res.json()) as WebsiteConfigResponse
       setDefaultRole(data.defaultRole)
       setEmailDomains(data.emailDomains)
+      setTinypngPoolEmailDomain(data.tinypngPoolEmailDomain)
       setAdminContact(data.adminContact)
       setRoleMaxEmails(createRoleMaxEmailFormState(data.roleMaxEmails, data.maxEmails))
       setTinypngDailyLimits(createRoleTinyPngDailyLimitFormState(data.tinypngDailyLimits))
@@ -154,6 +157,23 @@ export function WebsiteConfigPanel() {
       ...prev,
       [role]: value,
     }))
+  }
+
+  const emailDomainOptions = emailDomains
+    .split(",")
+    .map((domain) => domain.trim())
+    .filter(Boolean)
+
+  const handleEmailDomainsChange = (value: string) => {
+    const nextDomainOptions = value
+      .split(",")
+      .map((domain) => domain.trim())
+      .filter(Boolean)
+
+    setEmailDomains(value)
+    if (!nextDomainOptions.includes(tinypngPoolEmailDomain)) {
+      setTinypngPoolEmailDomain(nextDomainOptions[0] ?? "")
+    }
   }
 
   const handleTinypngDailyLimitChange = (
@@ -189,6 +209,7 @@ export function WebsiteConfigPanel() {
         body: JSON.stringify({
           defaultRole,
           emailDomains,
+          tinypngPoolEmailDomain,
           adminContact,
           roleMaxEmails: resolvedRoleMaxEmails,
           tinypngDailyLimits: resolvedTinyPngDailyLimits,
@@ -250,9 +271,34 @@ export function WebsiteConfigPanel() {
           <div className="flex-1">
             <Input
               value={emailDomains}
-              onChange={(e) => setEmailDomains(e.target.value)}
+              onChange={(e) => handleEmailDomainsChange(e.target.value)}
               placeholder={t("emailDomainsPlaceholder")}
             />
+          </div>
+        </div>
+
+        <div className="flex items-start gap-4">
+          <span className="pt-2 text-sm">{t("tinypngPoolEmailDomain")}:</span>
+          <div className="flex-1 space-y-2">
+            <Select
+              value={tinypngPoolEmailDomain}
+              onValueChange={setTinypngPoolEmailDomain}
+              disabled={emailDomainOptions.length === 0}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder={t("tinypngPoolEmailDomainPlaceholder")} />
+              </SelectTrigger>
+              <SelectContent>
+                {emailDomainOptions.map((domain) => (
+                  <SelectItem key={domain} value={domain}>
+                    @{domain}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              {t("tinypngPoolEmailDomainDescription")}
+            </p>
           </div>
         </div>
 

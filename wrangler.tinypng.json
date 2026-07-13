@@ -19,6 +19,12 @@
       "database_id": "9dd80929-206e-4132-91a0-e22cfb9106b1"
     }
   ],
+  "kv_namespaces": [
+    {
+      "binding": "SITE_CONFIG",
+      "id": "0b345ebd6a574d6cae14fcec37e1333c"
+    }
+  ],
   "vars": {
     "EMAIL_DOMAIN": "tinypng-token.site"
   }

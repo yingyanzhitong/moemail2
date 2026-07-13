@@ -1,7 +1,6 @@
 import { auth, checkPermission } from "@/lib/auth"
 import { createDb } from "@/lib/db"
-import { tinypngKeys, tinypngTaskRuns } from "@/lib/schema"
-import { getNextTinyPngPoolRunAt, TINYPNG_POOL_SCHEDULE_LABEL } from "@/lib/tinypng-pool-schedule"
+import { tinypngKeys } from "@/lib/schema"
 import { NextResponse } from "next/server"
 import { PERMISSIONS } from "@/lib/permissions"
 import { desc, eq, and } from "drizzle-orm"
@@ -52,15 +51,10 @@ export async function GET(request: Request) {
     }
 
     // 否则返回所有 keys
-    const [keys, lastTaskRun] = await Promise.all([
-      db.query.tinypngKeys.findMany({
-        where: eq(tinypngKeys.userId, session.user.id),
-        orderBy: desc(tinypngKeys.createdAt),
-      }),
-      db.query.tinypngTaskRuns.findFirst({
-        orderBy: desc(tinypngTaskRuns.completedAt),
-      }),
-    ])
+    const keys = await db.query.tinypngKeys.findMany({
+      where: eq(tinypngKeys.userId, session.user.id),
+      orderBy: desc(tinypngKeys.createdAt),
+    })
 
     return NextResponse.json({
       tinypngKeys: keys.map(key => ({
@@ -69,20 +63,6 @@ export async function GET(request: Request) {
         email: key.email,
         createdAt: key.createdAt,
       })),
-      taskStatus: {
-        scheduleLabel: TINYPNG_POOL_SCHEDULE_LABEL,
-        nextRunAt: getNextTinyPngPoolRunAt().toISOString(),
-        lastRun: lastTaskRun ? {
-          status: lastTaskRun.status,
-          message: lastTaskRun.message,
-          createdCount: lastTaskRun.createdCount,
-          cleanedCount: lastTaskRun.cleanedCount,
-          failedCount: lastTaskRun.failedCount,
-          successfulCount: lastTaskRun.successfulCount,
-          durationMs: Math.max(lastTaskRun.completedAt.getTime() - lastTaskRun.startedAt.getTime(), 0),
-          completedAt: lastTaskRun.completedAt,
-        } : null,
-      },
     })
   } catch (error) {
     console.error("Failed to fetch TinyPNG keys:", error)

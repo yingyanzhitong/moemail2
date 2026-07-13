@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.13.16] - 2026-07-13
+
+### Features
+
+- **TinyPNG 缓冲池**：将手动执行入口、上次任务结果与下次执行计划归入皇帝专用 Pool 卡片。
+- **TinyPNG 缓冲池**：网站配置新增 Pool 邮箱域名选择，只允许使用已配置的邮箱域名，并供定时与手动任务统一读取。
+
+### Improvements
+
+- **部署配置**：TinyPNG Pool Worker 增加 `SITE_CONFIG` KV 绑定，支持读取动态网站配置。
+
 ## [1.13.15] - 2026-07-13
 
 ### Features

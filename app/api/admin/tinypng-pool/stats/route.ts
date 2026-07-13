@@ -1,10 +1,11 @@
 import { auth } from "@/lib/auth"
 import { createDb } from "@/lib/db"
-import { tinypngKeyPool } from "@/lib/schema"
+import { tinypngKeyPool, tinypngTaskRuns } from "@/lib/schema"
+import { getNextTinyPngPoolRunAt, TINYPNG_POOL_SCHEDULE_LABEL } from "@/lib/tinypng-pool-schedule"
 import { NextResponse } from "next/server"
 import { ROLES } from "@/lib/permissions"
 import { getUserRole } from "@/lib/auth"
-import { count, eq } from "drizzle-orm"
+import { count, desc, eq } from "drizzle-orm"
 
 export const runtime = "edge"
 
@@ -22,17 +23,33 @@ export async function GET() {
   try {
     const db = createDb()
     
-    // Get counts
-    const totalResult = await db.select({ value: count() }).from(tinypngKeyPool).get()
-    const activeResult = await db.select({ value: count() }).from(tinypngKeyPool).where(eq(tinypngKeyPool.status, 'active')).get()
-    const pendingResult = await db.select({ value: count() }).from(tinypngKeyPool).where(eq(tinypngKeyPool.status, 'pending')).get()
-    const usedResult = await db.select({ value: count() }).from(tinypngKeyPool).where(eq(tinypngKeyPool.status, 'used')).get()
+    const [totalResult, activeResult, pendingResult, usedResult, lastTaskRun] = await Promise.all([
+      db.select({ value: count() }).from(tinypngKeyPool).get(),
+      db.select({ value: count() }).from(tinypngKeyPool).where(eq(tinypngKeyPool.status, 'active')).get(),
+      db.select({ value: count() }).from(tinypngKeyPool).where(eq(tinypngKeyPool.status, 'pending')).get(),
+      db.select({ value: count() }).from(tinypngKeyPool).where(eq(tinypngKeyPool.status, 'used')).get(),
+      db.query.tinypngTaskRuns.findFirst({ orderBy: desc(tinypngTaskRuns.completedAt) }),
+    ])
 
     return NextResponse.json({
       total: totalResult?.value ?? 0,
       active: activeResult?.value ?? 0,
       pending: pendingResult?.value ?? 0,
       used: usedResult?.value ?? 0,
+      taskStatus: {
+        scheduleLabel: TINYPNG_POOL_SCHEDULE_LABEL,
+        nextRunAt: getNextTinyPngPoolRunAt().toISOString(),
+        lastRun: lastTaskRun ? {
+          status: lastTaskRun.status,
+          message: lastTaskRun.message,
+          createdCount: lastTaskRun.createdCount,
+          cleanedCount: lastTaskRun.cleanedCount,
+          failedCount: lastTaskRun.failedCount,
+          successfulCount: lastTaskRun.successfulCount,
+          durationMs: Math.max(lastTaskRun.completedAt.getTime() - lastTaskRun.startedAt.getTime(), 0),
+          completedAt: lastTaskRun.completedAt,
+        } : null,
+      },
     })
   } catch (error) {
     console.error("Failed to get tinypng pool stats:", error)

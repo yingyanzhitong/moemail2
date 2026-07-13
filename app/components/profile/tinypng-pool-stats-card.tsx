@@ -1,7 +1,7 @@
 "use client"
 
-import { useEffect, useState } from "react"
-import { Database, Link, Copy, Check, Loader2 } from "lucide-react"
+import { useCallback, useEffect, useState } from "react"
+import { Database, Link, Copy, Check, Loader2, Clock3, History, Play } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useLocale } from "next-intl"
 import { Button } from "@/components/ui/button"
@@ -14,12 +14,31 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { useToast } from "@/components/ui/use-toast"
+
+type TinyPngTaskRunStatus = 'success' | 'partial_failure' | 'skipped' | 'failed'
+
+interface TinyPngTaskStatus {
+  scheduleLabel: string
+  nextRunAt: string
+  lastRun: {
+    status: TinyPngTaskRunStatus
+    message: string
+    createdCount: number
+    cleanedCount: number
+    failedCount: number
+    successfulCount: number
+    durationMs: number
+    completedAt: string
+  } | null
+}
 
 interface PoolStats {
   total: number
   active: number
   pending: number
   used: number
+  taskStatus: TinyPngTaskStatus
 }
 
 interface GenerateResponse {
@@ -31,9 +50,38 @@ interface GenerateResponse {
   error?: string
 }
 
+const TASK_STATUS_META: Record<TinyPngTaskRunStatus, { label: string; className: string }> = {
+  success: { label: '执行成功', className: 'text-emerald-600 dark:text-emerald-400' },
+  partial_failure: { label: '部分失败', className: 'text-amber-600 dark:text-amber-400' },
+  skipped: { label: '本次跳过', className: 'text-muted-foreground' },
+  failed: { label: '执行失败', className: 'text-destructive' },
+}
+
+function formatTaskTime(value: string): string {
+  return new Intl.DateTimeFormat('zh-CN', {
+    month: 'numeric',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).format(new Date(value))
+}
+
+function formatTaskDuration(durationMs: number): string {
+  const totalSeconds = Math.floor(durationMs / 1000)
+
+  if (totalSeconds < 1) return '不足 1 秒'
+  if (totalSeconds < 60) return `${totalSeconds} 秒`
+
+  const minutes = Math.floor(totalSeconds / 60)
+  const seconds = totalSeconds % 60
+  return seconds > 0 ? `${minutes} 分 ${seconds} 秒` : `${minutes} 分`
+}
+
 export function TinyPngPoolStatsCard() {
   const [stats, setStats] = useState<PoolStats | null>(null)
   const [loading, setLoading] = useState(true)
+  const [running, setRunning] = useState(false)
   const [generateLoading, setGenerateLoading] = useState(false)
   const [showDialog, setShowDialog] = useState(false)
   const [keyCount, setKeyCount] = useState(1)
@@ -42,18 +90,25 @@ export function TinyPngPoolStatsCard() {
   const [error, setError] = useState<string | null>(null)
   const router = useRouter()
   const locale = useLocale()
+  const { toast } = useToast()
+
+  const fetchStats = useCallback(async (showLoading = true) => {
+    try {
+      if (showLoading) setLoading(true)
+      const res = await fetch("/api/admin/tinypng-pool/stats")
+      if (!res.ok) throw new Error("获取缓冲池状态失败")
+      setStats(await res.json() as PoolStats)
+    } catch (error) {
+      console.error(error)
+      setStats(null)
+    } finally {
+      if (showLoading) setLoading(false)
+    }
+  }, [])
 
   useEffect(() => {
-    fetch("/api/admin/tinypng-pool/stats")
-      .then(async (res) => {
-        if (res.ok) {
-          const data = await res.json() as PoolStats
-          setStats(data)
-        }
-      })
-      .catch(console.error)
-      .finally(() => setLoading(false))
-  }, [])
+    fetchStats()
+  }, [fetchStats])
 
   const handleGenerate = async () => {
     setGenerateLoading(true)
@@ -92,21 +147,65 @@ export function TinyPngPoolStatsCard() {
     setKeyCount(1)
   }
 
+  const handleRunTask = async () => {
+    try {
+      setRunning(true)
+      const res = await fetch("/api/admin/tinypng-pool/run", { method: "POST" })
+      const data = await res.json() as {
+        error?: string
+        result?: { status: TinyPngTaskRunStatus; message: string }
+      }
+
+      if (!res.ok || !data.result) {
+        throw new Error(data.error || "任务执行失败")
+      }
+
+      toast({
+        title: data.result.status === 'skipped' ? '本次任务已跳过' : '任务执行完成',
+        description: data.result.message,
+        variant: data.result.status === 'failed' ? 'destructive' : 'default',
+      })
+      await fetchStats(false)
+    } catch (error) {
+      console.error(error)
+      toast({
+        title: "任务执行失败",
+        description: error instanceof Error ? error.message : "请稍后重试",
+        variant: "destructive",
+      })
+    } finally {
+      setRunning(false)
+    }
+  }
+
   if (loading) return null // Or a skeleton
 
   // Only render if we have stats (implies permission check passed on backend, 
   // though we should also check frontend role ideally, but parent does that or API fails safely)
   if (!stats) return null
 
+  const lastRun = stats.taskStatus.lastRun
+  const lastRunMeta = lastRun ? TASK_STATUS_META[lastRun.status] : null
+
   return (
     <>
       <div className="bg-background rounded-lg border-2 border-yellow-500/20 p-6">
-        <div className="flex items-center justify-between mb-4">
+        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-2">
             <Database className="w-5 h-5 text-yellow-500" />
             <h2 className="text-lg font-semibold text-yellow-500">TinyPNG Pool (Emperor Only)</h2>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap gap-2 sm:justify-end">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleRunTask}
+              disabled={running || loading}
+              className="gap-2"
+            >
+              {running ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
+              {running ? '执行中…' : '立即执行'}
+            </Button>
             <Button 
               variant="outline" 
               size="sm"
@@ -143,6 +242,53 @@ export function TinyPngPoolStatsCard() {
           <div className="p-3 bg-blue-500/10 rounded-lg text-center">
               <div className="text-2xl font-bold text-blue-600">{stats.used}</div>
               <div className="text-xs text-muted-foreground">Used</div>
+          </div>
+        </div>
+
+        <div className="mt-4 grid overflow-hidden rounded-lg border border-yellow-500/20 bg-yellow-500/[0.025] sm:grid-cols-2">
+          <div className="flex min-w-0 items-start gap-3 border-b border-yellow-500/15 px-4 py-3 sm:border-b-0 sm:border-r">
+            <History className="mt-0.5 h-4 w-4 shrink-0 text-yellow-600 dark:text-yellow-400" />
+            <div className="min-w-0">
+              <p className="text-xs text-muted-foreground">上次任务</p>
+              <p className={`mt-0.5 text-sm font-medium ${lastRunMeta?.className ?? 'text-muted-foreground'}`}>
+                {lastRunMeta ? lastRunMeta.label : '暂无执行记录'}
+              </p>
+              {lastRun ? (
+                <>
+                  <div className="mt-2 grid grid-cols-3 gap-3 text-xs">
+                    <div>
+                      <p className="text-muted-foreground">执行时间</p>
+                      <p className="mt-0.5 font-medium">{formatTaskTime(lastRun.completedAt)}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground">耗时</p>
+                      <p className="mt-0.5 font-medium">{formatTaskDuration(lastRun.durationMs)}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground">成功账号</p>
+                      <p className="mt-0.5 font-medium text-emerald-600 dark:text-emerald-400">
+                        {lastRun.successfulCount} 个
+                      </p>
+                    </div>
+                  </div>
+                  <p className="mt-2 truncate text-xs text-muted-foreground" title={lastRun.message}>
+                    {lastRun.message}
+                  </p>
+                </>
+              ) : null}
+            </div>
+          </div>
+          <div className="flex min-w-0 items-start gap-3 px-4 py-3">
+            <Clock3 className="mt-0.5 h-4 w-4 shrink-0 text-yellow-600 dark:text-yellow-400" />
+            <div>
+              <p className="text-xs text-muted-foreground">下一次计划</p>
+              <p className="mt-0.5 text-sm font-medium">
+                {formatTaskTime(stats.taskStatus.nextRunAt)}
+              </p>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                {stats.taskStatus.scheduleLabel}
+              </p>
+            </div>
           </div>
         </div>
       </div>
