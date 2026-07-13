@@ -37,7 +37,7 @@ pub struct AppState {
 impl AppState {
     pub fn new(vault: Arc<CredentialVault>) -> Result<Self> {
         let http = Client::builder()
-            .user_agent("SmartImageCompressor/0.1.0")
+            .user_agent(concat!("SmartImageCompressor/", env!("CARGO_PKG_VERSION")))
             .timeout(std::time::Duration::from_secs(90))
             .build()
             .context("无法创建网络客户端")?;

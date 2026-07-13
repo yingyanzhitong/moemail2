@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.14.1] - 2026-07-13
+
+### Bug Fixes
+
+- **桌面发行**：补充桌面工作区的 Node.js 类型依赖，修复干净 GitHub Actions runner 在 Tauri 打包阶段无法解析 `node:url` 与 `process` 的问题。
+
 ## [1.14.0] - 2026-07-13
 
 ### Features
