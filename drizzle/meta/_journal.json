@@ -183,6 +183,13 @@
       "when": 1783927545414,
       "tag": "0025_tinypng-task-run-success-count",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "6",
+      "when": 1783931001288,
+      "tag": "0026_desktop-licenses",
+      "breakpoints": true
     }
   ]
 }

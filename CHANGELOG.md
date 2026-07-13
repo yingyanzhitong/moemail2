@@ -2,6 +2,24 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.14.0] - 2026-07-13
+
+### Features
+
+- **智能压缩工具**：新增 Tauri v2 桌面端，支持 macOS Intel、Apple Silicon 与 Windows x64，提供文件/文件夹扫描、固定四并发压缩、任务取消、原子输出和压缩结果展示。
+- **桌面授权**：新增 30 天 10,000 张逻辑额度、设备绑定、一次性新授权/续费/换机凭证、批次额度预留与幂等结算。
+- **TinyPNG Key 池**：新授权原子绑定 40 个 Key，并在服务端核验自然月真实用量后按需补发最多 20 个应急 Key；已下发 Key 永不回收复用。
+- **管理与激活**：新增 HTTPS 激活中转页和授权管理界面，支持创建授权、排期续费、撤销与换机。
+
+### Security
+
+- **敏感凭证隔离**：TinyPNG Key、设备凭证和访问令牌只在 Rust 层通过 Stronghold 加密保存，不进入 WebView 状态或日志。
+- **旧接口下线**：旧 Electron Base64 授权接口统一返回 `410 Gone`，桌面接口改用一次性 code 哈希、设备校验和访问令牌摘要。
+
+### Tests
+
+- **自动化验证**：新增授权域与 D1 原子性测试、桌面授权状态 UI 测试、TinyPNG Mock HTTP 测试、`DESIGN.md` lint 和三平台未签名预发布流水线。
+
 ## [1.13.17] - 2026-07-13
 
 ### Features

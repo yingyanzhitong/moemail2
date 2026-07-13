@@ -19,12 +19,13 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
+import { DesktopLicenseAdmin } from "@/components/profile/desktop-license-admin"
 
 interface PoolItem {
   id: string
   email: string
   apiKey: string | null
-  status: 'pending' | 'active' | 'used' | 'registered' | 'link_received' | 'registration_failed'
+  status: 'pending' | 'active' | 'reserved' | 'assigned' | 'invalid' | 'used' | 'registered' | 'link_received' | 'registration_failed'
   errorMessage?: string | null
   createdAt: number
   updatedAt: number
@@ -115,6 +116,8 @@ export default function TinyPngPoolPage() {
           Refresh
         </Button>
       </div>
+
+      <DesktopLicenseAdmin />
 
       <div className="border rounded-lg bg-background">
         <Table>

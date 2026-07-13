@@ -242,7 +242,7 @@ export const tinypngKeyPool = sqliteTable('tinypng_key_pool', {
   id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
   email: text('email').notNull().unique(), // The generated email address
   apiKey: text('api_key'), // The acquired API key
-  status: text('status', { enum: ['pending', 'registered', 'link_received', 'active', 'used', 'registration_failed'] }).notNull().default('pending'),
+  status: text('status', { enum: ['pending', 'registered', 'link_received', 'active', 'reserved', 'assigned', 'invalid', 'used', 'registration_failed'] }).notNull().default('pending'),
   errorMessage: text('error_message'),
   createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull().$defaultFn(() => new Date()),
   updatedAt: integer('updated_at', { mode: 'timestamp_ms' }).notNull().$defaultFn(() => new Date()),
@@ -262,4 +262,72 @@ export const tinypngTaskRuns = sqliteTable('tinypng_task_runs', {
   completedAt: integer('completed_at', { mode: 'timestamp_ms' }).notNull(),
 }, (table) => ({
   completedAtIdx: index('tinypng_task_runs_completed_at_idx').on(table.completedAt),
+}));
+
+export const desktopLicenses = sqliteTable('desktop_licenses', {
+  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  status: text('status', { enum: ['pending', 'active', 'revoked'] }).notNull().default('pending'),
+  deviceId: text('device_id'),
+  accessTokenHash: text('access_token_hash').unique(),
+  keyLimit: integer('key_limit').notNull().default(60),
+  createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull().$defaultFn(() => new Date()),
+  activatedAt: integer('activated_at', { mode: 'timestamp_ms' }),
+  updatedAt: integer('updated_at', { mode: 'timestamp_ms' }).notNull().$defaultFn(() => new Date()),
+}, (table) => ({
+  statusIdx: index('desktop_licenses_status_idx').on(table.status),
+  deviceIdIdx: index('desktop_licenses_device_id_idx').on(table.deviceId),
+}));
+
+export const desktopLicensePeriods = sqliteTable('desktop_license_periods', {
+  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  licenseId: text('license_id').notNull().references(() => desktopLicenses.id, { onDelete: 'cascade' }),
+  startsAt: integer('starts_at', { mode: 'timestamp_ms' }).notNull(),
+  expiresAt: integer('expires_at', { mode: 'timestamp_ms' }).notNull(),
+  quotaTotal: integer('quota_total').notNull().default(10000),
+  usedCount: integer('used_count').notNull().default(0),
+  reservedCount: integer('reserved_count').notNull().default(0),
+  createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull().$defaultFn(() => new Date()),
+}, (table) => ({
+  licenseStartsUnique: uniqueIndex('desktop_license_periods_license_starts_unique').on(table.licenseId, table.startsAt),
+  licenseExpiresIdx: index('desktop_license_periods_license_expires_idx').on(table.licenseId, table.expiresAt),
+}));
+
+export const desktopActivationGrants = sqliteTable('desktop_activation_grants', {
+  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  licenseId: text('license_id').notNull(),
+  kind: text('kind', { enum: ['new', 'renew', 'rebind'] }).notNull(),
+  codeHash: text('code_hash').notNull().unique(),
+  status: text('status', { enum: ['issued', 'redeemed', 'expired'] }).notNull().default('issued'),
+  expiresAt: integer('expires_at', { mode: 'timestamp_ms' }).notNull(),
+  redeemedAt: integer('redeemed_at', { mode: 'timestamp_ms' }),
+  createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull().$defaultFn(() => new Date()),
+}, (table) => ({
+  licenseIdx: index('desktop_activation_grants_license_idx').on(table.licenseId),
+  expiresIdx: index('desktop_activation_grants_expires_idx').on(table.status, table.expiresAt),
+}));
+
+export const desktopLicenseKeys = sqliteTable('desktop_license_keys', {
+  licenseId: text('license_id').notNull().references(() => desktopLicenses.id, { onDelete: 'cascade' }),
+  poolKeyId: text('pool_key_id').notNull().references(() => tinypngKeyPool.id, { onDelete: 'restrict' }),
+  isEmergency: integer('is_emergency', { mode: 'boolean' }).notNull().default(false),
+  assignedAt: integer('assigned_at', { mode: 'timestamp_ms' }).notNull().$defaultFn(() => new Date()),
+}, (table) => ({
+  pk: primaryKey({ columns: [table.licenseId, table.poolKeyId] }),
+  poolKeyUnique: uniqueIndex('desktop_license_keys_pool_key_unique').on(table.poolKeyId),
+  licenseIdx: index('desktop_license_keys_license_idx').on(table.licenseId),
+}));
+
+export const desktopUsageReservations = sqliteTable('desktop_usage_reservations', {
+  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  licenseId: text('license_id').notNull().references(() => desktopLicenses.id, { onDelete: 'cascade' }),
+  periodId: text('period_id').notNull().references(() => desktopLicensePeriods.id, { onDelete: 'cascade' }),
+  requestedCount: integer('requested_count').notNull(),
+  successCount: integer('success_count'),
+  status: text('status', { enum: ['active', 'completed', 'expired'] }).notNull().default('active'),
+  expiresAt: integer('expires_at', { mode: 'timestamp_ms' }).notNull(),
+  completedAt: integer('completed_at', { mode: 'timestamp_ms' }),
+  createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull().$defaultFn(() => new Date()),
+}, (table) => ({
+  licenseStatusIdx: index('desktop_usage_reservations_license_status_idx').on(table.licenseId, table.status),
+  expiresIdx: index('desktop_usage_reservations_expires_idx').on(table.status, table.expiresAt),
 }));

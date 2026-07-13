@@ -2,6 +2,9 @@
 
 # dependencies
 /node_modules
+/desktop/smart-image-compressor/node_modules
+/desktop/smart-image-compressor/dist
+/desktop/smart-image-compressor/src-tauri/target
 /.pnp
 .pnp.*
 .yarn/*

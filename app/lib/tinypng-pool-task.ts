@@ -70,7 +70,7 @@ export async function runTinyPngPoolTask(
 
     const poolCountResult = await db.select({ value: count() })
       .from(tinypngKeyPool)
-      .where(inArray(tinypngKeyPool.status, ['pending', 'registered', 'link_received', 'active']))
+      .where(inArray(tinypngKeyPool.status, ['pending', 'registered', 'link_received', 'active', 'reserved', 'assigned']))
       .get()
 
     const currentSize = poolCountResult?.value ?? 0

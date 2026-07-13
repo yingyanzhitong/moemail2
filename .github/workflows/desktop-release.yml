@@ -1,0 +1,75 @@
+name: Desktop pre-release
+
+on:
+  push:
+    tags:
+      - "desktop-v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: ${{ matrix.name }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: macOS Apple Silicon
+            runner: macos-15
+            target: aarch64-apple-darwin
+            bundles: dmg
+          - name: macOS Intel
+            runner: macos-15-intel
+            target: x86_64-apple-darwin
+            bundles: dmg
+          - name: Windows x64
+            runner: windows-2025
+            target: x86_64-pc-windows-msvc
+            bundles: nsis
+    runs-on: ${{ matrix.runner }}
+    defaults:
+      run:
+        working-directory: desktop/smart-image-compressor
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.12.1
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: desktop/smart-image-compressor/pnpm-lock.yaml
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: 安装前端依赖
+        run: pnpm install --frozen-lockfile
+
+      - name: 校验设计系统与前端状态
+        run: |
+          pnpm design:lint
+          pnpm test
+
+      - name: 运行 Rust 测试
+        run: cargo test --manifest-path src-tauri/Cargo.toml
+
+      - name: 构建并上传未签名测试版
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          APPLE_SIGNING_IDENTITY: ${{ startsWith(matrix.runner, 'macos-') && '-' || '' }}
+        with:
+          projectPath: desktop/smart-image-compressor
+          tagName: ${{ github.ref_name }}
+          releaseName: 智能压缩工具 ${{ github.ref_name }}
+          releaseBody: |
+            未签名测试版。macOS 首次打开时可能需要在“隐私与安全性”中确认；Windows 可能显示 SmartScreen 提示。
+          releaseDraft: false
+          prerelease: true
+          args: --target ${{ matrix.target }} --bundles ${{ matrix.bundles }}

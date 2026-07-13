@@ -46,6 +46,10 @@ interface PoolStats {
   active: number
   pending: number
   used: number
+  reserved: number
+  assigned: number
+  invalid: number
+  desktopLicenses: number
   emailDomains: string[]
   emailDomain: string
   taskStatus: TinyPngTaskStatus
@@ -54,7 +58,6 @@ interface PoolStats {
 interface GenerateResponse {
   success: boolean
   authLink?: string
-  keyCount?: number
   expiresAt?: string
   code?: string
   error?: string
@@ -96,7 +99,6 @@ export function TinyPngPoolStatsCard() {
   const [savingEmailDomain, setSavingEmailDomain] = useState(false)
   const [generateLoading, setGenerateLoading] = useState(false)
   const [showDialog, setShowDialog] = useState(false)
-  const [keyCount, setKeyCount] = useState(1)
   const [generatedLink, setGeneratedLink] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -129,10 +131,10 @@ export function TinyPngPoolStatsCard() {
     setGenerateLoading(true)
     setError(null)
     try {
-      const res = await fetch("/api/tinypng/electron-auth/generate", {
+      const res = await fetch("/api/tinypng/desktop/grants", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ count: keyCount })
+        body: JSON.stringify({ kind: "new" })
       })
       const data = await res.json() as GenerateResponse
       if (res.ok && data.authLink) {
@@ -159,7 +161,6 @@ export function TinyPngPoolStatsCard() {
     setShowDialog(true)
     setGeneratedLink(null)
     setError(null)
-    setKeyCount(1)
   }
 
   const handleRunTask = async () => {
@@ -261,7 +262,7 @@ export function TinyPngPoolStatsCard() {
               className="auth-btn"
             >
               <Link className="w-4 h-4 mr-1" />
-              Generate Auth Link
+              生成桌面授权
             </Button>
             <Button 
               variant="outline" 
@@ -299,7 +300,7 @@ export function TinyPngPoolStatsCard() {
           </Select>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
           <div className="p-3 bg-secondary/20 rounded-lg text-center">
               <div className="text-2xl font-bold">{stats.total}</div>
               <div className="text-xs text-muted-foreground">Total</div>
@@ -315,6 +316,14 @@ export function TinyPngPoolStatsCard() {
           <div className="p-3 bg-blue-500/10 rounded-lg text-center">
               <div className="text-2xl font-bold text-blue-600">{stats.used}</div>
               <div className="text-xs text-muted-foreground">Used</div>
+          </div>
+          <div className="rounded-lg bg-violet-500/10 p-3 text-center">
+              <div className="text-2xl font-bold text-violet-600">{stats.reserved}</div>
+              <div className="text-xs text-muted-foreground">Reserved</div>
+          </div>
+          <div className="rounded-lg bg-indigo-500/10 p-3 text-center">
+              <div className="text-2xl font-bold text-indigo-600">{stats.assigned}</div>
+              <div className="text-xs text-muted-foreground">Assigned</div>
           </div>
         </div>
 
@@ -372,25 +381,17 @@ export function TinyPngPoolStatsCard() {
       <Dialog open={showDialog} onOpenChange={setShowDialog}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Generate Authorization Link</DialogTitle>
+            <DialogTitle>生成“智能压缩工具”授权链接</DialogTitle>
             <DialogDescription>
-              Generate a link to authorize Electron app users with TinyPNG API keys.
+              新授权固定包含 30 天、10,000 张逻辑额度，并原子预留 40 个 TinyPNG Key。链接 24 小时内有效。
             </DialogDescription>
           </DialogHeader>
           
           {!generatedLink ? (
             <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="keyCount">Number of API Keys</Label>
-                <Input
-                  id="keyCount"
-                  type="number"
-                  min={1}
-                  max={500}
-                  value={keyCount}
-                  onChange={(e) => setKeyCount(Math.min(500, Math.max(1, parseInt(e.target.value) || 1)))}
-                />
-                <p className="text-xs text-muted-foreground">Max: 500 keys</p>
+              <div className="rounded-lg border bg-muted/30 p-3 text-sm">
+                <p className="font-medium">标准授权</p>
+                <p className="mt-1 text-muted-foreground">30 天 · 10,000 张 · 首次绑定一台设备</p>
               </div>
               
               {error && (
@@ -407,17 +408,17 @@ export function TinyPngPoolStatsCard() {
                 {generateLoading ? (
                   <>
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Generating...
+                    生成中…
                   </>
                 ) : (
-                  "Generate Link"
+                  "生成授权链接"
                 )}
               </Button>
             </div>
           ) : (
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label>Authorization Link</Label>
+                <Label>授权链接</Label>
                 <div className="flex gap-2">
                   <Input
                     readOnly
@@ -433,7 +434,7 @@ export function TinyPngPoolStatsCard() {
                   </Button>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  This link will expire in 24 hours.
+                  此链接将在 24 小时后失效，且只能兑换一次。
                 </p>
               </div>
               
@@ -442,7 +443,7 @@ export function TinyPngPoolStatsCard() {
                 onClick={() => setGeneratedLink(null)}
                 className="w-full"
               >
-                Generate Another
+                再生成一个
               </Button>
             </div>
           )}

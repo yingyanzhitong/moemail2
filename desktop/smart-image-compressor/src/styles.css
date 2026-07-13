@@ -1,0 +1,28 @@
+@import "tailwindcss";
+
+:root {
+  font-family: "Source Han Sans SC", "Noto Sans CJK SC", "PingFang SC", "Microsoft YaHei", sans-serif;
+  color: #172033;
+  background: #f3f6fa;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+}
+
+* { box-sizing: border-box; }
+html, body, #root { min-width: 960px; min-height: 640px; margin: 0; }
+button, textarea, input { font: inherit; }
+button { -webkit-tap-highlight-color: transparent; }
+.font-mono { font-family: "JetBrains Mono", "SFMono-Regular", Consolas, monospace; }
+
+.queue-scroll { scrollbar-width: thin; scrollbar-color: #b8c2d2 transparent; }
+.queue-scroll::-webkit-scrollbar { width: 7px; }
+.queue-scroll::-webkit-scrollbar-thumb { border-radius: 999px; background: #b8c2d2; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

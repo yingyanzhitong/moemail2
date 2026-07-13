@@ -1,6 +1,6 @@
 import { auth } from "@/lib/auth"
 import { createDb } from "@/lib/db"
-import { tinypngKeyPool, tinypngTaskRuns } from "@/lib/schema"
+import { desktopLicenses, tinypngKeyPool, tinypngTaskRuns } from "@/lib/schema"
 import { getNextTinyPngPoolRunAt, TINYPNG_POOL_SCHEDULE_LABEL } from "@/lib/tinypng-pool-schedule"
 import {
   parseEmailDomains,
@@ -40,11 +40,15 @@ export async function GET() {
     const db = createDb()
     const env = getRequestContext().env
     
-    const [totalResult, activeResult, pendingResult, usedResult, lastTaskRun, emailDomainsValue, selectedEmailDomain] = await Promise.all([
+    const [totalResult, activeResult, pendingResult, usedResult, reservedResult, assignedResult, invalidResult, licenseResult, lastTaskRun, emailDomainsValue, selectedEmailDomain] = await Promise.all([
       db.select({ value: count() }).from(tinypngKeyPool).get(),
       db.select({ value: count() }).from(tinypngKeyPool).where(eq(tinypngKeyPool.status, 'active')).get(),
       db.select({ value: count() }).from(tinypngKeyPool).where(eq(tinypngKeyPool.status, 'pending')).get(),
       db.select({ value: count() }).from(tinypngKeyPool).where(eq(tinypngKeyPool.status, 'used')).get(),
+      db.select({ value: count() }).from(tinypngKeyPool).where(eq(tinypngKeyPool.status, 'reserved')).get(),
+      db.select({ value: count() }).from(tinypngKeyPool).where(eq(tinypngKeyPool.status, 'assigned')).get(),
+      db.select({ value: count() }).from(tinypngKeyPool).where(eq(tinypngKeyPool.status, 'invalid')).get(),
+      db.select({ value: count() }).from(desktopLicenses).where(eq(desktopLicenses.status, 'active')).get(),
       db.query.tinypngTaskRuns.findFirst({ orderBy: desc(tinypngTaskRuns.completedAt) }),
       env.SITE_CONFIG.get("EMAIL_DOMAINS"),
       env.SITE_CONFIG.get(TINYPNG_POOL_EMAIL_DOMAIN_CONFIG_KEY),
@@ -76,6 +80,10 @@ export async function GET() {
       active: activeResult?.value ?? 0,
       pending: pendingResult?.value ?? 0,
       used: usedResult?.value ?? 0,
+      reserved: reservedResult?.value ?? 0,
+      assigned: assignedResult?.value ?? 0,
+      invalid: invalidResult?.value ?? 0,
+      desktopLicenses: licenseResult?.value ?? 0,
       emailDomains,
       emailDomain: resolveTinyPngPoolEmailDomain(
         emailDomainsValue,

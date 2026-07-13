@@ -1,82 +1,10 @@
-import { createDb } from "@/lib/db"
-import { tinypngKeyPool } from "@/lib/schema"
 import { NextResponse } from "next/server"
-import { getUserRole } from "@/lib/auth"
-import { ROLES } from "@/lib/permissions"
-import { eq } from "drizzle-orm"
-import { nanoid } from "nanoid"
-import { getUserId } from "@/lib/apiKey"
 
 export const runtime = "edge"
 
-// Authorization code format: tinypng://<base64-encoded-json>
-// JSON: { "code": "<random-token>", "count": <number-of-keys>, "expires": "<timestamp>" }
-
-interface GenerateRequest {
-  count: number
-}
-
-/**
- * POST: Generate an authorization code for the Electron app
- * Emperor only - this generates a one-time code that can be redeemed for API keys
- * Supports both session auth and API Key auth
- */
-export async function POST(request: Request) {
-  const userId = await getUserId()
-  if (!userId) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-  }
-
-  const role = await getUserRole(userId)
-  if (role !== ROLES.EMPEROR) {
-    return NextResponse.json({ error: "Forbidden - Emperor role required" }, { status: 403 })
-  }
-
-  try {
-    const body = await request.json() as GenerateRequest
-    const count = Math.min(Math.max(1, body.count || 1), 500) // 1-500 keys max
-
-    // Check if we have enough active keys in the pool
-    const db = createDb()
-    const activeKeys = await db.select().from(tinypngKeyPool)
-      .where(eq(tinypngKeyPool.status, 'active'))
-      .limit(count)
-      .all()
-
-    if (activeKeys.length < count) {
-      return NextResponse.json({ 
-        error: `Not enough keys in pool. Requested: ${count}, Available: ${activeKeys.length}` 
-      }, { status: 400 })
-    }
-
-    // Generate the authorization code
-    const code = nanoid(24)
-    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000) // 24 hours
-
-    const payload = {
-      code,
-      count,
-      expires: expiresAt.toISOString()
-    }
-
-    const base64Payload = Buffer.from(JSON.stringify(payload)).toString('base64')
-    const authLink = `tinypng://${base64Payload}`
-
-    // Store the code in a simple KV-like manner (we'll use the code as a "reservation" marker)
-    // For simplicity, we can store it in localStorage on client or just validate it on redemption
-    // Here we just return it - the actual validation happens on redeem
-
-    return NextResponse.json({
-      success: true,
-      authLink,
-      keyCount: count,
-      expiresAt: expiresAt.toISOString(),
-      // Also return the raw code for reference
-      code
-    })
-
-  } catch (error) {
-    console.error("Failed to generate auth code:", error)
-    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 })
-  }
+export async function POST() {
+  return NextResponse.json({
+    error: '旧版 Electron 授权链接已停用，请由管理员重新生成桌面端授权链接。',
+    code: 'LEGACY_AUTH_GONE',
+  }, { status: 410 })
 }

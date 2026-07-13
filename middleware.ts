@@ -23,8 +23,14 @@ export async function middleware(request: Request) {
       return NextResponse.next()
     }
 
-    // Allow public access to electron app redeem endpoint
-    if (pathname === '/api/tinypng/electron-auth/redeem') {
+    // 桌面端使用独立的 Bearer Token 与设备标识鉴权，不依赖 Web 会话。
+    if (
+      pathname === '/api/tinypng/electron-auth/redeem' ||
+      pathname === '/api/tinypng/desktop/redeem' ||
+      pathname === '/api/tinypng/desktop/license' ||
+      pathname.startsWith('/api/tinypng/desktop/usage/') ||
+      pathname === '/api/tinypng/desktop/keys/top-up'
+    ) {
       return NextResponse.next()
     }
 
@@ -59,6 +65,10 @@ export async function middleware(request: Request) {
         break
       }
     }
+    return NextResponse.next()
+  }
+
+  if (pathname.startsWith('/activate/')) {
     return NextResponse.next()
   }
 
