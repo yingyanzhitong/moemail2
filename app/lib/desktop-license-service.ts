@@ -9,7 +9,12 @@ import {
   desktopUsageReservations,
   tinypngKeyPool,
 } from '@/lib/schema'
-import { createDesktopSecret, sha256Hex } from '@/lib/desktop-license-crypto'
+import {
+  createDesktopSecret,
+  decryptDesktopGrantCode,
+  encryptDesktopGrantCode,
+  sha256Hex,
+} from '@/lib/desktop-license-crypto'
 import { calculateEmergencyKeyCount, getDesktopRedeemConflict, getNextDesktopPeriodWindow } from '@/lib/desktop-license-domain'
 import {
   DESKTOP_GRANT_TTL_MS,
@@ -41,6 +46,14 @@ export class DesktopLicenseError extends Error {
 
 function getDb(database: D1Database) {
   return drizzle(database, { schema })
+}
+
+function getGrantEncryptionSecret(): string {
+  const secret = process.env.AUTH_SECRET
+  if (!secret) {
+    throw new DesktopLicenseError('Auth Link 加密密钥未配置', 500, 'GRANT_ENCRYPTION_UNAVAILABLE')
+  }
+  return secret
 }
 
 function toIso(value: Date | null): string | null {
@@ -82,7 +95,7 @@ export async function cleanupExpiredDesktopState(database: D1Database): Promise<
   for (const grant of expiredGrants) {
     if (grant.kind !== 'new') {
       await db.update(desktopActivationGrants)
-        .set({ status: 'expired' })
+        .set({ status: 'expired', codeCiphertext: null })
         .where(and(eq(desktopActivationGrants.id, grant.id), eq(desktopActivationGrants.status, 'issued')))
       continue
     }
@@ -96,7 +109,7 @@ export async function cleanupExpiredDesktopState(database: D1Database): Promise<
     statements.push(
       database.prepare('DELETE FROM desktop_license_keys WHERE license_id = ?').bind(grant.licenseId),
       database.prepare("UPDATE desktop_licenses SET status = 'revoked', access_token_hash = NULL, updated_at = ? WHERE id = ? AND status = 'pending'").bind(Date.now(), grant.licenseId),
-      database.prepare("UPDATE desktop_activation_grants SET status = 'expired' WHERE id = ? AND status = 'issued'").bind(grant.id),
+      database.prepare("UPDATE desktop_activation_grants SET status = 'expired', code_ciphertext = NULL WHERE id = ? AND status = 'issued'").bind(grant.id),
     )
     await database.batch(statements)
   }
@@ -120,7 +133,7 @@ export async function cleanupExpiredDesktopState(database: D1Database): Promise<
 
 async function insertNewGrantWithReservedKeys(
   database: D1Database,
-  grant: { id: string; licenseId: string; codeHash: string; expiresAt: Date; plan: DesktopGrantPlan },
+  grant: { id: string; licenseId: string; codeHash: string; codeCiphertext: string; expiresAt: Date; plan: DesktopGrantPlan },
 ): Promise<void> {
   const db = getDb(database)
   for (let attempt = 0; attempt < 3; attempt += 1) {
@@ -139,8 +152,8 @@ async function insertNewGrantWithReservedKeys(
         "INSERT INTO desktop_licenses (id, status, initial_key_count, key_limit, created_at, updated_at) VALUES (?, 'pending', ?, ?, ?, ?)",
       ).bind(grant.licenseId, grant.plan.tokenCount, grant.plan.tokenCount + DESKTOP_EMERGENCY_KEY_COUNT, now, now),
       database.prepare(
-        "INSERT INTO desktop_activation_grants (id, license_id, kind, code_hash, status, token_count, quota_total, duration_days, expires_at, created_at) VALUES (?, ?, 'new', ?, 'issued', ?, ?, ?, ?, ?)",
-      ).bind(grant.id, grant.licenseId, grant.codeHash, grant.plan.tokenCount, grant.plan.compressionLimit, grant.plan.durationDays, grant.expiresAt.getTime(), now),
+        "INSERT INTO desktop_activation_grants (id, license_id, kind, code_hash, code_ciphertext, status, token_count, quota_total, duration_days, expires_at, created_at) VALUES (?, ?, 'new', ?, ?, 'issued', ?, ?, ?, ?, ?)",
+      ).bind(grant.id, grant.licenseId, grant.codeHash, grant.codeCiphertext, grant.plan.tokenCount, grant.plan.compressionLimit, grant.plan.durationDays, grant.expiresAt.getTime(), now),
       ...available.flatMap(({ id }) => [
       database.prepare(
         "UPDATE tinypng_key_pool SET status = 'reserved', updated_at = ? WHERE id = ? AND status = 'active'",
@@ -172,6 +185,7 @@ export async function createDesktopGrant(
   const expiresAt = new Date(now.getTime() + DESKTOP_GRANT_TTL_MS)
   const code = createDesktopSecret(30)
   const codeHash = await sha256Hex(code)
+  const codeCiphertext = await encryptDesktopGrantCode(code, getGrantEncryptionSecret())
   const grantId = crypto.randomUUID()
   const licenseId = kind === 'new' ? crypto.randomUUID() : targetLicenseId
   let plan: DesktopGrantPlan
@@ -186,6 +200,7 @@ export async function createDesktopGrant(
       id: grantId,
       licenseId,
       codeHash,
+      codeCiphertext,
       expiresAt,
       plan,
     })
@@ -206,6 +221,7 @@ export async function createDesktopGrant(
       licenseId,
       kind,
       codeHash,
+      codeCiphertext,
       expiresAt,
       tokenCount: plan.tokenCount,
       quotaTotal: plan.compressionLimit,
@@ -573,10 +589,11 @@ export async function topUpDesktopKeys(request: Request, database: D1Database) {
 }
 
 export async function listDesktopLicenses(database: D1Database) {
+  await cleanupExpiredDesktopState(database)
   const db = getDb(database)
   const licenses = await db.select().from(desktopLicenses).orderBy(desc(desktopLicenses.createdAt))
   return Promise.all(licenses.map(async (license) => {
-    const [view, [{ value: keyCount = 0 } = { value: 0 }], latestPlanGrant] = await Promise.all([
+    const [view, [{ value: keyCount = 0 } = { value: 0 }], latestPlanGrant, activeGrant] = await Promise.all([
       getDesktopLicenseView(database, license.id),
       db.select({ value: count() })
         .from(desktopLicenseKeys)
@@ -596,6 +613,16 @@ export async function listDesktopLicenses(database: D1Database) {
         .orderBy(desc(desktopActivationGrants.createdAt))
         .limit(1)
         .get(),
+      db.select({ id: desktopActivationGrants.id })
+        .from(desktopActivationGrants)
+        .where(and(
+          eq(desktopActivationGrants.licenseId, license.id),
+          eq(desktopActivationGrants.status, 'issued'),
+          gt(desktopActivationGrants.expiresAt, new Date()),
+        ))
+        .orderBy(desc(desktopActivationGrants.createdAt))
+        .limit(1)
+        .get(),
     ])
     return {
       ...view,
@@ -610,8 +637,52 @@ export async function listDesktopLicenses(database: D1Database) {
       } : null,
       grantStatus: latestPlanGrant?.status ?? null,
       grantExpiresAt: latestPlanGrant?.expiresAt.toISOString() ?? null,
+      hasActiveAuthLink: Boolean(activeGrant),
     }
   }))
+}
+
+export async function getOrRotateDesktopAuthLinkCode(
+  database: D1Database,
+  licenseId: string,
+): Promise<{ code: string; expiresAt: Date }> {
+  await cleanupExpiredDesktopState(database)
+  const db = getDb(database)
+  const grant = await db.select().from(desktopActivationGrants)
+    .where(and(
+      eq(desktopActivationGrants.licenseId, licenseId),
+      eq(desktopActivationGrants.status, 'issued'),
+      gt(desktopActivationGrants.expiresAt, new Date()),
+    ))
+    .orderBy(desc(desktopActivationGrants.createdAt))
+    .limit(1)
+    .get()
+
+  if (!grant) {
+    throw new DesktopLicenseError('当前授权没有可复制的 Auth Link', 409, 'ACTIVE_GRANT_NOT_FOUND')
+  }
+
+  const secret = getGrantEncryptionSecret()
+  if (grant.codeCiphertext) {
+    try {
+      const code = await decryptDesktopGrantCode(grant.codeCiphertext, secret)
+      if (await sha256Hex(code) === grant.codeHash) return { code, expiresAt: grant.expiresAt }
+    } catch {
+      // 密文无法恢复时轮换当前一次性 code，原失效时间保持不变。
+    }
+  }
+
+  const code = createDesktopSecret(30)
+  const codeHash = await sha256Hex(code)
+  const codeCiphertext = await encryptDesktopGrantCode(code, secret)
+  const rotated = await database.prepare(
+    "UPDATE desktop_activation_grants SET code_hash = ?, code_ciphertext = ? WHERE id = ? AND code_hash = ? AND status = 'issued' AND expires_at > ? RETURNING id",
+  ).bind(codeHash, codeCiphertext, grant.id, grant.codeHash, Date.now()).first<{ id: string }>()
+  if (!rotated) {
+    throw new DesktopLicenseError('Auth Link 已失效，请刷新后重试', 409, 'ACTIVE_GRANT_NOT_FOUND')
+  }
+
+  return { code, expiresAt: grant.expiresAt }
 }
 
 export async function listDesktopLicenseKeys(database: D1Database, licenseId: string) {
@@ -657,7 +728,7 @@ export async function revokeDesktopLicense(database: D1Database, licenseId: stri
       "UPDATE tinypng_key_pool SET status = 'active', updated_at = ? WHERE status IN ('reserved', 'assigned') AND id IN (SELECT pool_key_id FROM desktop_license_keys WHERE license_id = ?)",
     ).bind(now, licenseId),
     database.prepare('DELETE FROM desktop_license_keys WHERE license_id = ?').bind(licenseId),
-    database.prepare("UPDATE desktop_activation_grants SET status = 'expired' WHERE license_id = ? AND status = 'issued'").bind(licenseId),
+    database.prepare("UPDATE desktop_activation_grants SET status = 'expired', code_ciphertext = NULL WHERE license_id = ? AND status = 'issued'").bind(licenseId),
     database.prepare("UPDATE desktop_licenses SET status = 'revoked', access_token_hash = NULL, updated_at = ? WHERE id = ?").bind(now, licenseId),
   ])
 }

@@ -17,6 +17,7 @@ function database() {
   )`)
   db.exec(readFileSync(new URL('../drizzle/0026_desktop-licenses.sql', import.meta.url), 'utf8'))
   db.exec(readFileSync(new URL('../drizzle/0027_dynamic-desktop-grants.sql', import.meta.url), 'utf8'))
+  db.exec(readFileSync(new URL('../drizzle/0028_brainy_callisto.sql', import.meta.url), 'utf8'))
   return db
 }
 
@@ -76,6 +77,25 @@ test('Auth Link grant 保存动态 Token、压缩额度和有效天数', () => {
   const grant = db.prepare("SELECT token_count tokenCount, quota_total quotaTotal, duration_days durationDays FROM desktop_activation_grants WHERE license_id = 'license-dynamic'").get()
   assert.deepEqual({ ...grant }, { tokenCount: 12, quotaTotal: 3456, durationDays: 45 })
   assert.equal(db.prepare("SELECT COUNT(*) count FROM tinypng_key_pool WHERE status = 'reserved'").get().count, 12)
+})
+
+test('旧 Auth Link 可原地轮换密文且不延长失效时间', () => {
+  const db = database()
+  seedKeys(db, 1)
+  issueNewGrant(db, 'license-legacy', 1)
+
+  const rotated = db.prepare("UPDATE desktop_activation_grants SET code_hash = ?, code_ciphertext = ? WHERE id = ? AND code_hash = ? AND status = 'issued' AND expires_at > ? RETURNING expires_at expiresAt")
+    .get('rotated-hash', 'encrypted-code', 'grant-license-legacy', 'hash-license-legacy', 999)
+  assert.equal(rotated.expiresAt, 1000)
+  assert.equal(
+    db.prepare("UPDATE desktop_activation_grants SET code_hash = 'racing-hash' WHERE id = ? AND code_hash = ? AND status = 'issued' RETURNING id")
+      .get('grant-license-legacy', 'hash-license-legacy'),
+    undefined,
+  )
+  assert.deepEqual(
+    { ...db.prepare("SELECT code_hash codeHash, code_ciphertext codeCiphertext FROM desktop_activation_grants WHERE id = 'grant-license-legacy'").get() },
+    { codeHash: 'rotated-hash', codeCiphertext: 'encrypted-code' },
+  )
 })
 
 test('同一个 Pool Key 不能绑定两个授权', () => {

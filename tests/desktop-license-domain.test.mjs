@@ -5,6 +5,10 @@ import {
   getDesktopRedeemConflict,
   getNextDesktopPeriodWindow,
 } from '../app/lib/desktop-license-domain.ts'
+import {
+  decryptDesktopGrantCode,
+  encryptDesktopGrantCode,
+} from '../app/lib/desktop-license-crypto.ts'
 
 test('续费周期排在现有周期后，不覆盖当前周期', () => {
   assert.deepEqual(getNextDesktopPeriodWindow(100, 200, 30), { startsAt: 200, expiresAt: 230 })
@@ -27,4 +31,13 @@ test('应急 Key 只补齐缺口且累计不超过 20 个', () => {
   assert.equal(calculateEmergencyKeyCount({ logicalRemaining: 4000, realRemaining: 3000, assignedCount: 40, emergencyCount: 0 }), 2)
   assert.equal(calculateEmergencyKeyCount({ logicalRemaining: 4000, realRemaining: 0, assignedCount: 58, emergencyCount: 18 }), 2)
   assert.equal(calculateEmergencyKeyCount({ logicalRemaining: 1000, realRemaining: 1000, assignedCount: 40, emergencyCount: 0 }), 0)
+})
+
+test('Auth Link code 加密后可恢复，错误密钥无法解密', async () => {
+  const code = 'one-time-auth-code'
+  const ciphertext = await encryptDesktopGrantCode(code, 'secret-a')
+
+  assert.equal(ciphertext.includes(code), false)
+  assert.equal(await decryptDesktopGrantCode(ciphertext, 'secret-a'), code)
+  await assert.rejects(() => decryptDesktopGrantCode(ciphertext, 'secret-b'))
 })

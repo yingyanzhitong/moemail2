@@ -1,0 +1,1 @@
+ALTER TABLE `desktop_activation_grants` ADD `code_ciphertext` text;

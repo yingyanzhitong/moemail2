@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
-import { Check, Copy, KeyRound, Laptop, Loader2, RefreshCw, RotateCcw, ShieldOff } from 'lucide-react'
+import { Check, Copy, KeyRound, Laptop, Link2, Loader2, RefreshCw, RotateCcw, ShieldOff } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -31,6 +31,7 @@ interface DesktopLicenseAdminItem {
   plan: { tokenCount: number; compressionLimit: number; durationDays: number } | null
   grantStatus: 'issued' | 'redeemed' | 'expired' | null
   grantExpiresAt: string | null
+  hasActiveAuthLink: boolean
 }
 
 interface DesktopLicenseKeyItem {
@@ -81,6 +82,7 @@ export function DesktopLicenseAdmin() {
   const [keys, setKeys] = useState<DesktopLicenseKeyItem[]>([])
   const [keysLoading, setKeysLoading] = useState(false)
   const [copiedKeyId, setCopiedKeyId] = useState<string | null>(null)
+  const [copiedAuthLinkId, setCopiedAuthLinkId] = useState<string | null>(null)
   const { toast } = useToast()
 
   const loadLicenses = useCallback(async () => {
@@ -123,6 +125,7 @@ export function DesktopLicenseAdmin() {
       if (!response.ok || !data.authLink) throw new Error(data.error || '生成链接失败')
       setGeneratedLink(data.authLink)
       if (kind === 'renew') setRenewTarget(null)
+      await loadLicenses()
       toast({ title: kind === 'renew' ? '续费链接已生成' : '换机链接已生成', description: '链接将在 24 小时后失效。' })
     } catch (error) {
       toast({ title: '操作失败', description: error instanceof Error ? error.message : '请稍后重试', variant: 'destructive' })
@@ -181,6 +184,26 @@ export function DesktopLicenseAdmin() {
     await navigator.clipboard.writeText(value)
     setCopiedKeyId(id)
     window.setTimeout(() => setCopiedKeyId(null), 1600)
+  }
+
+  const copyAuthLink = async (licenseId: string) => {
+    setActionId(`${licenseId}:copy-link`)
+    try {
+      const response = await fetch(`/api/admin/tinypng-desktop/licenses/${licenseId}/auth-link`, {
+        method: 'POST',
+        cache: 'no-store',
+      })
+      const data = await response.json() as { authLink?: string; error?: string }
+      if (!response.ok || !data.authLink) throw new Error(data.error || '获取 Auth Link 失败')
+      await navigator.clipboard.writeText(data.authLink)
+      setCopiedAuthLinkId(licenseId)
+      window.setTimeout(() => setCopiedAuthLinkId(null), 1600)
+      toast({ title: 'Auth Link 已复制' })
+    } catch (error) {
+      toast({ title: '复制失败', description: error instanceof Error ? error.message : '请稍后重试', variant: 'destructive' })
+    } finally {
+      setActionId(null)
+    }
   }
 
   const copyLink = async () => {
@@ -256,6 +279,14 @@ export function DesktopLicenseAdmin() {
                   <div className="flex flex-wrap justify-end gap-1">
                     <Button variant="ghost" size="sm" onClick={() => void openKeyDialog(license)}>
                       <KeyRound className="mr-1 h-3.5 w-3.5" />Token 列表
+                    </Button>
+                    <Button variant="ghost" size="sm" disabled={!license.hasActiveAuthLink || actionId !== null} onClick={() => void copyAuthLink(license.id)}>
+                      {actionId === `${license.id}:copy-link`
+                        ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />
+                        : copiedAuthLinkId === license.id
+                          ? <Check className="mr-1 h-3.5 w-3.5 text-emerald-600" />
+                          : <Link2 className="mr-1 h-3.5 w-3.5" />}
+                      复制 Auth Link
                     </Button>
                     <Button variant="ghost" size="sm" disabled={license.status === 'pending' || license.status === 'revoked' || actionId !== null} onClick={() => openRenewDialog(license)}>
                       <RotateCcw className="mr-1 h-3.5 w-3.5" />续费
