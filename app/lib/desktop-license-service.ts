@@ -553,15 +553,21 @@ export async function topUpDesktopKeys(request: Request, database: D1Database) {
   try {
     await database.batch(available.flatMap(({ id }) => [
       database.prepare(
-        "UPDATE tinypng_key_pool SET status = 'assigned', updated_at = ? WHERE id = ? AND status = 'active'",
-      ).bind(now, id),
+        "UPDATE tinypng_key_pool SET status = 'assigned', updated_at = ? WHERE id = ? AND status = 'active' AND EXISTS (SELECT 1 FROM desktop_licenses WHERE id = ? AND status = 'active')",
+      ).bind(now, id, license.id),
       database.prepare(
-        'INSERT INTO desktop_license_keys (license_id, pool_key_id, is_emergency, assigned_at) VALUES (?, ?, 1, ?)',
-      ).bind(license.id, id, now),
+        "INSERT INTO desktop_license_keys (license_id, pool_key_id, is_emergency, assigned_at) SELECT ?, ?, 1, ? WHERE EXISTS (SELECT 1 FROM desktop_licenses WHERE id = ? AND status = 'active') AND EXISTS (SELECT 1 FROM tinypng_key_pool WHERE id = ? AND status = 'assigned')",
+      ).bind(license.id, id, now, license.id, id),
     ]))
   } catch {
     throw new DesktopLicenseError('Key 分配发生并发冲突，请重试', 409, 'KEY_ALLOCATION_CONFLICT')
   }
+
+  const stillActive = await db.select({ id: desktopLicenses.id }).from(desktopLicenses).where(and(
+    eq(desktopLicenses.id, license.id),
+    eq(desktopLicenses.status, 'active'),
+  )).get()
+  if (!stillActive) throw new DesktopLicenseError('授权已停止', 403, 'LICENSE_REVOKED')
 
   return { apiKeys: available.flatMap(({ apiKey }) => apiKey ? [apiKey] : []), reason: 'TOPPED_UP' as const }
 }
@@ -639,28 +645,19 @@ export async function listDesktopLicenseKeys(database: D1Database, licenseId: st
 
 export async function revokeDesktopLicense(database: D1Database, licenseId: string): Promise<void> {
   const db = getDb(database)
-  const license = await db.select({ status: desktopLicenses.status })
+  const license = await db.select({ id: desktopLicenses.id })
     .from(desktopLicenses)
     .where(eq(desktopLicenses.id, licenseId))
     .get()
   if (!license) throw new DesktopLicenseError('授权不存在', 404, 'LICENSE_NOT_FOUND')
-  if (license.status === 'revoked') return
 
   const now = Date.now()
-  const statements: D1PreparedStatement[] = []
-  if (license.status === 'pending') {
-    statements.push(
-      database.prepare(
-        "UPDATE tinypng_key_pool SET status = 'active', updated_at = ? WHERE status = 'reserved' AND id IN (SELECT pool_key_id FROM desktop_license_keys WHERE license_id = ?) AND EXISTS (SELECT 1 FROM desktop_licenses WHERE id = ? AND status = 'pending')",
-      ).bind(now, licenseId, licenseId),
-      database.prepare(
-        "DELETE FROM desktop_license_keys WHERE license_id = ? AND EXISTS (SELECT 1 FROM desktop_licenses WHERE id = ? AND status = 'pending')",
-      ).bind(licenseId, licenseId),
-    )
-  }
-  statements.push(
+  await database.batch([
+    database.prepare(
+      "UPDATE tinypng_key_pool SET status = 'active', updated_at = ? WHERE status IN ('reserved', 'assigned') AND id IN (SELECT pool_key_id FROM desktop_license_keys WHERE license_id = ?)",
+    ).bind(now, licenseId),
+    database.prepare('DELETE FROM desktop_license_keys WHERE license_id = ?').bind(licenseId),
     database.prepare("UPDATE desktop_activation_grants SET status = 'expired' WHERE license_id = ? AND status = 'issued'").bind(licenseId),
     database.prepare("UPDATE desktop_licenses SET status = 'revoked', access_token_hash = NULL, updated_at = ? WHERE id = ?").bind(now, licenseId),
-  )
-  await database.batch(statements)
+  ])
 }

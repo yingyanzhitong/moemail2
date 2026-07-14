@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.14.8] - 2026-07-14
+
+### Changes
+
+- **停止授权释放 Token**：停止待激活或已激活的桌面授权时，统一解除全部 Token 绑定；`reserved` 和 `assigned` Token 恢复为 Pool 可用状态。
+- **历史授权清理**：已停止但仍保留绑定 Token 的记录提供“释放 Token”操作，完成后授权 Key 数量归零。
+- **并发保护**：应急 Token 补发写入前再次校验授权状态，避免停止授权与补发并发时重新产生绑定。
+
+### Tests
+
+- **自动化验证**：覆盖未激活授权释放预留 Token、已激活授权释放已分配 Token，并通过 Next.js 生产构建。
+
 ## [1.14.7] - 2026-07-13
 
 ### Bug Fixes

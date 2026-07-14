@@ -132,9 +132,9 @@ export function DesktopLicenseAdmin() {
   }
 
   const stopLicense = async (license: DesktopLicenseAdminItem) => {
-    const message = license.status === 'pending'
-      ? '停止后 Auth Link 将立即失效，尚未下发的预留 Token 会回到 Pool。确定继续吗？'
-      : '停止后客户端会立即停止申请新额度，已下发的 Token 不会回收。确定继续吗？'
+    const message = license.status === 'revoked'
+      ? '该授权已停止。继续后会把仍绑定的 Token 释放回 Pool，确定继续吗？'
+      : '停止后 Auth Link 与客户端授权会立即失效，全部绑定 Token 会释放回 Pool 并可再次分配。已激活设备本地可能仍保留历史 Key，确定继续吗？'
     if (!window.confirm(message)) return
     const licenseId = license.id
     setActionId(`${licenseId}:revoke`)
@@ -145,7 +145,7 @@ export function DesktopLicenseAdmin() {
         throw new Error(data.error || '撤销失败')
       }
       await loadLicenses()
-      toast({ title: '授权已停止' })
+      toast({ title: '授权已停止', description: '全部绑定 Token 已释放回 Pool。' })
     } catch (error) {
       toast({ title: '停止失败', description: error instanceof Error ? error.message : '请稍后重试', variant: 'destructive' })
     } finally {
@@ -264,8 +264,8 @@ export function DesktopLicenseAdmin() {
                       compressionLimit: license.limit || license.plan?.compressionLimit || 10000,
                       durationDays: license.plan?.durationDays || 30,
                     })}>换机</Button>
-                    <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" disabled={license.status === 'revoked' || actionId !== null} onClick={() => void stopLicense(license)}>
-                      {actionId === `${license.id}:revoke` ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : <ShieldOff className="mr-1 h-3.5 w-3.5" />}停止
+                    <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" disabled={(license.status === 'revoked' && license.keyCount === 0) || actionId !== null} onClick={() => void stopLicense(license)}>
+                      {actionId === `${license.id}:revoke` ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : <ShieldOff className="mr-1 h-3.5 w-3.5" />}{license.status === 'revoked' ? '释放 Token' : '停止'}
                     </Button>
                   </div>
                 </TableCell>
