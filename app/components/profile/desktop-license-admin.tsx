@@ -251,7 +251,7 @@ export function DesktopLicenseAdmin() {
             <TableRow>
               <TableHead>授权</TableHead>
               <TableHead>状态</TableHead>
-              <TableHead>本地套餐额度</TableHead>
+              <TableHead>使用情况</TableHead>
               <TableHead>当前到期</TableHead>
               <TableHead>排队周期</TableHead>
               <TableHead className="text-right">操作</TableHead>
@@ -270,8 +270,8 @@ export function DesktopLicenseAdmin() {
                 </TableCell>
                 <TableCell><span className="rounded-full bg-muted px-2 py-1 text-xs">{STATUS_LABEL[license.status]}</span></TableCell>
                 <TableCell>
-                  <p className="font-mono text-xs">上限 {license.limit.toLocaleString()}</p>
-                  <p className="mt-1 text-xs text-muted-foreground">已用数量仅保存在客户端</p>
+                  <p className="font-mono text-xs">{license.used.toLocaleString()} / {license.limit.toLocaleString()}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">客户端压缩完成后回传</p>
                 </TableCell>
                 <TableCell className="whitespace-nowrap text-sm">
                   {license.status === 'pending' && license.plan ? (

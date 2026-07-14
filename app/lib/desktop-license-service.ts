@@ -416,6 +416,41 @@ export async function authenticateDesktopLicense(request: Request, database: D1D
   return license
 }
 
+export async function createDesktopUsageSession(
+  database: D1Database,
+  input: { licenseId: string; deviceId: string; apiKey: string },
+) {
+  assertDeviceId(input.deviceId)
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(input.licenseId) || !input.apiKey) {
+    throw new DesktopLicenseError('授权迁移参数无效', 400, 'INVALID_USAGE_SESSION')
+  }
+  const db = getDb(database)
+  const license = await db.select().from(desktopLicenses).where(and(
+    eq(desktopLicenses.id, input.licenseId),
+    eq(desktopLicenses.deviceId, input.deviceId),
+    eq(desktopLicenses.status, 'active'),
+  )).get()
+  if (!license) throw new DesktopLicenseError('授权或绑定设备无效', 401, 'UNAUTHORIZED')
+
+  const assignedKey = await db.select({ id: desktopLicenseKeys.poolKeyId })
+    .from(desktopLicenseKeys)
+    .innerJoin(tinypngKeyPool, eq(desktopLicenseKeys.poolKeyId, tinypngKeyPool.id))
+    .where(and(
+      eq(desktopLicenseKeys.licenseId, license.id),
+      eq(tinypngKeyPool.apiKey, input.apiKey),
+    ))
+    .get()
+  if (!assignedKey) throw new DesktopLicenseError('Token 不属于当前授权', 401, 'UNAUTHORIZED')
+
+  const accessToken = createDesktopSecret(36)
+  const accessTokenHash = await sha256Hex(accessToken)
+  const updated = await database.prepare(
+    "UPDATE desktop_licenses SET access_token_hash = ?, updated_at = ? WHERE id = ? AND device_id = ? AND status = 'active' RETURNING id",
+  ).bind(accessTokenHash, Date.now(), license.id, input.deviceId).first<{ id: string }>()
+  if (!updated) throw new DesktopLicenseError('授权状态已变化', 409, 'LICENSE_STATE_CHANGED')
+  return { accessToken }
+}
+
 export async function createUsageReservation(
   request: Request,
   database: D1Database,
@@ -496,6 +531,84 @@ export async function completeUsageReservation(
   return {
     reservationId,
     successCount: current.successCount ?? 0,
+    license: await getDesktopLicenseView(database, license.id),
+  }
+}
+
+export async function reportDesktopUsage(
+  request: Request,
+  database: D1Database,
+  input: {
+    reportId: string
+    requestedCount: number
+    successCount: number
+    periodStartsAt: string
+  },
+) {
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(input.reportId)) {
+    throw new DesktopLicenseError('用量批次标识格式无效', 400, 'INVALID_REPORT_ID')
+  }
+  if (!Number.isInteger(input.requestedCount) || input.requestedCount < 1 || input.requestedCount > DESKTOP_RESERVATION_LIMIT) {
+    throw new DesktopLicenseError('批次图片数量必须为 1 到 20', 400, 'INVALID_REPORT_COUNT')
+  }
+  if (!Number.isInteger(input.successCount) || input.successCount < 0 || input.successCount > input.requestedCount) {
+    throw new DesktopLicenseError('批次成功数量无效', 400, 'INVALID_SUCCESS_COUNT')
+  }
+  const periodStartsAt = new Date(input.periodStartsAt)
+  if (Number.isNaN(periodStartsAt.getTime())) {
+    throw new DesktopLicenseError('授权周期时间格式无效', 400, 'INVALID_PERIOD_START')
+  }
+
+  const license = await authenticateDesktopLicense(request, database)
+  const db = getDb(database)
+  const period = await db.select().from(desktopLicensePeriods).where(and(
+    eq(desktopLicensePeriods.licenseId, license.id),
+    eq(desktopLicensePeriods.startsAt, periodStartsAt),
+  )).get()
+  if (!period) throw new DesktopLicenseError('授权周期不存在', 404, 'PERIOD_NOT_FOUND')
+
+  const existing = await db.select().from(desktopUsageReservations)
+    .where(eq(desktopUsageReservations.id, input.reportId))
+    .get()
+  if (existing && (
+    existing.licenseId !== license.id
+    || existing.periodId !== period.id
+    || existing.requestedCount !== input.requestedCount
+    || existing.successCount !== input.successCount
+  )) {
+    throw new DesktopLicenseError('用量批次标识冲突', 409, 'REPORT_ID_CONFLICT')
+  }
+  if (existing?.status === 'completed') {
+    return {
+      reportId: input.reportId,
+      successCount: existing.successCount ?? 0,
+      license: await getDesktopLicenseView(database, license.id),
+    }
+  }
+
+  const now = Date.now()
+  await database.batch([
+    database.prepare(
+      "INSERT INTO desktop_usage_reservations (id, license_id, period_id, requested_count, status, expires_at, created_at) SELECT ?, ?, ?, ?, 'active', ?, ? WHERE NOT EXISTS (SELECT 1 FROM desktop_usage_reservations WHERE id = ?)",
+    ).bind(input.reportId, license.id, period.id, input.requestedCount, period.expiresAt.getTime(), now, input.reportId),
+    database.prepare(
+      "UPDATE desktop_license_periods SET used_count = MIN(quota_total, used_count + ?) WHERE id = ? AND EXISTS (SELECT 1 FROM desktop_usage_reservations WHERE id = ? AND license_id = ? AND status = 'active')",
+    ).bind(input.successCount, period.id, input.reportId, license.id),
+    database.prepare(
+      "UPDATE desktop_usage_reservations SET status = 'completed', success_count = ?, completed_at = ? WHERE id = ? AND license_id = ? AND status = 'active'",
+    ).bind(input.successCount, now, input.reportId, license.id),
+  ])
+
+  const completed = await db.select().from(desktopUsageReservations).where(and(
+    eq(desktopUsageReservations.id, input.reportId),
+    eq(desktopUsageReservations.licenseId, license.id),
+  )).get()
+  if (completed?.status !== 'completed') {
+    throw new DesktopLicenseError('用量回传未完成，请重试', 409, 'REPORT_NOT_COMPLETED')
+  }
+  return {
+    reportId: input.reportId,
+    successCount: completed.successCount ?? 0,
     license: await getDesktopLicenseView(database, license.id),
   }
 }

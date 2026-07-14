@@ -42,6 +42,7 @@ export interface QueueItem extends ImageJob {
 export interface BootstrapView {
   license: LicenseView
   reconciledReservations: number
+  pendingUsageReports: number
 }
 
 export interface CompressionProgress {
@@ -58,4 +59,5 @@ export interface CompressionSummary {
   skipped: number
   cancelled: number
   license: LicenseView
+  pendingUsageReports: number
 }

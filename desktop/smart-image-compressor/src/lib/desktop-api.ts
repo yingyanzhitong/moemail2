@@ -13,7 +13,7 @@ const demoLicense: LicenseView = {
 }
 
 export async function bootstrap(): Promise<BootstrapView> {
-  if (!isTauri()) return { license: demoLicense, reconciledReservations: 0 }
+  if (!isTauri()) return { license: demoLicense, reconciledReservations: 0, pendingUsageReports: 0 }
   return invoke<BootstrapView>('bootstrap')
 }
 

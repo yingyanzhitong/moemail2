@@ -7,6 +7,8 @@ test('桌面激活预览和客户端授权接口不依赖网站登录会话', ()
   assert.equal(isPublicDesktopApiPath('/api/tinypng/desktop/redeem'), true)
   assert.equal(isPublicDesktopApiPath('/api/tinypng/desktop/license'), true)
   assert.equal(isPublicDesktopApiPath('/api/tinypng/desktop/usage/reservations'), true)
+  assert.equal(isPublicDesktopApiPath('/api/tinypng/desktop/usage/reports'), true)
+  assert.equal(isPublicDesktopApiPath('/api/tinypng/desktop/usage/session'), true)
   assert.equal(isPublicDesktopApiPath('/api/tinypng/desktop/keys/top-up'), true)
 })
 

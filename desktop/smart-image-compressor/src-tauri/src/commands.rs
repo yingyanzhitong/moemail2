@@ -73,7 +73,7 @@ pub fn take_activation_code(
 
 #[tauri::command]
 pub async fn bootstrap(state: State<'_, AppState>) -> std::result::Result<BootstrapView, String> {
-    state.license_api.bootstrap().map_err(command_error)
+    state.license_api.bootstrap().await.map_err(command_error)
 }
 
 #[tauri::command]
@@ -462,6 +462,8 @@ pub async fn start_compression(
     let mut latest_license = current_license;
     let mut processed = HashSet::new();
 
+    let _ = state.license_api.sync_pending_usage_reports().await;
+
     for chunk in jobs.chunks(20) {
         if state.cancel.load(Ordering::SeqCst) {
             break;
@@ -527,6 +529,7 @@ pub async fn start_compression(
                 observed_at,
             )
             .map_err(command_error)?;
+        let _ = state.license_api.sync_pending_usage_reports().await;
     }
 
     if state.cancel.load(Ordering::SeqCst) {
@@ -551,6 +554,10 @@ pub async fn start_compression(
         skipped,
         cancelled,
         license: latest_license,
+        pending_usage_reports: state
+            .license_api
+            .pending_usage_report_count()
+            .map_err(command_error)?,
     })
 }
 

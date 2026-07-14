@@ -56,6 +56,7 @@ pub struct ActivationPlanPreview {
 pub struct BootstrapView {
     pub license: LicenseView,
     pub reconciled_reservations: usize,
+    pub pending_usage_reports: usize,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -91,6 +92,7 @@ pub struct CompressionSummary {
     pub skipped: usize,
     pub cancelled: usize,
     pub license: LicenseView,
+    pub pending_usage_reports: usize,
 }
 
 #[derive(Clone, Serialize, Deserialize, Default)]
@@ -109,6 +111,17 @@ pub struct PendingReservation {
     #[serde(default)]
     pub requested_count: u32,
     pub success_count: u32,
+    #[serde(default)]
+    pub period_starts_at: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PendingUsageReport {
+    pub report_id: String,
+    pub requested_count: u32,
+    pub success_count: u32,
+    pub period_starts_at: String,
 }
 
 #[derive(Clone, Serialize, Deserialize, Default)]
@@ -123,12 +136,15 @@ pub struct CredentialBundle {
     #[serde(default)]
     pub pending_reservations: Vec<PendingReservation>,
     #[serde(default)]
+    pub pending_usage_reports: Vec<PendingUsageReport>,
+    #[serde(default)]
     pub last_seen_at: Option<String>,
 }
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RedeemResponse {
+    pub access_token: String,
     pub license: LicenseView,
     pub api_keys: Vec<String>,
 }

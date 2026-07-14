@@ -4,12 +4,13 @@ use anyhow::{anyhow, Context, Result};
 use chrono::{DateTime, Duration, Utc};
 use reqwest::{Client, Response};
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
+use tokio::sync::Mutex as AsyncMutex;
 use uuid::Uuid;
 
 use crate::{
     models::{
         ActivationPlanPreview, BootstrapView, CredentialBundle, KeyState, LicenseView,
-        PendingReservation, RedeemResponse,
+        PendingReservation, PendingUsageReport, RedeemResponse,
     },
     vault::CredentialVault,
 };
@@ -29,6 +30,7 @@ pub struct LicenseApi {
     vault: Arc<CredentialVault>,
     boot_wall_clock: DateTime<Utc>,
     boot_instant: Instant,
+    report_lock: Arc<AsyncMutex<()>>,
 }
 
 fn parse_time(value: &str) -> Result<DateTime<Utc>> {
@@ -90,8 +92,6 @@ fn apply_observed_time(
     observed_at: DateTime<Utc>,
     reconcile_interrupted: bool,
 ) -> Result<(LicenseView, usize)> {
-    // v0.1.5 起压缩阶段完全不再使用业务后端访问令牌。
-    bundle.access_token = None;
     let previous = bundle.last_seen_at.as_deref().map(parse_time).transpose()?;
     let rollback = previous.is_some_and(|last_seen| {
         observed_at + Duration::minutes(CLOCK_ROLLBACK_TOLERANCE_MINUTES) < last_seen
@@ -111,6 +111,17 @@ fn apply_observed_time(
                     reservation.success_count
                 };
                 license.used = license.used.saturating_add(consumed).min(license.limit);
+                if let Some(period_starts_at) = reservation
+                    .period_starts_at
+                    .or_else(|| license.starts_at.clone())
+                {
+                    bundle.pending_usage_reports.push(PendingUsageReport {
+                        report_id: reservation.id,
+                        requested_count: reservation.requested_count.max(consumed),
+                        success_count: consumed,
+                        period_starts_at,
+                    });
+                }
             }
         }
         count
@@ -158,6 +169,7 @@ impl LicenseApi {
             vault,
             boot_wall_clock: Utc::now(),
             boot_instant: Instant::now(),
+            report_lock: Arc::new(AsyncMutex::new(())),
         }
     }
 
@@ -189,14 +201,20 @@ impl LicenseApi {
         ))
     }
 
-    pub fn bootstrap(&self) -> Result<BootstrapView> {
+    pub async fn bootstrap(&self) -> Result<BootstrapView> {
         let now = self.now();
-        self.vault.update(|bundle| {
+        let view = self.vault.update(|bundle| {
             let (license, reconciled_reservations) = apply_observed_time(bundle, now, true)?;
             Ok(BootstrapView {
                 license,
                 reconciled_reservations,
+                pending_usage_reports: 0,
             })
+        })?;
+        let _ = self.sync_pending_usage_reports().await;
+        Ok(BootstrapView {
+            pending_usage_reports: self.pending_usage_report_count()?,
+            ..view
         })
     }
 
@@ -208,6 +226,7 @@ impl LicenseApi {
             device_id: &'a str,
         }
 
+        self.sync_pending_usage_reports().await?;
         let device_id = self.vault.ensure_device_identity()?;
         let response = self
             .client
@@ -228,7 +247,7 @@ impl LicenseApi {
                 .into_iter()
                 .map(|key| (key.api_key.clone(), key))
                 .collect::<HashMap<_, _>>();
-            bundle.access_token = None;
+            bundle.access_token = Some(redeemed.access_token);
             bundle.license = Some(license);
             bundle.keys = redeemed
                 .api_keys
@@ -302,6 +321,7 @@ impl LicenseApi {
                 id: id.clone(),
                 requested_count,
                 success_count: 0,
+                period_starts_at: license.starts_at.clone(),
             });
             Ok((id, license))
         })
@@ -330,6 +350,17 @@ impl LicenseApi {
                 .used
                 .saturating_add(success_count)
                 .min(license.limit);
+            if let Some(period_starts_at) = reservation
+                .period_starts_at
+                .or_else(|| license.starts_at.clone())
+            {
+                bundle.pending_usage_reports.push(PendingUsageReport {
+                    report_id: reservation.id,
+                    requested_count: reservation.requested_count,
+                    success_count,
+                    period_starts_at,
+                });
+            }
             bundle.keys = keys;
             let (license, _) = apply_observed_time(bundle, observed_at, false)?;
             Ok(license)
@@ -338,6 +369,83 @@ impl LicenseApi {
 
     pub fn key_states(&self) -> Result<Vec<KeyState>> {
         Ok(self.vault.read()?.keys)
+    }
+
+    pub fn pending_usage_report_count(&self) -> Result<usize> {
+        Ok(self.vault.read()?.pending_usage_reports.len())
+    }
+
+    pub async fn sync_pending_usage_reports(&self) -> Result<usize> {
+        let _guard = self.report_lock.lock().await;
+        let mut synced = 0;
+        loop {
+            let mut bundle = self.vault.read()?;
+            let Some(report) = bundle.pending_usage_reports.first().cloned() else {
+                return Ok(synced);
+            };
+            if bundle.access_token.is_none() {
+                #[derive(Serialize)]
+                #[serde(rename_all = "camelCase")]
+                struct SessionBody<'a> {
+                    license_id: &'a str,
+                    device_id: &'a str,
+                    api_key: &'a str,
+                }
+                #[derive(Deserialize)]
+                #[serde(rename_all = "camelCase")]
+                struct SessionResponse {
+                    access_token: String,
+                }
+
+                let license_id = bundle
+                    .license
+                    .as_ref()
+                    .and_then(|license| license.id.as_deref())
+                    .context("授权标识缺失")?;
+                let api_key = bundle.keys.first().context("授权 Token 缺失")?;
+                let response = self
+                    .client
+                    .post(format!(
+                        "{}/api/tinypng/desktop/usage/session",
+                        self.base_url
+                    ))
+                    .json(&SessionBody {
+                        license_id,
+                        device_id: &bundle.device_id,
+                        api_key: &api_key.api_key,
+                    })
+                    .send()
+                    .await
+                    .context("无法更新用量回传凭证")?;
+                let session: SessionResponse = Self::parse(response).await?;
+                bundle.access_token = Some(session.access_token);
+                self.vault.write(&bundle)?;
+            }
+            let access_token = bundle
+                .access_token
+                .as_deref()
+                .context("授权缺少用量回传凭证")?;
+            let response = self
+                .client
+                .post(format!(
+                    "{}/api/tinypng/desktop/usage/reports",
+                    self.base_url
+                ))
+                .bearer_auth(access_token)
+                .header("x-device-id", &bundle.device_id)
+                .json(&report)
+                .send()
+                .await
+                .context("无法回传授权使用情况")?;
+            Self::parse::<serde_json::Value>(response).await?;
+            self.vault.update(|bundle| {
+                bundle
+                    .pending_usage_reports
+                    .retain(|pending| pending.report_id != report.report_id);
+                Ok(())
+            })?;
+            synced += 1;
+        }
     }
 }
 
@@ -384,6 +492,7 @@ mod tests {
                 id: "pending".into(),
                 requested_count: 4,
                 success_count: 0,
+                period_starts_at: Some((now - Duration::days(1)).to_rfc3339()),
             }],
             ..CredentialBundle::default()
         };
@@ -392,6 +501,8 @@ mod tests {
         assert_eq!(reconciled, 1);
         assert_eq!(license.used, 7);
         assert!(bundle.pending_reservations.is_empty());
+        assert_eq!(bundle.pending_usage_reports.len(), 1);
+        assert_eq!(bundle.pending_usage_reports[0].success_count, 4);
     }
 
     #[test]

@@ -145,6 +145,26 @@ test('额度条件更新不会超卖，结算只累计成功数', () => {
   assert.equal(db.prepare("SELECT success_count count FROM desktop_usage_reservations WHERE id = 'reservation'").get().count, 7)
 })
 
+test('客户端压缩用量回传按批次标识幂等累计', () => {
+  const db = database()
+  seedKeys(db, 40)
+  issueNewGrant(db, 'license-a')
+  db.prepare("INSERT INTO desktop_license_periods VALUES ('period', 'license-a', 1, 1000, 10000, 5, 0, 1)").run()
+
+  const report = () => {
+    db.exec('BEGIN IMMEDIATE')
+    db.prepare("INSERT INTO desktop_usage_reservations (id, license_id, period_id, requested_count, status, expires_at, created_at) SELECT 'usage-report', 'license-a', 'period', 10, 'active', 1000, 1 WHERE NOT EXISTS (SELECT 1 FROM desktop_usage_reservations WHERE id = 'usage-report')").run()
+    db.prepare("UPDATE desktop_license_periods SET used_count = MIN(quota_total, used_count + 7) WHERE id = 'period' AND EXISTS (SELECT 1 FROM desktop_usage_reservations WHERE id = 'usage-report' AND license_id = 'license-a' AND status = 'active')").run()
+    db.prepare("UPDATE desktop_usage_reservations SET status = 'completed', success_count = 7, completed_at = 2 WHERE id = 'usage-report' AND license_id = 'license-a' AND status = 'active'").run()
+    db.exec('COMMIT')
+  }
+
+  report()
+  report()
+  assert.equal(db.prepare("SELECT used_count used FROM desktop_license_periods WHERE id = 'period'").get().used, 12)
+  assert.equal(db.prepare("SELECT COUNT(*) count FROM desktop_usage_reservations WHERE id = 'usage-report'").get().count, 1)
+})
+
 test('停止已激活授权会清除访问令牌，但已下发 Token 永不回池', () => {
   const db = database()
   seedKeys(db, 40)

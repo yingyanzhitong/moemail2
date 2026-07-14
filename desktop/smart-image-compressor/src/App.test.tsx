@@ -52,7 +52,7 @@ afterEach(() => {
 
 describe('桌面端授权入口', () => {
   it('首次启动只展示激活页，激活成功后进入工作台', async () => {
-    bootstrapMock.mockResolvedValue({ license: unlicensed, reconciledReservations: 0 })
+    bootstrapMock.mockResolvedValue({ license: unlicensed, reconciledReservations: 0, pendingUsageReports: 0 })
     previewMock.mockResolvedValue({
       kind: 'new',
       tokenCount: 24,
@@ -85,7 +85,7 @@ describe('桌面端授权入口', () => {
   })
 
   it('已有授权启动后直接进入工作台', async () => {
-    bootstrapMock.mockResolvedValue({ license: active, reconciledReservations: 0 })
+    bootstrapMock.mockResolvedValue({ license: active, reconciledReservations: 0, pendingUsageReports: 0 })
 
     render(<App />)
 
@@ -93,8 +93,16 @@ describe('桌面端授权入口', () => {
     expect(screen.queryByRole('heading', { name: '激活后进入压缩工作台' })).not.toBeInTheDocument()
   })
 
+  it('启动时提示尚未回传的使用记录', async () => {
+    bootstrapMock.mockResolvedValue({ license: active, reconciledReservations: 0, pendingUsageReports: 2 })
+
+    render(<App />)
+
+    expect(await screen.findByText('有 2 个使用记录待联网回传，将在下次压缩时继续同步。')).toBeInTheDocument()
+  })
+
   it('覆盖原文件必须二次确认后才开始压缩', async () => {
-    bootstrapMock.mockResolvedValue({ license: active, reconciledReservations: 0 })
+    bootstrapMock.mockResolvedValue({ license: active, reconciledReservations: 0, pendingUsageReports: 0 })
     pickImagesMock.mockResolvedValue([{
       id: 'image-1',
       name: '照片.png',
@@ -110,6 +118,7 @@ describe('桌面端授权入口', () => {
       skipped: 0,
       cancelled: 0,
       license: { ...active, used: 1 },
+      pendingUsageReports: 0,
     })
 
     render(<App />)
@@ -122,5 +131,6 @@ describe('桌面端授权入口', () => {
     expect(startCompressionMock).not.toHaveBeenCalled()
     fireEvent.click(screen.getByRole('button', { name: '确认覆盖并开始' }))
     await waitFor(() => expect(startCompressionMock).toHaveBeenCalledWith(['image-1'], 'overwrite'))
+    expect(await screen.findByText(/使用情况已回传/)).toBeInTheDocument()
   })
 })

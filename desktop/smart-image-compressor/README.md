@@ -1,6 +1,6 @@
 # 智能压缩工具
 
-Tauri v2 桌面端，支持 macOS Apple Silicon、macOS Intel 与 Windows x64。Auth Link 仅用于一次性领取套餐参数和 TinyPNG Token；激活后由 Rust 层直接请求 TinyPNG，业务后端不再参与压缩、额度统计，也不接收图片、文件名或本地路径。
+Tauri v2 桌面端，支持 macOS Apple Silicon、macOS Intel 与 Windows x64。Auth Link 仅用于一次性领取套餐参数和 TinyPNG Token；激活后由 Rust 层直接请求 TinyPNG。每个压缩批次结束后只向业务后端回传批次 ID、授权周期、任务数和成功数，不接收图片、文件名或本地路径。
 
 ## 本地开发
 
@@ -30,6 +30,8 @@ cargo test --manifest-path src-tauri/Cargo.toml
 - WebView 只接收脱敏授权视图、文件任务和进度事件，Tauri capability 未开放 Stronghold 或网络插件权限。
 - 成功压缩数和有效期由客户端本地计算；系统时间回拨会锁定新批次，TinyPNG HTTPS 响应时间会在压缩时更新本地可信时间高水位。
 - 每 20 张先写入一次本地中断保护记录，完成后仅结算成功写入的图片；异常退出时按预留数保守计入额度，避免删除进程绕过计数。
+- 每个本地批次使用稳定 ID 幂等回传授权使用情况；网络失败时待回传记录继续加密保存在 Stronghold，并在启动、下次压缩和续费前重试。
+- 从 `0.1.5` 升级且缺少上报凭证时，客户端使用设备 ID 和一个已绑定 Token 完成一次归属校验并自动恢复专用上报凭证。
 - 已下发 Key 永不回收给其他授权。桌面端直连 TinyPNG 的方案不能防止高级用户逆向提取本机凭证。
 
 ## 输出方式

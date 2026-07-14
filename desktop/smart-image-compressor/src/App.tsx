@@ -51,7 +51,11 @@ export function App() {
     void bootstrap()
       .then((view) => {
         setLicense(view.license)
-        if (view.reconciledReservations > 0) setNotice(`检测到 ${view.reconciledReservations} 个中断批次，已按安全策略计入本地额度。`)
+        if (view.pendingUsageReports > 0) {
+          setNotice(`有 ${view.pendingUsageReports} 个使用记录待联网回传，将在下次压缩时继续同步。`)
+        } else if (view.reconciledReservations > 0) {
+          setNotice(`检测到 ${view.reconciledReservations} 个中断批次，已按安全策略计入本地额度并完成回传。`)
+        }
       })
       .catch((error) => setNotice(messageFromError(error)))
       .finally(() => setBooting(false))
@@ -133,7 +137,8 @@ export function App() {
     try {
       const summary = await startCompression(queuedIds, outputMode)
       setLicense(summary.license)
-      setNotice(`本次完成 ${summary.completed} 张，失败 ${summary.failed} 张，跳过 ${summary.skipped} 张。`)
+      const syncNotice = summary.pendingUsageReports > 0 ? ` ${summary.pendingUsageReports} 个使用记录待联网回传。` : ' 使用情况已回传。'
+      setNotice(`本次完成 ${summary.completed} 张，失败 ${summary.failed} 张，跳过 ${summary.skipped} 张。${syncNotice}`)
     } catch (error) {
       setNotice(messageFromError(error))
     } finally {
