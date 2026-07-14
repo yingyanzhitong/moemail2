@@ -109,6 +109,8 @@ pub struct KeyState {
 pub struct PendingReservation {
     pub id: String,
     #[serde(default)]
+    pub report_id: Option<String>,
+    #[serde(default)]
     pub requested_count: u32,
     pub success_count: u32,
     #[serde(default)]

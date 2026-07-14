@@ -14,6 +14,7 @@ use reqwest::Client;
 use tauri::{AppHandle, Emitter, State};
 use tauri_plugin_dialog::DialogExt;
 use tokio::sync::Mutex as AsyncMutex;
+use uuid::Uuid;
 
 use crate::{
     license_api::LicenseApi,
@@ -461,6 +462,7 @@ pub async fn start_compression(
     let mut cancelled = 0;
     let mut latest_license = current_license;
     let mut processed = HashSet::new();
+    let execution_report_id = Uuid::new_v4().to_string();
 
     let _ = state.license_api.sync_pending_usage_reports().await;
 
@@ -480,7 +482,7 @@ pub async fn start_compression(
 
         let (reservation_id, reserved_license) = state
             .license_api
-            .reserve_local(chunk.len())
+            .reserve_local(chunk.len(), &execution_report_id)
             .map_err(command_error)?;
         let expires_at = reserved_license
             .expires_at
@@ -529,7 +531,6 @@ pub async fn start_compression(
                 observed_at,
             )
             .map_err(command_error)?;
-        let _ = state.license_api.sync_pending_usage_reports().await;
     }
 
     if state.cancel.load(Ordering::SeqCst) {
@@ -547,6 +548,8 @@ pub async fn start_compression(
             );
         }
     }
+
+    let _ = state.license_api.sync_pending_usage_reports().await;
 
     Ok(CompressionSummary {
         completed,

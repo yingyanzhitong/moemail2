@@ -87,6 +87,29 @@ fn normalize_license(license: &mut LicenseView, now: DateTime<Utc>) -> Result<()
     Ok(())
 }
 
+fn append_usage_report(
+    reports: &mut Vec<PendingUsageReport>,
+    report_id: String,
+    requested_count: u32,
+    success_count: u32,
+    period_starts_at: String,
+) {
+    if let Some(report) = reports
+        .iter_mut()
+        .find(|report| report.report_id == report_id && report.period_starts_at == period_starts_at)
+    {
+        report.requested_count = report.requested_count.saturating_add(requested_count);
+        report.success_count = report.success_count.saturating_add(success_count);
+        return;
+    }
+    reports.push(PendingUsageReport {
+        report_id,
+        requested_count,
+        success_count,
+        period_starts_at,
+    });
+}
+
 fn apply_observed_time(
     bundle: &mut CredentialBundle,
     observed_at: DateTime<Utc>,
@@ -115,12 +138,13 @@ fn apply_observed_time(
                     .period_starts_at
                     .or_else(|| license.starts_at.clone())
                 {
-                    bundle.pending_usage_reports.push(PendingUsageReport {
-                        report_id: reservation.id,
-                        requested_count: reservation.requested_count.max(consumed),
-                        success_count: consumed,
+                    append_usage_report(
+                        &mut bundle.pending_usage_reports,
+                        reservation.report_id.unwrap_or(reservation.id),
+                        reservation.requested_count.max(consumed),
+                        consumed,
                         period_starts_at,
-                    });
+                    );
                 }
             }
         }
@@ -295,7 +319,7 @@ impl LicenseApi {
         })
     }
 
-    pub fn reserve_local(&self, count: usize) -> Result<(String, LicenseView)> {
+    pub fn reserve_local(&self, count: usize, report_id: &str) -> Result<(String, LicenseView)> {
         let requested_count = u32::try_from(count).context("批次图片数量过大")?;
         let now = self.now();
         self.vault.update(|bundle| {
@@ -319,6 +343,7 @@ impl LicenseApi {
             let id = Uuid::new_v4().to_string();
             bundle.pending_reservations.push(PendingReservation {
                 id: id.clone(),
+                report_id: Some(report_id.to_string()),
                 requested_count,
                 success_count: 0,
                 period_starts_at: license.starts_at.clone(),
@@ -354,12 +379,13 @@ impl LicenseApi {
                 .period_starts_at
                 .or_else(|| license.starts_at.clone())
             {
-                bundle.pending_usage_reports.push(PendingUsageReport {
-                    report_id: reservation.id,
-                    requested_count: reservation.requested_count,
+                append_usage_report(
+                    &mut bundle.pending_usage_reports,
+                    reservation.report_id.unwrap_or(reservation.id),
+                    reservation.requested_count,
                     success_count,
                     period_starts_at,
-                });
+                );
             }
             bundle.keys = keys;
             let (license, _) = apply_observed_time(bundle, observed_at, false)?;
@@ -453,7 +479,9 @@ impl LicenseApi {
 mod tests {
     use chrono::{Duration, Utc};
 
-    use super::{apply_observed_time, merge_redeemed_license, normalize_license};
+    use super::{
+        append_usage_report, apply_observed_time, merge_redeemed_license, normalize_license,
+    };
     use crate::models::{CredentialBundle, LicenseView, PendingReservation, ScheduledPeriod};
 
     fn active_license(now: chrono::DateTime<Utc>) -> LicenseView {
@@ -490,6 +518,7 @@ mod tests {
             license: Some(active_license(now)),
             pending_reservations: vec![PendingReservation {
                 id: "pending".into(),
+                report_id: Some("execution".into()),
                 requested_count: 4,
                 success_count: 0,
                 period_starts_at: Some((now - Duration::days(1)).to_rfc3339()),
@@ -503,6 +532,17 @@ mod tests {
         assert!(bundle.pending_reservations.is_empty());
         assert_eq!(bundle.pending_usage_reports.len(), 1);
         assert_eq!(bundle.pending_usage_reports[0].success_count, 4);
+    }
+
+    #[test]
+    fn internal_checkpoints_are_aggregated_into_one_execution_report() {
+        let mut reports = Vec::new();
+        append_usage_report(&mut reports, "execution".into(), 20, 18, "period".into());
+        append_usage_report(&mut reports, "execution".into(), 35, 34, "period".into());
+
+        assert_eq!(reports.len(), 1);
+        assert_eq!(reports[0].requested_count, 55);
+        assert_eq!(reports[0].success_count, 52);
     }
 
     #[test]

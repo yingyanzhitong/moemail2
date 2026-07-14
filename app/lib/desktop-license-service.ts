@@ -548,8 +548,8 @@ export async function reportDesktopUsage(
   if (!/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(input.reportId)) {
     throw new DesktopLicenseError('用量批次标识格式无效', 400, 'INVALID_REPORT_ID')
   }
-  if (!Number.isInteger(input.requestedCount) || input.requestedCount < 1 || input.requestedCount > DESKTOP_RESERVATION_LIMIT) {
-    throw new DesktopLicenseError('批次图片数量必须为 1 到 20', 400, 'INVALID_REPORT_COUNT')
+  if (!Number.isSafeInteger(input.requestedCount) || input.requestedCount < 1) {
+    throw new DesktopLicenseError('本次执行图片数量无效', 400, 'INVALID_REPORT_COUNT')
   }
   if (!Number.isInteger(input.successCount) || input.successCount < 0 || input.successCount > input.requestedCount) {
     throw new DesktopLicenseError('批次成功数量无效', 400, 'INVALID_SUCCESS_COUNT')
@@ -566,6 +566,9 @@ export async function reportDesktopUsage(
     eq(desktopLicensePeriods.startsAt, periodStartsAt),
   )).get()
   if (!period) throw new DesktopLicenseError('授权周期不存在', 404, 'PERIOD_NOT_FOUND')
+  if (input.requestedCount > period.quotaTotal) {
+    throw new DesktopLicenseError('本次执行图片数量超过授权周期总额度', 400, 'REPORT_COUNT_EXCEEDS_PERIOD')
+  }
 
   const existing = await db.select().from(desktopUsageReservations)
     .where(eq(desktopUsageReservations.id, input.reportId))
