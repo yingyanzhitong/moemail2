@@ -5,6 +5,7 @@ import { PERMISSIONS } from "@/lib/permissions"
 import { checkPermission } from "@/lib/auth"
 import { Permission } from "@/lib/permissions"
 import { handleApiKeyAuth } from "@/lib/apiKey"
+import { isPublicDesktopApiPath } from "@/lib/desktop-license-routes"
 
 const API_PERMISSIONS: Record<string, Permission> = {
   '/api/emails': PERMISSIONS.MANAGE_EMAIL,
@@ -23,14 +24,8 @@ export async function middleware(request: Request) {
       return NextResponse.next()
     }
 
-    // 桌面端使用独立的 Bearer Token 与设备标识鉴权，不依赖 Web 会话。
-    if (
-      pathname === '/api/tinypng/electron-auth/redeem' ||
-      pathname === '/api/tinypng/desktop/redeem' ||
-      pathname === '/api/tinypng/desktop/license' ||
-      pathname.startsWith('/api/tinypng/desktop/usage/') ||
-      pathname === '/api/tinypng/desktop/keys/top-up'
-    ) {
+    // 桌面端激活预览/兑换和 Bearer Token 接口不依赖 Web 会话。
+    if (isPublicDesktopApiPath(pathname)) {
       return NextResponse.next()
     }
 

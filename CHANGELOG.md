@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.14.9] - 2026-07-14
+
+### Bug Fixes
+
+- **桌面激活预览**：将 `/api/tinypng/desktop/grants/preview` 加入无需网站 Cookie 的桌面公开接口，修复 Tauri 粘贴有效 Auth Link 后提示“未授权”的问题。
+
+### Tests
+
+- **鉴权策略验证**：新增桌面公开路径测试，确保激活预览、兑换和 Bearer Token 接口保持公开，同时管理员创建 Auth Link 与管理接口仍受网站登录保护。
+
 ## [1.14.8] - 2026-07-14
 
 ### Changes
