@@ -1,0 +1,60 @@
+CHANGELOG.md
+  s_016fa4053668b5::t_3a7e0a9b6b0a14 5-20
+app/api/admin/tinypng-desktop/licenses/[id]/auth-link/route.ts
+  s_6c5511064010f0::t_cf2447b835f849 1-28
+app/components/profile/desktop-license-admin.tsx
+  s_016fa4053668b5::t_718b18e812b86f 4,34,85,128,187-206,282-289
+app/lib/desktop-license-crypto.ts
+  s_6c5511064010f0::t_56e0c3304615a4 16-57
+app/lib/schema.ts
+  s_6c5511064010f0::t_8e9d31d871d84b 303
+drizzle/0028_brainy_callisto.sql
+  s_5f5841f18f5bde::t_b5c8c24eb59fa0 1
+drizzle/meta/0028_snapshot.json
+  s_5f5841f18f5bde::t_ae92b6cbdde297 1-1719
+drizzle/meta/_journal.json
+  s_5f5841f18f5bde::t_76a15d72d7e319 200-206,209
+package.json
+  s_016fa4053668b5::t_cc603c1e13d3b2 3
+tests/desktop-license-domain.test.mjs
+  s_6c5511064010f0::t_193973a422fd4b 8-11,34-42
+app/lib/desktop-license-service.ts
+  s_5f5841f18f5bde::t_4f3ac55a81f08b 12-17,49-56,98,112,136,155-156,188,203,224,592,596,612-621,640,643-685,731
+tests/desktop-license-routes.test.mjs
+  s_5f5841f18f5bde::t_57bf87c5345c59 16
+tests/desktop-license-sql.test.mjs
+  s_5f5841f18f5bde::t_dc1153b12f4fa2 20,80-98
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.12",
+  "base_commit_sha": "6972f95f0c09afa938374b5238b4260e1b8a4bf0",
+  "prompts": {},
+  "logical_commit_id": "6972f95f0c09afa938374b5238b4260e1b8a4bf0",
+  "sessions": {
+    "s_016fa4053668b5": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f4cce-0e1e-7a00-b270-cd79fbd1f593",
+        "model": "gpt-5.6-terra"
+      },
+      "human_author": "masongzhi <masongzhi@bigo.sg>"
+    },
+    "s_5f5841f18f5bde": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f5a71-61ad-7790-a2b9-69f9f31876a2",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "masongzhi <masongzhi@bigo.sg>"
+    },
+    "s_6c5511064010f0": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f5adf-ff14-7d70-87d8-b760c6b72bd0",
+        "model": "gpt-5.5"
+      },
+      "human_author": "masongzhi <masongzhi@bigo.sg>"
+    }
+  }
+}
