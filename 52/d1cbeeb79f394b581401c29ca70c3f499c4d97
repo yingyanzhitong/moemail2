@@ -1,0 +1,50 @@
+app/lib/desktop-license-service.ts
+  s_016fa4053668b5::t_13654107c9ca10 551-552,569-571
+desktop/smart-image-compressor/README.md
+  s_016fa4053668b5::t_c55b2b095c10e4 32-33
+desktop/smart-image-compressor/src-tauri/src/commands.rs
+  s_016fa4053668b5::t_2777ac21fe041c 17,465,485,551-552
+desktop/smart-image-compressor/src-tauri/src/license_api.rs
+  s_5f5841f18f5bde::t_eae40c2846cde3 90-112,141-145,147,322,346,382-385,388,482-484,521,535-545
+desktop/smart-image-compressor/src-tauri/src/models.rs
+  s_016fa4053668b5::t_279acb82d5e7c5 112-113
+tests/desktop-license-sql.test.mjs
+  s_016fa4053668b5::t_04520ca9cc81b1 148,156-158,164
+CHANGELOG.md
+  s_5f5841f18f5bde::t_d5d7f800b11ecb 5-16
+desktop/smart-image-compressor/package.json
+  s_5f5841f18f5bde::t_65c43ae09b68d8 3
+desktop/smart-image-compressor/src-tauri/Cargo.lock
+  s_5f5841f18f5bde::t_6c6a2a546d8f68 4488
+desktop/smart-image-compressor/src-tauri/Cargo.toml
+  s_5f5841f18f5bde::t_48ec93258869dd 3
+desktop/smart-image-compressor/src-tauri/tauri.conf.json
+  s_5f5841f18f5bde::t_b1a06ef4c977fb 4
+package.json
+  s_5f5841f18f5bde::t_ded2aec372f6e8 3
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.12",
+  "base_commit_sha": "52d1cbeeb79f394b581401c29ca70c3f499c4d97",
+  "prompts": {},
+  "logical_commit_id": "52d1cbeeb79f394b581401c29ca70c3f499c4d97",
+  "sessions": {
+    "s_016fa4053668b5": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f4cce-0e1e-7a00-b270-cd79fbd1f593",
+        "model": "gpt-5.6-terra"
+      },
+      "human_author": "masongzhi <masongzhi@bigo.sg>"
+    },
+    "s_5f5841f18f5bde": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f5a71-61ad-7790-a2b9-69f9f31876a2",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "masongzhi <masongzhi@bigo.sg>"
+    }
+  }
+}
