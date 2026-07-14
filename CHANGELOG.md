@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.14.11] - 2026-07-14
+
+### Bug Fixes
+
+- **桌面激活卡顿**：修复授权已在服务端成功兑换，但桌面端长时间停留在“正在激活”的问题；根因是 Stronghold 对系统随机主密钥执行了不必要的高工作因子 scrypt。
+- **凭证持久化性能**：Stronghold 主密钥由 48 字节系统随机数生成并保存在 Keychain/Credential Manager，按强随机密钥模式使用最小工作因子，避免激活和图片成功计数保存时持续占用 CPU。
+- **设备身份写入**：设备 ID 已存在时不再重复写入 Stronghold，减少兑换前一次无变化的凭证库持久化。
+
+### Tests
+
+- **桌面端回归**：新增强随机密钥工作因子、设备身份仅生成一次测试；Rust 11 项、React 11 项、设计规范与前端生产构建全部通过。
+
 ## [1.14.10] - 2026-07-14
 
 ### Features

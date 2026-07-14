@@ -17,6 +17,25 @@ const CLIENT_NAME: &[u8] = b"smart-image-compressor";
 const RECORD_KEY: &[u8] = b"desktop-credentials-v1";
 const KEYRING_SERVICE: &str = "site.tinypng-token.smartcompress";
 const KEYRING_USER: &str = "stronghold-master-key";
+const SNAPSHOT_WORK_FACTOR: u8 = 0;
+
+fn configure_snapshot_encryption() -> Result<()> {
+    // 主密钥来自 48 字节系统随机数并保存在系统 Keychain，不是低熵密码。
+    // Stronghold 对强随机密钥建议使用最小工作因子，避免每次持久化重复执行昂贵的 scrypt。
+    iota_stronghold::engine::snapshot::try_set_encrypt_work_factor(SNAPSHOT_WORK_FACTOR)
+        .context("无法配置 Stronghold 凭证库")
+}
+
+fn ensure_identity(bundle: &mut CredentialBundle) -> bool {
+    if !bundle.device_private_key.is_empty() && !bundle.device_id.is_empty() {
+        return false;
+    }
+    let mut private_key = [0_u8; 32];
+    OsRng.fill_bytes(&mut private_key);
+    bundle.device_private_key = STANDARD_NO_PAD.encode(private_key);
+    bundle.device_id = URL_SAFE_NO_PAD.encode(Sha256::digest(private_key));
+    true
+}
 
 pub struct CredentialVault {
     stronghold: Mutex<Stronghold>,
@@ -24,6 +43,7 @@ pub struct CredentialVault {
 
 impl CredentialVault {
     pub fn open(app: &AppHandle) -> Result<Self> {
+        configure_snapshot_encryption()?;
         let app_data = app.path().app_data_dir().context("无法确定应用数据目录")?;
         fs::create_dir_all(&app_data).context("无法创建应用数据目录")?;
         let snapshot_path = app_data.join("credentials.hold");
@@ -93,14 +113,47 @@ impl CredentialVault {
     }
 
     pub fn ensure_device_identity(&self) -> Result<String> {
-        self.update(|bundle| {
-            if bundle.device_private_key.is_empty() {
-                let mut private_key = [0_u8; 32];
-                OsRng.fill_bytes(&mut private_key);
-                bundle.device_private_key = STANDARD_NO_PAD.encode(private_key);
-                bundle.device_id = URL_SAFE_NO_PAD.encode(Sha256::digest(private_key));
-            }
-            Ok(bundle.device_id.clone())
-        })
+        let mut bundle = self.read()?;
+        if ensure_identity(&mut bundle) {
+            self.write(&bundle)?;
+        }
+        Ok(bundle.device_id)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{configure_snapshot_encryption, ensure_identity, CredentialBundle};
+
+    #[test]
+    fn existing_device_identity_does_not_change() {
+        let mut bundle = CredentialBundle {
+            device_private_key: "private".into(),
+            device_id: "device".into(),
+            ..CredentialBundle::default()
+        };
+
+        assert!(!ensure_identity(&mut bundle));
+        assert_eq!(bundle.device_private_key, "private");
+        assert_eq!(bundle.device_id, "device");
+    }
+
+    #[test]
+    fn missing_device_identity_is_generated_once() {
+        let mut bundle = CredentialBundle::default();
+
+        assert!(ensure_identity(&mut bundle));
+        assert!(!bundle.device_private_key.is_empty());
+        assert!(!bundle.device_id.is_empty());
+        assert!(!ensure_identity(&mut bundle));
+    }
+
+    #[test]
+    fn random_key_snapshot_uses_minimum_work_factor() {
+        configure_snapshot_encryption().expect("work factor should be configurable");
+        assert_eq!(
+            iota_stronghold::engine::snapshot::get_encrypt_work_factor(),
+            0
+        );
     }
 }
