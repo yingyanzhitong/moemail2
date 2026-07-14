@@ -1,5 +1,5 @@
 import { invoke, isTauri } from '@tauri-apps/api/core'
-import type { ActivationPlanPreview, BootstrapView, CompressionSummary, ImageJob, LicenseView } from '@/types'
+import type { ActivationPlanPreview, BootstrapView, CompressionSummary, ImageJob, LicenseView, OutputMode } from '@/types'
 
 const demoLicense: LicenseView = {
   id: 'preview',
@@ -52,8 +52,8 @@ export async function addDroppedPaths(paths: string[]): Promise<ImageJob[]> {
   return invoke<ImageJob[]>('add_paths', { paths })
 }
 
-export async function startCompression(ids: string[]): Promise<CompressionSummary> {
-  return invoke<CompressionSummary>('start_compression', { ids })
+export async function startCompression(ids: string[], outputMode: OutputMode): Promise<CompressionSummary> {
+  return invoke<CompressionSummary>('start_compression', { ids, outputMode })
 }
 
 export async function cancelCompression(): Promise<void> {

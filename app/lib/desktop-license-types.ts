@@ -28,5 +28,6 @@ export interface DesktopLicenseView {
   scheduledPeriods: Array<{
     startsAt: string
     expiresAt: string
+    limit: number
   }>
 }

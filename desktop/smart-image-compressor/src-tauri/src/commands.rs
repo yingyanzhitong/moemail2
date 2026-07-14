@@ -2,13 +2,13 @@ use std::{
     collections::{HashMap, HashSet},
     path::PathBuf,
     sync::{
-        atomic::{AtomicBool, AtomicU32, Ordering},
+        atomic::{AtomicBool, Ordering},
         Arc, Mutex,
     },
 };
 
 use anyhow::{Context, Result};
-use chrono::Utc;
+use chrono::{DateTime, Utc};
 use futures::{stream, StreamExt};
 use reqwest::Client;
 use tauri::{AppHandle, Emitter, State};
@@ -18,8 +18,8 @@ use tokio::sync::Mutex as AsyncMutex;
 use crate::{
     license_api::LicenseApi,
     models::{
-        ActivationPlanPreview, BootstrapView, CompressionProgress, CompressionSummary, ImageJobView,
-        KeyState, LicenseView,
+        ActivationPlanPreview, BootstrapView, CompressionProgress, CompressionSummary,
+        ImageJobView, KeyState, LicenseView,
     },
     scanner::{scan_paths, ImageJob},
     tinify::{self, TinifyError},
@@ -39,7 +39,10 @@ impl AppState {
     pub fn new(vault: Arc<CredentialVault>) -> Result<Self> {
         let http = Client::builder()
             .user_agent(concat!("SmartImageCompressor/", env!("CARGO_PKG_VERSION")))
+            .connect_timeout(std::time::Duration::from_secs(15))
             .timeout(std::time::Duration::from_secs(90))
+            .pool_max_idle_per_host(8)
+            .tcp_nodelay(true)
             .build()
             .context("无法创建网络客户端")?;
         Ok(Self {
@@ -70,7 +73,7 @@ pub fn take_activation_code(
 
 #[tauri::command]
 pub async fn bootstrap(state: State<'_, AppState>) -> std::result::Result<BootstrapView, String> {
-    state.license_api.bootstrap().await.map_err(command_error)
+    state.license_api.bootstrap().map_err(command_error)
 }
 
 #[tauri::command]
@@ -101,7 +104,7 @@ pub async fn preview_activation(
 pub async fn refresh_license(
     state: State<'_, AppState>,
 ) -> std::result::Result<LicenseView, String> {
-    state.license_api.refresh().await.map_err(command_error)
+    state.license_api.refresh().map_err(command_error)
 }
 
 fn store_jobs(
@@ -185,6 +188,7 @@ struct FileOutcome {
     compressed_size: Option<u64>,
     savings_percent: Option<f64>,
     error: Option<String>,
+    observed_at: Option<DateTime<Utc>>,
 }
 
 impl FileOutcome {
@@ -195,6 +199,22 @@ impl FileOutcome {
             compressed_size: self.compressed_size,
             savings_percent: self.savings_percent,
             error: self.error.clone(),
+        }
+    }
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum OutputMode {
+    NewFolder,
+    Overwrite,
+}
+
+impl OutputMode {
+    fn parse(value: &str) -> Result<Self> {
+        match value {
+            "new_folder" => Ok(Self::NewFolder),
+            "overwrite" => Ok(Self::Overwrite),
+            _ => anyhow::bail!("输出方式无效"),
         }
     }
 }
@@ -247,9 +267,8 @@ async fn process_job(
     app: &AppHandle,
     job: ImageJob,
     keys: Arc<AsyncMutex<Vec<KeyState>>>,
-    top_up_lock: Arc<AsyncMutex<()>>,
-    reservation_id: String,
-    durable_success_count: Arc<AtomicU32>,
+    output_mode: OutputMode,
+    expires_at: DateTime<Utc>,
 ) -> FileOutcome {
     if state.cancel.load(Ordering::SeqCst) {
         return FileOutcome {
@@ -258,15 +277,34 @@ async fn process_job(
             compressed_size: None,
             savings_percent: None,
             error: Some("任务已取消".into()),
+            observed_at: None,
         };
     }
-    if tokio::fs::try_exists(&job.output).await.unwrap_or(false) {
+    if Utc::now() >= expires_at {
+        return FileOutcome {
+            id: job.id,
+            status: "failed",
+            compressed_size: None,
+            savings_percent: None,
+            error: Some("授权已到期".into()),
+            observed_at: None,
+        };
+    }
+    let output_path = if output_mode == OutputMode::Overwrite {
+        &job.source
+    } else {
+        &job.output
+    };
+    if output_mode == OutputMode::NewFolder
+        && tokio::fs::try_exists(output_path).await.unwrap_or(false)
+    {
         return FileOutcome {
             id: job.id,
             status: "skipped",
             compressed_size: None,
             savings_percent: None,
             error: Some("目标已存在，未覆盖".into()),
+            observed_at: None,
         };
     }
     emit_progress(
@@ -280,55 +318,42 @@ async fn process_job(
         },
     );
 
-    for _ in 0..80 {
-        let claimed = claim_key(&keys).await;
-        let (key_index, api_key) = if let Some(claimed) = claimed {
-            claimed
-        } else {
-            let _top_up_guard = top_up_lock.lock().await;
-            if let Some(claimed) = claim_key(&keys).await {
-                claimed
-            } else {
-                match state.license_api.top_up().await {
-                    Ok(additional) if !additional.is_empty() => {
-                        keys.lock().await.extend(additional);
-                        let Some(claimed) = claim_key(&keys).await else {
-                            return FileOutcome {
-                                id: job.id,
-                                status: "failed",
-                                compressed_size: None,
-                                savings_percent: None,
-                                error: Some("服务容量暂时不足，请稍后重试".into()),
-                            };
-                        };
-                        claimed
-                    }
-                    Ok(_) => {
-                        return FileOutcome {
-                            id: job.id,
-                            status: "failed",
-                            compressed_size: None,
-                            savings_percent: None,
-                            error: Some("服务容量暂时不足，请稍后重试".into()),
-                        }
-                    }
-                    Err(error) => {
-                        return FileOutcome {
-                            id: job.id,
-                            status: "failed",
-                            compressed_size: None,
-                            savings_percent: None,
-                            error: Some(error.to_string()),
-                        }
-                    }
-                }
-            }
+    loop {
+        let Some((key_index, api_key)) = claim_key(&keys).await else {
+            return FileOutcome {
+                id: job.id,
+                status: "failed",
+                compressed_size: None,
+                savings_percent: None,
+                error: Some("已领取的 TinyPNG Token 本月容量均已用尽".into()),
+                observed_at: None,
+            };
         };
         match tinify::compress(&state.http, &api_key, &job.source).await {
             Ok(output) => {
                 update_key_after_result(&keys, key_index, output.compression_count, false, false)
                     .await;
-                if let Err(error) = tinify::atomic_write(&job.output, &output.bytes).await {
+                if output
+                    .server_time
+                    .is_some_and(|server_time| server_time >= expires_at)
+                {
+                    return FileOutcome {
+                        id: job.id,
+                        status: "failed",
+                        compressed_size: None,
+                        savings_percent: None,
+                        error: Some("授权已到期（已通过 TinyPNG 服务器时间校验）".into()),
+                        observed_at: output.server_time,
+                    };
+                }
+                let compressed_size = output.bytes.len() as u64;
+                if let Err(error) = tinify::atomic_write(
+                    output_path,
+                    output.bytes,
+                    output_mode == OutputMode::Overwrite,
+                )
+                .await
+                {
                     let message = error.to_string();
                     let status = if message.contains("目标文件已存在") {
                         "skipped"
@@ -341,24 +366,21 @@ async fn process_job(
                         compressed_size: None,
                         savings_percent: None,
                         error: Some(message),
+                        observed_at: output.server_time,
                     };
                 }
-                let compressed_size = output.bytes.len() as u64;
                 let savings = if job.original_size == 0 {
                     0.0
                 } else {
                     (1.0 - compressed_size as f64 / job.original_size as f64) * 100.0
                 };
-                let success_count = durable_success_count.fetch_add(1, Ordering::SeqCst) + 1;
-                let _ = state
-                    .license_api
-                    .record_success(&reservation_id, success_count);
                 return FileOutcome {
                     id: job.id,
                     status: "completed",
                     compressed_size: Some(compressed_size),
                     savings_percent: Some(savings.max(0.0)),
                     error: None,
+                    observed_at: output.server_time,
                 };
             }
             Err(TinifyError::CapacityExhausted(count)) => {
@@ -375,16 +397,10 @@ async fn process_job(
                     compressed_size: None,
                     savings_percent: None,
                     error: Some(error.to_string()),
+                    observed_at: None,
                 };
             }
         }
-    }
-    FileOutcome {
-        id: job.id,
-        status: "failed",
-        compressed_size: None,
-        savings_percent: None,
-        error: Some("没有可用的 TinyPNG Key".into()),
     }
 }
 
@@ -398,6 +414,7 @@ impl Drop for RunningGuard<'_> {
 #[tauri::command]
 pub async fn start_compression(
     ids: Vec<String>,
+    output_mode: String,
     app: AppHandle,
     state: State<'_, AppState>,
 ) -> std::result::Result<CompressionSummary, String> {
@@ -409,15 +426,11 @@ pub async fn start_compression(
     }
     let _guard = RunningGuard(&state.running);
     state.cancel.store(false, Ordering::SeqCst);
+    let output_mode = OutputMode::parse(&output_mode).map_err(command_error)?;
 
-    state
-        .license_api
-        .reconcile_pending()
-        .await
-        .map_err(command_error)?;
-    let current_license = state.license_api.refresh().await.map_err(command_error)?;
+    let current_license = state.license_api.refresh().map_err(command_error)?;
     if current_license.status != "active" {
-        return Err(command_error("授权已到期、用尽或被撤销"));
+        return Err(command_error("授权已到期、用尽或系统时间无效"));
     }
 
     let jobs = {
@@ -431,6 +444,12 @@ pub async fn start_compression(
     };
     if jobs.len() != ids.len() {
         return Err(command_error("部分任务已失效，请重新添加"));
+    }
+    let remaining = current_license.limit.saturating_sub(current_license.used);
+    if jobs.len() as u32 > remaining {
+        return Err(command_error(format!(
+            "本地授权仅剩 {remaining} 张额度，请减少本批图片数量"
+        )));
     }
 
     let keys = Arc::new(AsyncMutex::new(
@@ -454,45 +473,38 @@ pub async fn start_compression(
             locked.iter().any(|key| !key.invalid && key.count < 500)
         };
         if !has_capacity {
-            let additional = state.license_api.top_up().await.map_err(command_error)?;
-            if additional.is_empty() {
-                return Err(command_error("服务容量暂时不足，请稍后重试"));
-            }
-            keys.lock().await.extend(additional);
+            return Err(command_error("已领取的 TinyPNG Token 本月容量均已用尽"));
         }
 
-        let reservation_id = state
+        let (reservation_id, reserved_license) = state
             .license_api
-            .reserve(chunk.len())
-            .await
+            .reserve_local(chunk.len())
             .map_err(command_error)?;
-        let top_up_lock = Arc::new(AsyncMutex::new(()));
-        let durable_success_count = Arc::new(AtomicU32::new(0));
+        let expires_at = reserved_license
+            .expires_at
+            .as_deref()
+            .context("授权有效期缺失")
+            .and_then(|value| {
+                DateTime::parse_from_rfc3339(value)
+                    .map(|value| value.with_timezone(&Utc))
+                    .context("授权有效期格式无效")
+            })
+            .map_err(command_error)?;
         let batch_jobs = chunk.to_vec();
         let outcomes = stream::iter(batch_jobs.into_iter().map(|job| {
             let keys = keys.clone();
-            let top_up_lock = top_up_lock.clone();
-            let reservation_id = reservation_id.clone();
-            let durable_success_count = durable_success_count.clone();
-            async {
-                process_job(
-                    &state,
-                    &app,
-                    job,
-                    keys,
-                    top_up_lock,
-                    reservation_id,
-                    durable_success_count,
-                )
-                .await
-            }
+            async { process_job(&state, &app, job, keys, output_mode, expires_at).await }
         }))
         .buffer_unordered(4)
         .collect::<Vec<_>>()
         .await;
 
         let mut success_count = 0_u32;
+        let mut observed_at: Option<DateTime<Utc>> = None;
         for outcome in outcomes {
+            if let Some(value) = outcome.observed_at {
+                observed_at = Some(observed_at.map_or(value, |current| current.max(value)));
+            }
             processed.insert(outcome.id.clone());
             match outcome.status {
                 "completed" => {
@@ -506,18 +518,14 @@ pub async fn start_compression(
             }
             emit_progress(&app, outcome.progress());
         }
-        state
-            .license_api
-            .record_success(&reservation_id, success_count)
-            .map_err(command_error)?;
-        state
-            .license_api
-            .save_key_states(keys.lock().await.clone())
-            .map_err(command_error)?;
         latest_license = state
             .license_api
-            .complete(&reservation_id, success_count)
-            .await
+            .complete_local(
+                &reservation_id,
+                success_count,
+                keys.lock().await.clone(),
+                observed_at,
+            )
             .map_err(command_error)?;
     }
 

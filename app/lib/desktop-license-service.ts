@@ -282,6 +282,7 @@ export async function getDesktopLicenseView(
     scheduledPeriods: scheduled.map((period) => ({
       startsAt: period.startsAt.toISOString(),
       expiresAt: period.expiresAt.toISOString(),
+      limit: period.quotaTotal,
     })),
   }
 }
@@ -716,19 +717,24 @@ export async function listDesktopLicenseKeys(database: D1Database, licenseId: st
 
 export async function revokeDesktopLicense(database: D1Database, licenseId: string): Promise<void> {
   const db = getDb(database)
-  const license = await db.select({ id: desktopLicenses.id })
+  const license = await db.select({ id: desktopLicenses.id, status: desktopLicenses.status })
     .from(desktopLicenses)
     .where(eq(desktopLicenses.id, licenseId))
     .get()
   if (!license) throw new DesktopLicenseError('授权不存在', 404, 'LICENSE_NOT_FOUND')
 
   const now = Date.now()
-  await database.batch([
-    database.prepare(
-      "UPDATE tinypng_key_pool SET status = 'active', updated_at = ? WHERE status IN ('reserved', 'assigned') AND id IN (SELECT pool_key_id FROM desktop_license_keys WHERE license_id = ?)",
-    ).bind(now, licenseId),
-    database.prepare('DELETE FROM desktop_license_keys WHERE license_id = ?').bind(licenseId),
+  const statements = [
     database.prepare("UPDATE desktop_activation_grants SET status = 'expired', code_ciphertext = NULL WHERE license_id = ? AND status = 'issued'").bind(licenseId),
     database.prepare("UPDATE desktop_licenses SET status = 'revoked', access_token_hash = NULL, updated_at = ? WHERE id = ?").bind(now, licenseId),
-  ])
+  ]
+  if (license.status === 'pending') {
+    statements.unshift(
+      database.prepare(
+        "UPDATE tinypng_key_pool SET status = 'active', updated_at = ? WHERE status = 'reserved' AND id IN (SELECT pool_key_id FROM desktop_license_keys WHERE license_id = ?)",
+      ).bind(now, licenseId),
+      database.prepare('DELETE FROM desktop_license_keys WHERE license_id = ?').bind(licenseId),
+    )
+  }
+  await database.batch(statements)
 }

@@ -1,5 +1,6 @@
-export type LicenseStatus = 'unlicensed' | 'active' | 'pending' | 'expired' | 'exhausted' | 'revoked' | 'offline'
+export type LicenseStatus = 'unlicensed' | 'active' | 'pending' | 'expired' | 'exhausted' | 'revoked' | 'offline' | 'clock_invalid'
 export type FileStatus = 'queued' | 'compressing' | 'completed' | 'failed' | 'skipped' | 'cancelled'
+export type OutputMode = 'new_folder' | 'overwrite'
 
 export interface LicenseView {
   id: string | null
@@ -9,7 +10,7 @@ export interface LicenseView {
   tokenCount: number
   startsAt: string | null
   expiresAt: string | null
-  scheduledPeriods: Array<{ startsAt: string; expiresAt: string }>
+  scheduledPeriods: Array<{ startsAt: string; expiresAt: string; limit: number }>
   message?: string
 }
 

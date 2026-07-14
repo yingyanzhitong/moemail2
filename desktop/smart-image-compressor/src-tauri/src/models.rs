@@ -5,6 +5,8 @@ use serde::{Deserialize, Serialize};
 pub struct ScheduledPeriod {
     pub starts_at: String,
     pub expires_at: String,
+    #[serde(default)]
+    pub limit: u32,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -104,6 +106,8 @@ pub struct KeyState {
 #[serde(rename_all = "camelCase")]
 pub struct PendingReservation {
     pub id: String,
+    #[serde(default)]
+    pub requested_count: u32,
     pub success_count: u32,
 }
 
@@ -118,30 +122,13 @@ pub struct CredentialBundle {
     pub license: Option<LicenseView>,
     #[serde(default)]
     pub pending_reservations: Vec<PendingReservation>,
+    #[serde(default)]
+    pub last_seen_at: Option<String>,
 }
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RedeemResponse {
-    pub access_token: String,
     pub license: LicenseView,
-    pub api_keys: Vec<String>,
-}
-
-#[derive(Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ReservationResponse {
-    pub id: String,
-}
-
-#[derive(Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct CompleteResponse {
-    pub license: LicenseView,
-}
-
-#[derive(Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct TopUpResponse {
     pub api_keys: Vec<String>,
 }

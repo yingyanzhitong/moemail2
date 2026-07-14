@@ -2,15 +2,16 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { listen } from '@tauri-apps/api/event'
 import { isTauri } from '@tauri-apps/api/core'
 import { getCurrentWebviewWindow } from '@tauri-apps/api/webviewWindow'
-import { Aperture, Loader2, Pause, Play, WifiOff } from 'lucide-react'
+import { Aperture, Loader2, Pause, Play } from 'lucide-react'
 import { ActivationDialog } from '@/components/activation-dialog'
 import { ActivationScreen } from '@/components/activation-screen'
 import { DropZone } from '@/components/drop-zone'
 import { FileQueue } from '@/components/file-queue'
 import { LicensePanel } from '@/components/license-panel'
+import { OverwriteConfirmDialog } from '@/components/overwrite-confirm-dialog'
 import { Button } from '@/components/ui/button'
 import { addDroppedPaths, bootstrap, cancelCompression, pickFolder, pickImages, previewActivation, redeem, refreshLicense, startCompression, takeActivationCode } from '@/lib/desktop-api'
-import type { CompressionProgress, ImageJob, LicenseView, QueueItem } from '@/types'
+import type { CompressionProgress, ImageJob, LicenseView, OutputMode, QueueItem } from '@/types'
 
 const emptyLicense: LicenseView = { id: null, status: 'unlicensed', used: 0, limit: 0, tokenCount: 0, startsAt: null, expiresAt: null, scheduledPeriods: [] }
 
@@ -33,6 +34,8 @@ export function App() {
   const [dropActive, setDropActive] = useState(false)
   const [activationOpen, setActivationOpen] = useState(false)
   const [activationCode, setActivationCode] = useState('')
+  const [outputMode, setOutputMode] = useState<OutputMode>('new_folder')
+  const [overwriteConfirmOpen, setOverwriteConfirmOpen] = useState(false)
   const [notice, setNotice] = useState<string | null>(null)
   const licenseIdRef = useRef<string | null>(null)
   licenseIdRef.current = license.id
@@ -48,7 +51,7 @@ export function App() {
     void bootstrap()
       .then((view) => {
         setLicense(view.license)
-        if (view.reconciledReservations > 0) setNotice(`已恢复并结算 ${view.reconciledReservations} 个中断批次。`)
+        if (view.reconciledReservations > 0) setNotice(`检测到 ${view.reconciledReservations} 个中断批次，已按安全策略计入本地额度。`)
       })
       .catch((error) => setNotice(messageFromError(error)))
       .finally(() => setBooting(false))
@@ -122,12 +125,13 @@ export function App() {
     }
   }
 
-  const start = async () => {
+  const runCompression = async () => {
+    setOverwriteConfirmOpen(false)
     setRunning(true)
     setNotice(null)
     setQueue((current) => current.map((item) => queuedIds.includes(item.id) ? { ...item, status: 'queued', error: undefined } : item))
     try {
-      const summary = await startCompression(queuedIds)
+      const summary = await startCompression(queuedIds, outputMode)
       setLicense(summary.license)
       setNotice(`本次完成 ${summary.completed} 张，失败 ${summary.failed} 张，跳过 ${summary.skipped} 张。`)
     } catch (error) {
@@ -137,9 +141,17 @@ export function App() {
     }
   }
 
+  const start = () => {
+    if (outputMode === 'overwrite') {
+      setOverwriteConfirmOpen(true)
+      return
+    }
+    void runCompression()
+  }
+
   const cancel = async () => {
     await cancelCompression()
-    setNotice('已请求取消：进行中的最多 4 张会完成并正常结算。')
+    setNotice('已请求取消：进行中的最多 4 张会完成并计入本地额度。')
   }
 
   if (booting) {
@@ -158,11 +170,10 @@ export function App() {
           <div><h1 className="text-sm font-semibold">智能压缩工具</h1><p className="font-mono text-[9px] uppercase tracking-[0.16em] text-[#8792A5]">Imaging calibration desk</p></div>
         </div>
         <div className="flex items-center gap-3">
-          {license.status === 'offline' ? <span className="flex items-center gap-1.5 text-xs text-[#C53D47]"><WifiOff className="h-3.5 w-3.5" />离线</span> : null}
           {running ? (
             <Button variant="danger" onClick={() => void cancel()}><Pause className="h-4 w-4" />取消任务</Button>
           ) : (
-            <Button onClick={() => void start()} disabled={!canStart} title={license.status !== 'active' ? '需要有效授权才能开始新批次' : queuedIds.length === 0 ? '请先添加图片' : undefined}><Play className="h-4 w-4 fill-current" />开始压缩</Button>
+            <Button onClick={start} disabled={!canStart} title={license.status !== 'active' ? '需要有效授权才能开始新批次' : queuedIds.length === 0 ? '请先添加图片' : undefined}><Play className="h-4 w-4 fill-current" />开始压缩</Button>
           )}
         </div>
       </header>
@@ -173,10 +184,24 @@ export function App() {
           {notice ? <div role="status" className="flex items-center justify-between rounded-[8px] border border-[#CBD5E2] bg-white px-3 py-2 text-xs text-[#526078]"><span>{notice}</span><button className="ml-4 text-[#2956D8] hover:underline" onClick={() => setNotice(null)}>关闭</button></div> : null}
           <FileQueue items={queue} running={running} onRemove={(id) => setQueue((current) => current.filter((item) => item.id !== id))} onClear={() => setQueue([])} />
         </div>
-        <LicensePanel license={license} refreshing={refreshing} onRefresh={() => void doRefresh()} onActivate={() => setActivationOpen(true)} />
+        <LicensePanel
+          license={license}
+          refreshing={refreshing}
+          onRefresh={() => void doRefresh()}
+          onActivate={() => setActivationOpen(true)}
+          outputMode={outputMode}
+          outputDisabled={running}
+          onOutputModeChange={setOutputMode}
+        />
       </div>
 
       <ActivationDialog open={activationOpen} initialCode={activationCode} onOpenChange={setActivationOpen} onRedeem={doRedeem} />
+      <OverwriteConfirmDialog
+        open={overwriteConfirmOpen}
+        imageCount={queuedIds.length}
+        onOpenChange={setOverwriteConfirmOpen}
+        onConfirm={() => void runCompression()}
+      />
     </main>
   )
 }

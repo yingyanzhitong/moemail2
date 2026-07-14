@@ -1,6 +1,6 @@
 [package]
 name = "smart-image-compressor"
-version = "0.1.4"
+version = "0.1.5"
 description = "智能压缩工具"
 authors = ["moemail"]
 edition = "2021"
@@ -30,6 +30,7 @@ tauri-plugin-deep-link = "2.4.9"
 tauri-plugin-dialog = "2.7.1"
 tauri-plugin-single-instance = { version = "2.4.2", features = ["deep-link"] }
 tauri-plugin-stronghold = "2.3.1"
+tempfile = "3.23.0"
 thiserror = "2.0.17"
 tokio = { version = "1.48.0", features = ["fs", "sync", "time"] }
 url = "2.5.7"
@@ -38,4 +39,3 @@ walkdir = "2.5.0"
 
 [dev-dependencies]
 httpmock = "0.8.2"
-tempfile = "3.23.0"

@@ -1,12 +1,14 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { App } from '@/App'
-import type { ActivationPlanPreview, BootstrapView, LicenseView } from '@/types'
+import type { ActivationPlanPreview, BootstrapView, CompressionSummary, ImageJob, LicenseView, OutputMode } from '@/types'
 
-const { bootstrapMock, previewMock, redeemMock } = vi.hoisted(() => ({
+const { bootstrapMock, previewMock, redeemMock, pickImagesMock, startCompressionMock } = vi.hoisted(() => ({
   bootstrapMock: vi.fn<() => Promise<BootstrapView>>(),
   previewMock: vi.fn<(code: string) => Promise<ActivationPlanPreview>>(),
   redeemMock: vi.fn<(code: string) => Promise<LicenseView>>(),
+  pickImagesMock: vi.fn<() => Promise<ImageJob[]>>(),
+  startCompressionMock: vi.fn<(ids: string[], outputMode: OutputMode) => Promise<CompressionSummary>>(),
 }))
 
 vi.mock('@tauri-apps/api/core', () => ({ isTauri: () => false }))
@@ -15,11 +17,11 @@ vi.mock('@/lib/desktop-api', () => ({
   bootstrap: bootstrapMock,
   cancelCompression: vi.fn(),
   pickFolder: vi.fn(),
-  pickImages: vi.fn(),
+  pickImages: pickImagesMock,
   previewActivation: previewMock,
   redeem: redeemMock,
   refreshLicense: vi.fn(),
-  startCompression: vi.fn(),
+  startCompression: startCompressionMock,
   takeActivationCode: vi.fn(),
 }))
 
@@ -89,5 +91,36 @@ describe('桌面端授权入口', () => {
 
     expect(await screen.findByRole('button', { name: '开始压缩' })).toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: '激活后进入压缩工作台' })).not.toBeInTheDocument()
+  })
+
+  it('覆盖原文件必须二次确认后才开始压缩', async () => {
+    bootstrapMock.mockResolvedValue({ license: active, reconciledReservations: 0 })
+    pickImagesMock.mockResolvedValue([{
+      id: 'image-1',
+      name: '照片.png',
+      sourcePath: '/图片/照片.png',
+      outputPath: '/图片/压缩结果/照片.png',
+      parentLabel: '/图片',
+      originalSize: 1024,
+      thumbnailDataUrl: null,
+    }])
+    startCompressionMock.mockResolvedValue({
+      completed: 1,
+      failed: 0,
+      skipped: 0,
+      cancelled: 0,
+      license: { ...active, used: 1 },
+    })
+
+    render(<App />)
+    fireEvent.click(await screen.findByRole('button', { name: '选择图片' }))
+    expect(await screen.findByText('照片.png')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('radio', { name: /覆盖原文件/ }))
+    fireEvent.click(screen.getByRole('button', { name: '开始压缩' }))
+
+    expect(await screen.findByRole('heading', { name: '确认覆盖 1 张原图？' })).toBeInTheDocument()
+    expect(startCompressionMock).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole('button', { name: '确认覆盖并开始' }))
+    await waitFor(() => expect(startCompressionMock).toHaveBeenCalledWith(['image-1'], 'overwrite'))
   })
 })

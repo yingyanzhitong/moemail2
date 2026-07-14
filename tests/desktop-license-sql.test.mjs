@@ -50,8 +50,10 @@ function stopLicense(db, licenseId) {
 
   db.exec('BEGIN IMMEDIATE')
   try {
-    db.prepare("UPDATE tinypng_key_pool SET status = 'active' WHERE status IN ('reserved', 'assigned') AND id IN (SELECT pool_key_id FROM desktop_license_keys WHERE license_id = ?)").run(licenseId)
-    db.prepare('DELETE FROM desktop_license_keys WHERE license_id = ?').run(licenseId)
+    if (license.status === 'pending') {
+      db.prepare("UPDATE tinypng_key_pool SET status = 'active' WHERE status = 'reserved' AND id IN (SELECT pool_key_id FROM desktop_license_keys WHERE license_id = ?)").run(licenseId)
+      db.prepare('DELETE FROM desktop_license_keys WHERE license_id = ?').run(licenseId)
+    }
     db.prepare("UPDATE desktop_activation_grants SET status = 'expired' WHERE license_id = ? AND status = 'issued'").run(licenseId)
     db.prepare("UPDATE desktop_licenses SET status = 'revoked', access_token_hash = NULL WHERE id = ?").run(licenseId)
     db.exec('COMMIT')
@@ -143,7 +145,7 @@ test('额度条件更新不会超卖，结算只累计成功数', () => {
   assert.equal(db.prepare("SELECT success_count count FROM desktop_usage_reservations WHERE id = 'reservation'").get().count, 7)
 })
 
-test('停止已激活授权会清除访问令牌并释放全部已分配 Token', () => {
+test('停止已激活授权会清除访问令牌，但已下发 Token 永不回池', () => {
   const db = database()
   seedKeys(db, 40)
   issueNewGrant(db, 'license-a')
@@ -151,8 +153,8 @@ test('停止已激活授权会清除访问令牌并释放全部已分配 Token',
   db.prepare("UPDATE tinypng_key_pool SET status = 'assigned' WHERE status = 'reserved'").run()
   stopLicense(db, 'license-a')
   assert.equal(db.prepare("SELECT access_token_hash token FROM desktop_licenses WHERE id = 'license-a'").get().token, null)
-  assert.equal(db.prepare("SELECT COUNT(*) count FROM tinypng_key_pool WHERE status = 'active'").get().count, 40)
-  assert.equal(db.prepare("SELECT COUNT(*) count FROM desktop_license_keys WHERE license_id = 'license-a'").get().count, 0)
+  assert.equal(db.prepare("SELECT COUNT(*) count FROM tinypng_key_pool WHERE status = 'assigned'").get().count, 40)
+  assert.equal(db.prepare("SELECT COUNT(*) count FROM desktop_license_keys WHERE license_id = 'license-a'").get().count, 40)
 })
 
 test('停止未兑换授权会使 Auth Link 失效并释放预留 Token', () => {

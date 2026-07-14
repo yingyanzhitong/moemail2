@@ -1,7 +1,7 @@
-import { CalendarClock, CircleGauge, FolderOutput, KeyRound, RotateCw, ShieldAlert } from 'lucide-react'
+import { CalendarClock, CircleGauge, FolderOutput, KeyRound, Replace, RotateCw, ShieldAlert } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
-import type { LicenseView } from '@/types'
+import type { LicenseView, OutputMode } from '@/types'
 
 function formatDate(value: string | null) {
   if (!value) return '尚未激活'
@@ -16,6 +16,7 @@ const STATUS_TEXT: Record<LicenseView['status'], string> = {
   exhausted: '本期额度已用尽',
   revoked: '授权已撤销',
   offline: '无法连接授权服务',
+  clock_invalid: '系统时间异常',
 }
 
 interface LicensePanelProps {
@@ -23,9 +24,12 @@ interface LicensePanelProps {
   refreshing: boolean
   onRefresh: () => void
   onActivate: () => void
+  outputMode: OutputMode
+  outputDisabled: boolean
+  onOutputModeChange: (mode: OutputMode) => void
 }
 
-export function LicensePanel({ license, refreshing, onRefresh, onActivate }: LicensePanelProps) {
+export function LicensePanel({ license, refreshing, onRefresh, onActivate, outputMode, outputDisabled, onOutputModeChange }: LicensePanelProps) {
   const percent = license.limit > 0 ? Math.min(100, license.used / license.limit * 100) : 0
   const active = license.status === 'active'
   const expiresSoon = active && license.expiresAt !== null && new Date(license.expiresAt).getTime() - Date.now() <= 3 * 86400000
@@ -41,7 +45,7 @@ export function LicensePanel({ license, refreshing, onRefresh, onActivate }: Lic
               <h2 className="text-sm font-semibold">{statusText}</h2>
             </div>
           </div>
-          <Button variant="ghost" size="icon" onClick={onRefresh} disabled={refreshing || license.status === 'unlicensed'} aria-label="刷新授权">
+          <Button variant="ghost" size="icon" onClick={onRefresh} disabled={refreshing || license.status === 'unlicensed'} aria-label="重新校验本地授权">
             <RotateCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
           </Button>
         </div>
@@ -76,7 +80,7 @@ export function LicensePanel({ license, refreshing, onRefresh, onActivate }: Lic
         {!active ? (
           <div className="mt-5 rounded-[8px] border border-[#C53D47]/20 bg-[#C53D47]/5 p-3">
             <p className="flex items-center gap-2 text-xs font-medium text-[#A4313A]"><ShieldAlert className="h-4 w-4" />新批次已暂停</p>
-            <p className="mt-1 text-xs leading-5 text-[#7A4A4F]">队列和历史结果仍可查看，粘贴新授权链接后即可继续。</p>
+            <p className="mt-1 text-xs leading-5 text-[#7A4A4F]">{license.message ?? '队列和历史结果仍可查看，粘贴新授权链接后即可继续。'}</p>
           </div>
         ) : null}
         <Button className="mt-4 w-full" variant={active ? 'outline' : 'default'} onClick={onActivate}>{active ? '粘贴续费或换机链接' : '激活授权'}</Button>
@@ -84,10 +88,29 @@ export function LicensePanel({ license, refreshing, onRefresh, onActivate }: Lic
 
       <section className="rounded-xl border border-[#D6DDE8] bg-white p-5">
         <div className="flex items-center gap-2"><FolderOutput className="h-4 w-4 text-[#2956D8]" /><h2 className="text-sm font-semibold">输出位置</h2></div>
-        <div className="mt-4 space-y-3 text-xs leading-5 text-[#667085]">
-          <p><span className="font-medium text-[#42506A]">文件夹任务</span><br />同级“原目录名-压缩结果”，保留原目录结构。</p>
-          <p><span className="font-medium text-[#42506A]">零散文件</span><br />各自源目录下的“压缩结果”文件夹。</p>
-          <p className="rounded-[8px] bg-[#F3F6FA] px-3 py-2">不会覆盖原文件；目标已存在时会跳过并提示。</p>
+        <div className="mt-4 grid gap-2" role="radiogroup" aria-label="输出方式">
+          <button
+            type="button"
+            role="radio"
+            aria-checked={outputMode === 'new_folder'}
+            disabled={outputDisabled}
+            onClick={() => onOutputModeChange('new_folder')}
+            className={`rounded-[9px] border p-3 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${outputMode === 'new_folder' ? 'border-[#2956D8] bg-[#2956D8]/5' : 'border-[#D6DDE8] hover:border-[#AEBBD0]'}`}
+          >
+            <span className="text-xs font-semibold text-[#172033]">导出到新文件夹</span>
+            <span className="mt-1 block text-[11px] leading-4 text-[#667085]">生成“压缩结果”目录并保留原文件。</span>
+          </button>
+          <button
+            type="button"
+            role="radio"
+            aria-checked={outputMode === 'overwrite'}
+            disabled={outputDisabled}
+            onClick={() => onOutputModeChange('overwrite')}
+            className={`rounded-[9px] border p-3 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${outputMode === 'overwrite' ? 'border-[#C53D47] bg-[#C53D47]/5' : 'border-[#D6DDE8] hover:border-[#AEBBD0]'}`}
+          >
+            <span className="flex items-center gap-1.5 text-xs font-semibold text-[#172033]"><Replace className="h-3.5 w-3.5 text-[#C53D47]" />覆盖原文件</span>
+            <span className="mt-1 block text-[11px] leading-4 text-[#667085]">直接替换源图片，开始前需要再次确认。</span>
+          </button>
         </div>
       </section>
     </aside>

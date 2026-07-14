@@ -135,9 +135,10 @@ export function DesktopLicenseAdmin() {
   }
 
   const stopLicense = async (license: DesktopLicenseAdminItem) => {
-    const message = license.status === 'revoked'
-      ? '该授权已停止。继续后会把仍绑定的 Token 释放回 Pool，确定继续吗？'
-      : '停止后 Auth Link 与客户端授权会立即失效，全部绑定 Token 会释放回 Pool 并可再次分配。已激活设备本地可能仍保留历史 Key，确定继续吗？'
+    const releasesTokens = license.status === 'pending' && !license.deviceBound
+    const message = releasesTokens
+      ? '该 Auth Link 尚未兑换。停止后链接立即失效，预留 Token 会安全释放回 Pool，确定继续吗？'
+      : 'Token 已下发到客户端，无法远程使其失效，也不会释放回 Pool。停止仅终止后台续费和授权管理，确定继续吗？'
     if (!window.confirm(message)) return
     const licenseId = license.id
     setActionId(`${licenseId}:revoke`)
@@ -148,7 +149,10 @@ export function DesktopLicenseAdmin() {
         throw new Error(data.error || '撤销失败')
       }
       await loadLicenses()
-      toast({ title: '授权已停止', description: '全部绑定 Token 已释放回 Pool。' })
+      toast({
+        title: '授权已停止',
+        description: releasesTokens ? '未下发的预留 Token 已释放回 Pool。' : '已下发 Token 保持永久占用，不会重新分配。',
+      })
     } catch (error) {
       toast({ title: '停止失败', description: error instanceof Error ? error.message : '请稍后重试', variant: 'destructive' })
     } finally {
@@ -247,7 +251,7 @@ export function DesktopLicenseAdmin() {
             <TableRow>
               <TableHead>授权</TableHead>
               <TableHead>状态</TableHead>
-              <TableHead>逻辑额度</TableHead>
+              <TableHead>本地套餐额度</TableHead>
               <TableHead>当前到期</TableHead>
               <TableHead>排队周期</TableHead>
               <TableHead className="text-right">操作</TableHead>
@@ -265,7 +269,10 @@ export function DesktopLicenseAdmin() {
                   <p className="mt-1 text-xs text-muted-foreground">{license.deviceBound ? '已绑定设备' : '未绑定设备'} · 授权 {license.tokenCount} Token · 当前 {license.keyCount} Key</p>
                 </TableCell>
                 <TableCell><span className="rounded-full bg-muted px-2 py-1 text-xs">{STATUS_LABEL[license.status]}</span></TableCell>
-                <TableCell className="font-mono text-xs">{license.used.toLocaleString()} / {license.limit.toLocaleString()}</TableCell>
+                <TableCell>
+                  <p className="font-mono text-xs">上限 {license.limit.toLocaleString()}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">已用数量仅保存在客户端</p>
+                </TableCell>
                 <TableCell className="whitespace-nowrap text-sm">
                   {license.status === 'pending' && license.plan ? (
                     <>
@@ -295,8 +302,8 @@ export function DesktopLicenseAdmin() {
                       compressionLimit: license.limit || license.plan?.compressionLimit || 10000,
                       durationDays: license.plan?.durationDays || 30,
                     })}>换机</Button>
-                    <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" disabled={(license.status === 'revoked' && license.keyCount === 0) || actionId !== null} onClick={() => void stopLicense(license)}>
-                      {actionId === `${license.id}:revoke` ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : <ShieldOff className="mr-1 h-3.5 w-3.5" />}{license.status === 'revoked' ? '释放 Token' : '停止'}
+                    <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" disabled={license.status === 'revoked' || actionId !== null} onClick={() => void stopLicense(license)}>
+                      {actionId === `${license.id}:revoke` ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : <ShieldOff className="mr-1 h-3.5 w-3.5" />}{license.status === 'revoked' ? '已停止' : '停止'}
                     </Button>
                   </div>
                 </TableCell>
