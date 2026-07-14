@@ -1,0 +1,28 @@
+CHANGELOG.md
+  s_5f5841f18f5bde::t_39faa3ad9f06b3 5-14
+app/lib/desktop-license-routes.ts
+  s_5f5841f18f5bde::t_49f1d64419be8d 1-11
+middleware.ts
+  s_5f5841f18f5bde::t_ba53c810ab2308 8,27-28
+package.json
+  s_5f5841f18f5bde::t_a388bdce323f4e 3
+tests/desktop-license-routes.test.mjs
+  s_5f5841f18f5bde::t_00a31143df13b5 1-16
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.12",
+  "base_commit_sha": "dfce6e264ac0c32485fe1132d06b0b9d2bd796a8",
+  "prompts": {},
+  "logical_commit_id": "dfce6e264ac0c32485fe1132d06b0b9d2bd796a8",
+  "sessions": {
+    "s_5f5841f18f5bde": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f5a71-61ad-7790-a2b9-69f9f31876a2",
+        "model": "unknown"
+      },
+      "human_author": "masongzhi <masongzhi@bigo.sg>"
+    }
+  }
+}
