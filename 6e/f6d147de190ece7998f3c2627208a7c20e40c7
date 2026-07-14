@@ -1,0 +1,58 @@
+CHANGELOG.md
+  s_5f5841f18f5bde::t_c666a39c0f5508 5-22
+app/api/tinypng/desktop/usage/reports/route.ts
+  s_5f5841f18f5bde::t_cc40f7bdbb26cb 1-26
+app/api/tinypng/desktop/usage/session/route.ts
+  s_5f5841f18f5bde::t_4c753927893a8f 1-24
+app/components/profile/desktop-license-admin.tsx
+  s_5f5841f18f5bde::t_d790e3a8fedb0d 254,273-274
+app/lib/desktop-license-service.ts
+  s_5f5841f18f5bde::t_f4ed798b726858 419-453,534-611
+desktop/smart-image-compressor/README.md
+  s_5f5841f18f5bde::t_3c81db46b97b53 3,33-34
+desktop/smart-image-compressor/package.json
+  s_5f5841f18f5bde::t_e9220b9e36b681 3
+desktop/smart-image-compressor/src-tauri/Cargo.lock
+  s_5f5841f18f5bde::t_775c50c369f9f0 4488
+desktop/smart-image-compressor/src-tauri/Cargo.toml
+  s_5f5841f18f5bde::t_f4ba98ef884986 3
+desktop/smart-image-compressor/src-tauri/src/commands.rs
+  s_5f5841f18f5bde::t_9e8a14cfc9c548 76,465-466,532,557-560
+desktop/smart-image-compressor/src-tauri/src/license_api.rs
+  s_5f5841f18f5bde::t_1a0e034c0cdc1b 7,13,33,114-124,172,204,206,211,213-217,229,250,324,353-363,372-448,495,504-505
+desktop/smart-image-compressor/src-tauri/src/models.rs
+  s_5f5841f18f5bde::t_4d804a23b91a52 59,95,114-124,138-139,147
+desktop/smart-image-compressor/src-tauri/tauri.conf.json
+  s_5f5841f18f5bde::t_7b1597b6e73454 4
+desktop/smart-image-compressor/src/App.test.tsx
+  s_5f5841f18f5bde::t_9fda1459a16eff 55,88,96-103,105,121,134
+desktop/smart-image-compressor/src/App.tsx
+  s_5f5841f18f5bde::t_9eb8fbe86ba0fe 54-58,140-141
+desktop/smart-image-compressor/src/lib/desktop-api.ts
+  s_5f5841f18f5bde::t_d4825200e95f8b 16
+desktop/smart-image-compressor/src/types.ts
+  s_5f5841f18f5bde::t_1d288df954e9ed 45,62
+package.json
+  s_5f5841f18f5bde::t_698d79d64722bd 3
+tests/desktop-license-routes.test.mjs
+  s_5f5841f18f5bde::t_0689ce18bb9038 10-11
+tests/desktop-license-sql.test.mjs
+  s_5f5841f18f5bde::t_56d1860536e247 148-167
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.12",
+  "base_commit_sha": "6ef6d147de190ece7998f3c2627208a7c20e40c7",
+  "prompts": {},
+  "logical_commit_id": "6ef6d147de190ece7998f3c2627208a7c20e40c7",
+  "sessions": {
+    "s_5f5841f18f5bde": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f5a71-61ad-7790-a2b9-69f9f31876a2",
+        "model": "unknown"
+      },
+      "human_author": "masongzhi <masongzhi@bigo.sg>"
+    }
+  }
+}
