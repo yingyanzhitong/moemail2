@@ -25,6 +25,14 @@ function messageFromError(error: unknown) {
   }
 }
 
+function applyProgress(current: QueueItem[], progress: CompressionProgress) {
+  const index = current.findIndex((item) => item.id === progress.id)
+  if (index === -1) return current
+  const next = current.slice()
+  next[index] = { ...next[index], ...progress }
+  return next
+}
+
 export function App() {
   const [license, setLicense] = useState<LicenseView>(emptyLicense)
   const [queue, setQueue] = useState<QueueItem[]>([])
@@ -78,7 +86,7 @@ export function App() {
         setActivationOpen(true)
       }),
       listen<CompressionProgress>('compression-progress', (event) => {
-        setQueue((current) => current.map((item) => item.id === event.payload.id ? { ...item, ...event.payload } : item))
+        setQueue((current) => applyProgress(current, event.payload))
       }),
       listen<ThumbnailReady>('thumbnail-ready', (event) => {
         thumbnailCacheRef.current.set(event.payload.id, event.payload.thumbnailDataUrl)
@@ -151,7 +159,8 @@ export function App() {
     setOverwriteConfirmOpen(false)
     setRunning(true)
     setNotice(null)
-    setQueue((current) => current.map((item) => queuedIds.includes(item.id) ? { ...item, status: 'queued', error: undefined } : item))
+    const selectedIds = new Set(queuedIds)
+    setQueue((current) => current.map((item) => selectedIds.has(item.id) ? { ...item, status: 'queued', stage: null, error: undefined } : item))
     try {
       const summary = await startCompression(queuedIds, outputMode)
       setLicense(summary.license)
@@ -176,6 +185,12 @@ export function App() {
     await cancelCompression()
     setNotice('已请求取消：进行中的最多 4 张会完成并计入本地额度。')
   }
+
+  const removeQueueItem = useCallback((id: string) => {
+    setQueue((current) => current.filter((item) => item.id !== id))
+  }, [])
+
+  const clearQueue = useCallback(() => setQueue([]), [])
 
   if (booting) {
     return <main className="flex min-h-screen items-center justify-center bg-[#F3F6FA] text-[#42506A]"><Loader2 className="mr-3 h-5 w-5 animate-spin text-[#2956D8]" />正在校验授权并恢复任务…</main>
@@ -205,7 +220,7 @@ export function App() {
         <div className="flex min-w-0 flex-col gap-4">
           <DropZone active={dropActive} disabled={running} onPickImages={() => void pickImages().then(mergeJobs).catch((error) => setNotice(messageFromError(error)))} onPickFolder={() => void pickFolder().then(mergeJobs).catch((error) => setNotice(messageFromError(error)))} />
           {notice ? <div role="status" className="flex items-center justify-between rounded-[8px] border border-[#CBD5E2] bg-white px-3 py-2 text-xs text-[#526078]"><span>{notice}</span><button className="ml-4 text-[#2956D8] hover:underline" onClick={() => setNotice(null)}>关闭</button></div> : null}
-          <FileQueue items={queue} running={running} onRemove={(id) => setQueue((current) => current.filter((item) => item.id !== id))} onClear={() => setQueue([])} />
+          <FileQueue items={queue} running={running} onRemove={removeQueueItem} onClear={clearQueue} />
         </div>
         <LicensePanel
           license={license}

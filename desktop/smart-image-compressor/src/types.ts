@@ -1,5 +1,6 @@
 export type LicenseStatus = 'unlicensed' | 'active' | 'pending' | 'expired' | 'exhausted' | 'revoked' | 'offline' | 'clock_invalid'
 export type FileStatus = 'queued' | 'compressing' | 'completed' | 'failed' | 'skipped' | 'cancelled'
+export type CompressionStage = 'preparing' | 'reading' | 'uploading' | 'downloading' | 'writing'
 export type OutputMode = 'new_folder' | 'overwrite'
 
 export interface LicenseView {
@@ -34,6 +35,7 @@ export interface ImageJob {
 
 export interface QueueItem extends ImageJob {
   status: FileStatus
+  stage?: CompressionStage | null
   compressedSize?: number
   savingsPercent?: number
   error?: string
@@ -53,6 +55,7 @@ export interface BootstrapView {
 export interface CompressionProgress {
   id: string
   status: FileStatus
+  stage: CompressionStage | null
   compressedSize?: number
   savingsPercent?: number
   error?: string

@@ -196,7 +196,11 @@ pub async fn load_thumbnails(
 
     stream::iter(candidates.into_iter().map(|(id, path)| {
         let app = app.clone();
+        let running = &state.running;
         async move {
+            while running.load(Ordering::SeqCst) {
+                tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+            }
             let thumbnail = tokio::task::spawn_blocking(move || generate_thumbnail(&path))
                 .await
                 .ok()
@@ -237,6 +241,7 @@ impl FileOutcome {
         CompressionProgress {
             id: self.id.clone(),
             status: self.status.into(),
+            stage: None,
             compressed_size: self.compressed_size,
             savings_percent: self.savings_percent,
             error: self.error.clone(),
@@ -353,6 +358,7 @@ async fn process_job(
         CompressionProgress {
             id: job.id.clone(),
             status: "compressing".into(),
+            stage: Some("preparing".into()),
             compressed_size: None,
             savings_percent: None,
             error: None,
@@ -370,7 +376,22 @@ async fn process_job(
                 observed_at: None,
             };
         };
-        match tinify::compress(&state.http, &api_key, &job.source).await {
+        let progress_id = job.id.clone();
+        match tinify::compress(&state.http, &api_key, &job.source, |stage| {
+            emit_progress(
+                app,
+                CompressionProgress {
+                    id: progress_id.clone(),
+                    status: "compressing".into(),
+                    stage: Some(stage.into()),
+                    compressed_size: None,
+                    savings_percent: None,
+                    error: None,
+                },
+            );
+        })
+        .await
+        {
             Ok(output) => {
                 update_key_after_result(&keys, key_index, output.compression_count, false, false)
                     .await;
@@ -388,6 +409,17 @@ async fn process_job(
                     };
                 }
                 let compressed_size = output.bytes.len() as u64;
+                emit_progress(
+                    app,
+                    CompressionProgress {
+                        id: job.id.clone(),
+                        status: "compressing".into(),
+                        stage: Some("writing".into()),
+                        compressed_size: None,
+                        savings_percent: None,
+                        error: None,
+                    },
+                );
                 if let Err(error) = tinify::atomic_write(
                     output_path,
                     output.bytes,
@@ -504,7 +536,10 @@ pub async fn start_compression(
     let mut processed = HashSet::new();
     let execution_report_id = Uuid::new_v4().to_string();
 
-    let _ = state.license_api.sync_pending_usage_reports().await;
+    let license_api = state.license_api.clone();
+    tauri::async_runtime::spawn(async move {
+        let _ = license_api.sync_pending_usage_reports().await;
+    });
 
     for chunk in jobs.chunks(20) {
         if state.cancel.load(Ordering::SeqCst) {
@@ -535,17 +570,15 @@ pub async fn start_compression(
             })
             .map_err(command_error)?;
         let batch_jobs = chunk.to_vec();
-        let outcomes = stream::iter(batch_jobs.into_iter().map(|job| {
+        let mut outcomes = stream::iter(batch_jobs.into_iter().map(|job| {
             let keys = keys.clone();
             async { process_job(&state, &app, job, keys, output_mode, expires_at).await }
         }))
-        .buffer_unordered(4)
-        .collect::<Vec<_>>()
-        .await;
+        .buffer_unordered(4);
 
         let mut success_count = 0_u32;
         let mut observed_at: Option<DateTime<Utc>> = None;
-        for outcome in outcomes {
+        while let Some(outcome) = outcomes.next().await {
             if let Some(value) = outcome.observed_at {
                 observed_at = Some(observed_at.map_or(value, |current| current.max(value)));
             }
@@ -581,6 +614,7 @@ pub async fn start_compression(
                 CompressionProgress {
                     id: job.id.clone(),
                     status: "cancelled".into(),
+                    stage: None,
                     compressed_size: None,
                     savings_percent: None,
                     error: Some("任务已取消".into()),

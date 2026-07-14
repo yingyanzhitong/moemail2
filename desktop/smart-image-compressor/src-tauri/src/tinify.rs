@@ -149,24 +149,45 @@ async fn download(
     Err(TinifyError::Request("下载重试次数已用尽".into()))
 }
 
-pub async fn compress(
+pub async fn compress<F>(
     client: &Client,
     api_key: &str,
     source: &std::path::Path,
-) -> std::result::Result<TinifyOutput, TinifyError> {
-    compress_with_endpoint(client, api_key, source, SHRINK_URL).await
+    on_stage: F,
+) -> std::result::Result<TinifyOutput, TinifyError>
+where
+    F: FnMut(&'static str),
+{
+    compress_with_endpoint_and_progress(client, api_key, source, SHRINK_URL, on_stage).await
 }
 
+#[cfg(test)]
 async fn compress_with_endpoint(
     client: &Client,
     api_key: &str,
     source: &std::path::Path,
     shrink_url: &str,
 ) -> std::result::Result<TinifyOutput, TinifyError> {
+    compress_with_endpoint_and_progress(client, api_key, source, shrink_url, |_| {}).await
+}
+
+async fn compress_with_endpoint_and_progress<F>(
+    client: &Client,
+    api_key: &str,
+    source: &std::path::Path,
+    shrink_url: &str,
+    mut on_stage: F,
+) -> std::result::Result<TinifyOutput, TinifyError>
+where
+    F: FnMut(&'static str),
+{
+    on_stage("reading");
     let body = tokio::fs::read(source)
         .await
         .map_err(|error| TinifyError::Request(format!("读取原图失败：{error}")))?;
+    on_stage("uploading");
     let (location, upload_count, upload_time) = upload(client, api_key, body, shrink_url).await?;
+    on_stage("downloading");
     let mut output = download(client, api_key, &location).await?;
     if output.compression_count.is_none() {
         output.compression_count = upload_count;
@@ -252,6 +273,36 @@ mod tests {
         );
         upload.assert();
         download.assert();
+    }
+
+    #[tokio::test]
+    async fn reports_read_upload_and_download_stages_in_order() {
+        let server = MockServer::start();
+        let download_url = server.url("/result");
+        server.mock(|when, then| {
+            when.method(POST).path("/shrink");
+            then.status(201).header("Location", &download_url);
+        });
+        server.mock(|when, then| {
+            when.method(GET).path("/result");
+            then.status(200).body("compressed");
+        });
+        let temp = tempdir().unwrap();
+        let source = temp.path().join("image.png");
+        fs::write(&source, b"source").unwrap();
+        let mut stages = Vec::new();
+
+        compress_with_endpoint_and_progress(
+            &Client::new(),
+            "secret",
+            &source,
+            &server.url("/shrink"),
+            |stage| stages.push(stage),
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(stages, vec!["reading", "uploading", "downloading"]);
     }
 
     #[tokio::test]
