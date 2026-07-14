@@ -3,8 +3,9 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { App } from '@/App'
 import type { ActivationPlanPreview, BootstrapView, CompressionSummary, ImageJob, LicenseView, OutputMode } from '@/types'
 
-const { bootstrapMock, previewMock, redeemMock, pickImagesMock, startCompressionMock } = vi.hoisted(() => ({
+const { bootstrapMock, loadThumbnailsMock, previewMock, redeemMock, pickImagesMock, startCompressionMock } = vi.hoisted(() => ({
   bootstrapMock: vi.fn<() => Promise<BootstrapView>>(),
+  loadThumbnailsMock: vi.fn<(ids: string[]) => Promise<void>>(),
   previewMock: vi.fn<(code: string) => Promise<ActivationPlanPreview>>(),
   redeemMock: vi.fn<(code: string) => Promise<LicenseView>>(),
   pickImagesMock: vi.fn<() => Promise<ImageJob[]>>(),
@@ -18,6 +19,7 @@ vi.mock('@/lib/desktop-api', () => ({
   cancelCompression: vi.fn(),
   pickFolder: vi.fn(),
   pickImages: pickImagesMock,
+  loadThumbnails: loadThumbnailsMock,
   previewActivation: previewMock,
   redeem: redeemMock,
   refreshLicense: vi.fn(),
@@ -112,6 +114,7 @@ describe('桌面端授权入口', () => {
       originalSize: 1024,
       thumbnailDataUrl: null,
     }])
+    loadThumbnailsMock.mockResolvedValue()
     startCompressionMock.mockResolvedValue({
       completed: 1,
       failed: 0,
@@ -124,6 +127,7 @@ describe('桌面端授权入口', () => {
     render(<App />)
     fireEvent.click(await screen.findByRole('button', { name: '选择图片' }))
     expect(await screen.findByText('照片.png')).toBeInTheDocument()
+    expect(loadThumbnailsMock).toHaveBeenCalledWith(['image-1'])
     fireEvent.click(screen.getByRole('radio', { name: /覆盖原文件/ }))
     fireEvent.click(screen.getByRole('button', { name: '开始压缩' }))
 

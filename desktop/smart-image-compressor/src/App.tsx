@@ -10,8 +10,8 @@ import { FileQueue } from '@/components/file-queue'
 import { LicensePanel } from '@/components/license-panel'
 import { OverwriteConfirmDialog } from '@/components/overwrite-confirm-dialog'
 import { Button } from '@/components/ui/button'
-import { addDroppedPaths, bootstrap, cancelCompression, pickFolder, pickImages, previewActivation, redeem, refreshLicense, startCompression, takeActivationCode } from '@/lib/desktop-api'
-import type { CompressionProgress, ImageJob, LicenseView, OutputMode, QueueItem } from '@/types'
+import { addDroppedPaths, bootstrap, cancelCompression, loadThumbnails, pickFolder, pickImages, previewActivation, redeem, refreshLicense, startCompression, takeActivationCode } from '@/lib/desktop-api'
+import type { CompressionProgress, ImageJob, LicenseView, OutputMode, QueueItem, ThumbnailReady } from '@/types'
 
 const emptyLicense: LicenseView = { id: null, status: 'unlicensed', used: 0, limit: 0, tokenCount: 0, startsAt: null, expiresAt: null, scheduledPeriods: [] }
 
@@ -38,13 +38,21 @@ export function App() {
   const [overwriteConfirmOpen, setOverwriteConfirmOpen] = useState(false)
   const [notice, setNotice] = useState<string | null>(null)
   const licenseIdRef = useRef<string | null>(null)
+  const thumbnailCacheRef = useRef(new Map<string, string>())
   licenseIdRef.current = license.id
 
   const mergeJobs = useCallback((jobs: ImageJob[]) => {
     setQueue((current) => {
       const existingPaths = new Set(current.map((item) => item.sourcePath))
-      return [...current, ...jobs.filter((job) => !existingPaths.has(job.sourcePath)).map((job) => ({ ...job, status: 'queued' as const }))]
+      return [...current, ...jobs.filter((job) => !existingPaths.has(job.sourcePath)).map((job) => ({
+        ...job,
+        thumbnailDataUrl: thumbnailCacheRef.current.get(job.id) ?? job.thumbnailDataUrl,
+        status: 'queued' as const,
+      }))]
     })
+    if (jobs.length > 0) {
+      void loadThumbnails(jobs.map((job) => job.id)).catch((error) => setNotice(messageFromError(error)))
+    }
   }, [])
 
   useEffect(() => {
@@ -71,6 +79,16 @@ export function App() {
       }),
       listen<CompressionProgress>('compression-progress', (event) => {
         setQueue((current) => current.map((item) => item.id === event.payload.id ? { ...item, ...event.payload } : item))
+      }),
+      listen<ThumbnailReady>('thumbnail-ready', (event) => {
+        thumbnailCacheRef.current.set(event.payload.id, event.payload.thumbnailDataUrl)
+        setQueue((current) => {
+          const index = current.findIndex((item) => item.id === event.payload.id)
+          if (index === -1) return current
+          const next = current.slice()
+          next[index] = { ...next[index], thumbnailDataUrl: event.payload.thumbnailDataUrl }
+          return next
+        })
       }),
       getCurrentWebviewWindow().onDragDropEvent((event) => {
         if (licenseIdRef.current === null) return

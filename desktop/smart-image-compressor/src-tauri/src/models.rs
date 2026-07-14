@@ -73,6 +73,13 @@ pub struct ImageJobView {
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
+pub struct ThumbnailReady {
+    pub id: String,
+    pub thumbnail_data_url: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct CompressionProgress {
     pub id: String,
     pub status: String,

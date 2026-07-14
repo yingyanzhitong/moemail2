@@ -39,6 +39,12 @@ cargo test --manifest-path src-tauri/Cargo.toml
 - “导出到新文件夹”保留原图，文件夹任务生成同级“原目录名-压缩结果”，零散文件生成“压缩结果”目录。
 - “覆盖原文件”在开始前必须二次确认，成功后使用同目录临时文件原子替换源图片；失败文件不会修改。
 
+## 导入与缩略图
+
+- 导入阶段只递归扫描支持的文件并读取元数据，列表会在缩略图解码前先显示。
+- 列表出现后由 Rust 以最多 4 路并发在后台生成缩略图，并通过 `thumbnail-ready` 事件逐项填充；AVIF 暂时使用格式图标占位。
+- React 缓存早于列表提交到达的缩略图事件，并只更新对应图片条目，避免大队列整体重复渲染。
+
 ## 测试版发布
 
 推送 `desktop-v*` 标签会触发 GitHub Actions，分别生成 Apple Silicon DMG、Intel DMG 和 Windows x64 NSIS EXE，并发布为 GitHub Pre-release。v1 不包含自动更新、商店签名或正式代码签名。

@@ -20,9 +20,9 @@ use crate::{
     license_api::LicenseApi,
     models::{
         ActivationPlanPreview, BootstrapView, CompressionProgress, CompressionSummary,
-        ImageJobView, KeyState, LicenseView,
+        ImageJobView, KeyState, LicenseView, ThumbnailReady,
     },
-    scanner::{scan_paths, ImageJob},
+    scanner::{generate_thumbnail, scan_paths, ImageJob},
     tinify::{self, TinifyError},
     vault::CredentialVault,
 };
@@ -176,6 +176,46 @@ pub async fn add_paths(
     state: State<'_, AppState>,
 ) -> std::result::Result<Vec<ImageJobView>, String> {
     scan_and_store(&state, paths.into_iter().map(PathBuf::from).collect()).await
+}
+
+#[tauri::command]
+pub async fn load_thumbnails(
+    ids: Vec<String>,
+    app: AppHandle,
+    state: State<'_, AppState>,
+) -> std::result::Result<(), String> {
+    let candidates = {
+        let stored = state
+            .jobs
+            .lock()
+            .map_err(|_| command_error("任务队列锁已损坏"))?;
+        ids.into_iter()
+            .filter_map(|id| stored.get(&id).map(|job| (id, job.source.clone())))
+            .collect::<Vec<_>>()
+    };
+
+    stream::iter(candidates.into_iter().map(|(id, path)| {
+        let app = app.clone();
+        async move {
+            let thumbnail = tokio::task::spawn_blocking(move || generate_thumbnail(&path))
+                .await
+                .ok()
+                .flatten();
+            if let Some(thumbnail_data_url) = thumbnail {
+                let _ = app.emit(
+                    "thumbnail-ready",
+                    ThumbnailReady {
+                        id,
+                        thumbnail_data_url,
+                    },
+                );
+            }
+        }
+    }))
+    .buffer_unordered(4)
+    .collect::<Vec<_>>()
+    .await;
+    Ok(())
 }
 
 fn emit_progress(app: &AppHandle, progress: CompressionProgress) {

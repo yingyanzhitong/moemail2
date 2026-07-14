@@ -75,6 +75,7 @@ pub fn run() {
             commands::pick_images,
             commands::pick_folder,
             commands::add_paths,
+            commands::load_thumbnails,
             commands::start_compression,
             commands::cancel_compression,
         ])

@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.14.15] - 2026-07-14
+
+### Performance
+
+- **列表优先显示**：图片导入阶段不再同步解码缩略图，只扫描路径、输出映射和文件大小；元数据准备完成后立即展示任务列表。
+- **异步缩略图**：Rust 后台以最多 4 路并发生成 JPEG、PNG、WebP 缩略图，并通过 `thumbnail-ready` 事件逐项填充，避免大量高分辨率图片串行阻塞导入。
+- **精确队列更新**：React 使用内存 Map 缓存可能早到的缩略图事件，每次只替换对应队列项，避免大列表无效重渲染。
+
+### Tests
+
+- **异步导入回归**：新增“扫描先返回、缩略图按需生成”测试；Rust 19 项、React 15 项、桌面授权后端 16 项测试通过，并完成 Next.js、Vite、TypeScript 与设计规范校验。
+
 ## [1.14.14] - 2026-07-14
 
 ### Bug Fixes

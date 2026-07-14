@@ -39,6 +39,11 @@ export interface QueueItem extends ImageJob {
   error?: string
 }
 
+export interface ThumbnailReady {
+  id: string
+  thumbnailDataUrl: string
+}
+
 export interface BootstrapView {
   license: LicenseView
   reconciledReservations: number

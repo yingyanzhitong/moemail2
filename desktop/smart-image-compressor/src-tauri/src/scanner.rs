@@ -47,7 +47,7 @@ pub fn is_supported(path: &Path) -> bool {
     )
 }
 
-fn thumbnail(path: &Path) -> Option<String> {
+pub fn generate_thumbnail(path: &Path) -> Option<String> {
     if path
         .extension()
         .and_then(|value| value.to_str())
@@ -90,7 +90,7 @@ fn build_job(source: PathBuf, output: PathBuf) -> Result<ImageJob> {
         output,
         parent_label,
         original_size: metadata.len(),
-        thumbnail_data_url: thumbnail(&source),
+        thumbnail_data_url: None,
     })
 }
 
@@ -173,5 +173,17 @@ mod tests {
         fs::write(&file, b"not-an-image").unwrap();
         let jobs = scan_paths(vec![file]).unwrap();
         assert_eq!(jobs[0].output, temp.path().join("压缩结果/a.webp"));
+    }
+
+    #[test]
+    fn scan_returns_before_thumbnail_is_generated() {
+        let temp = tempdir().unwrap();
+        let file = temp.path().join("photo.png");
+        image::RgbaImage::new(4, 4).save(&file).unwrap();
+
+        let jobs = scan_paths(vec![file.clone()]).unwrap();
+        assert!(jobs[0].thumbnail_data_url.is_none());
+        assert!(generate_thumbnail(&file)
+            .is_some_and(|thumbnail| thumbnail.starts_with("data:image/png;base64,")));
     }
 }

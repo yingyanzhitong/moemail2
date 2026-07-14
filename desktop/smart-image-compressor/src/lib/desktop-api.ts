@@ -52,6 +52,11 @@ export async function addDroppedPaths(paths: string[]): Promise<ImageJob[]> {
   return invoke<ImageJob[]>('add_paths', { paths })
 }
 
+export async function loadThumbnails(ids: string[]): Promise<void> {
+  if (!isTauri()) return
+  return invoke('load_thumbnails', { ids })
+}
+
 export async function startCompression(ids: string[], outputMode: OutputMode): Promise<CompressionSummary> {
   return invoke<CompressionSummary>('start_compression', { ids, outputMode })
 }
