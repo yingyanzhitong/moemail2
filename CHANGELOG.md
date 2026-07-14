@@ -2,6 +2,23 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.14.17] - 2026-07-14
+
+### Performance
+
+- **图片缓冲零额外复制**：原图读取后使用引用计数字节缓冲完成 TinyPNG 上传与重试，下载结果直接交给原子写入，移除重试时复制整张原图和下载后再次复制结果的开销。
+- **5 秒性能门槛**：新增 16MB 原图、8MB Mock TinyPNG 输出的端到端基准；扣除模拟 TinyPNG 等待后，客户端读取、HTTP 搬运和原子落盘的额外耗时必须小于 5 秒。
+- **稳定性实测**：低优先级后台连续 5 次运行，客户端额外耗时为 42.79–67.64ms，平均约 53.56ms，远低于暂定门槛。
+
+### Security
+
+- **停止重复钥匙串弹窗**：新安装使用应用数据目录中的 48 字节随机主密钥，不再访问 macOS Keychain；旧 Stronghold 凭证只读取一次旧系统密钥库完成迁移，后续启动同样不再询问。
+- **本地权限收紧**：macOS/Linux 的主密钥、Stronghold 快照及备份固定为当前用户可读写的 `0600`；Windows 继承当前用户的 AppData ACL。
+
+### Tests
+
+- **后台完整回归**：测试以 macOS 后台 QoS、`nice 15` 和最多 2 个 Rust 编译任务串行执行；Rust 24 项、React 16 项、桌面授权后端 16 项全部通过，并完成 Next.js、Vite、TypeScript 与设计规范校验，全程未启动桌面窗口或消耗真实 TinyPNG 额度。
+
 ## [1.14.16] - 2026-07-14
 
 ### Performance

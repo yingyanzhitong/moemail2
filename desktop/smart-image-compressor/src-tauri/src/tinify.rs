@@ -2,6 +2,7 @@ use std::{io::Write, path::PathBuf, time::Duration};
 
 use anyhow::{anyhow, Context, Result};
 use base64::{engine::general_purpose::STANDARD, Engine};
+use bytes::Bytes;
 use chrono::{DateTime, Utc};
 use reqwest::{header::DATE, Client, Response, StatusCode};
 use tokio::time::sleep;
@@ -21,7 +22,7 @@ pub enum TinifyError {
 
 #[derive(Debug)]
 pub struct TinifyOutput {
-    pub bytes: Vec<u8>,
+    pub bytes: Bytes,
     pub compression_count: Option<u32>,
     pub server_time: Option<DateTime<Utc>>,
 }
@@ -57,7 +58,7 @@ async fn retry_delay(attempt: usize) {
 async fn upload(
     client: &Client,
     api_key: &str,
-    body: Vec<u8>,
+    body: Bytes,
     shrink_url: &str,
 ) -> std::result::Result<(String, Option<u32>, Option<DateTime<Utc>>), TinifyError> {
     let authorization = format!("Basic {}", STANDARD.encode(format!("api:{api_key}")));
@@ -138,8 +139,7 @@ async fn download(
         let bytes = response
             .bytes()
             .await
-            .map_err(|error| TinifyError::Request(error.to_string()))?
-            .to_vec();
+            .map_err(|error| TinifyError::Request(error.to_string()))?;
         return Ok(TinifyOutput {
             bytes,
             compression_count: count,
@@ -182,9 +182,11 @@ where
     F: FnMut(&'static str),
 {
     on_stage("reading");
-    let body = tokio::fs::read(source)
-        .await
-        .map_err(|error| TinifyError::Request(format!("读取原图失败：{error}")))?;
+    let body = Bytes::from(
+        tokio::fs::read(source)
+            .await
+            .map_err(|error| TinifyError::Request(format!("读取原图失败：{error}")))?,
+    );
     on_stage("uploading");
     let (location, upload_count, upload_time) = upload(client, api_key, body, shrink_url).await?;
     on_stage("downloading");
@@ -198,7 +200,7 @@ where
     Ok(output)
 }
 
-pub async fn atomic_write(path: &std::path::Path, bytes: Vec<u8>, overwrite: bool) -> Result<()> {
+pub async fn atomic_write(path: &std::path::Path, bytes: Bytes, overwrite: bool) -> Result<()> {
     let path = PathBuf::from(path);
     tokio::task::spawn_blocking(move || -> Result<()> {
         let parent = path.parent().context("输出路径无效")?;
@@ -229,7 +231,7 @@ pub async fn atomic_write(path: &std::path::Path, bytes: Vec<u8>, overwrite: boo
 
 #[cfg(test)]
 mod tests {
-    use std::fs;
+    use std::{fs, time::Instant};
 
     use httpmock::prelude::*;
     use tempfile::tempdir;
@@ -265,7 +267,7 @@ mod tests {
             compress_with_endpoint(&Client::new(), "secret", &source, &server.url("/shrink"))
                 .await
                 .unwrap();
-        assert_eq!(output.bytes, b"compressed");
+        assert_eq!(output.bytes.as_ref(), b"compressed");
         assert_eq!(output.compression_count, Some(42));
         assert_eq!(
             output.server_time.unwrap().to_rfc3339(),
@@ -303,6 +305,53 @@ mod tests {
         .unwrap();
 
         assert_eq!(stages, vec!["reading", "uploading", "downloading"]);
+    }
+
+    #[tokio::test]
+    async fn large_image_client_overhead_stays_under_five_seconds() {
+        const SOURCE_SIZE: usize = 16 * 1024 * 1024;
+        const OUTPUT_SIZE: usize = 8 * 1024 * 1024;
+        const REMOTE_DELAY: Duration = Duration::from_millis(250);
+        const MAX_CLIENT_OVERHEAD: Duration = Duration::from_secs(5);
+
+        let server = MockServer::start();
+        let download_url = server.url("/result");
+        server.mock(|when, then| {
+            when.method(POST).path("/shrink");
+            then.status(201)
+                .delay(REMOTE_DELAY)
+                .header("Location", &download_url);
+        });
+        let compressed = vec![0x5a; OUTPUT_SIZE];
+        server.mock(move |when, then| {
+            when.method(GET).path("/result");
+            then.status(200).delay(REMOTE_DELAY).body(compressed);
+        });
+        let temp = tempdir().unwrap();
+        let source = temp.path().join("large-source.png");
+        let destination = temp.path().join("large-output.png");
+        fs::write(&source, vec![0xa5; SOURCE_SIZE]).unwrap();
+
+        let started = Instant::now();
+        let result =
+            compress_with_endpoint(&Client::new(), "secret", &source, &server.url("/shrink"))
+                .await
+                .unwrap();
+        atomic_write(&destination, result.bytes, false)
+            .await
+            .unwrap();
+        let total = started.elapsed();
+        let simulated_tinypng = REMOTE_DELAY * 2;
+        let client_overhead = total.saturating_sub(simulated_tinypng);
+
+        eprintln!(
+            "16MB→8MB: total={total:?}, simulated_tinypng={simulated_tinypng:?}, client_overhead={client_overhead:?}"
+        );
+        assert!(
+            client_overhead < MAX_CLIENT_OVERHEAD,
+            "客户端额外耗时 {client_overhead:?} 超过 5 秒门槛"
+        );
+        assert_eq!(fs::metadata(destination).unwrap().len(), OUTPUT_SIZE as u64);
     }
 
     #[tokio::test]
@@ -377,7 +426,7 @@ mod tests {
         let output = temp.path().join("image.png");
         fs::write(&output, b"original").unwrap();
 
-        let error = atomic_write(&output, b"compressed".to_vec(), false)
+        let error = atomic_write(&output, Bytes::from_static(b"compressed"), false)
             .await
             .unwrap_err();
         assert!(error.to_string().contains("目标文件已存在"));
@@ -390,7 +439,7 @@ mod tests {
         let output = temp.path().join("image.png");
         fs::write(&output, b"original").unwrap();
 
-        atomic_write(&output, b"compressed".to_vec(), true)
+        atomic_write(&output, Bytes::from_static(b"compressed"), true)
             .await
             .unwrap();
         assert_eq!(fs::read(output).unwrap(), b"compressed");

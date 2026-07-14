@@ -1,6 +1,6 @@
 [package]
 name = "smart-image-compressor"
-version = "0.1.9"
+version = "0.1.10"
 description = "智能压缩工具"
 authors = ["moemail"]
 edition = "2021"
@@ -15,6 +15,7 @@ tauri-build = { version = "2.5.5", features = [] }
 [dependencies]
 anyhow = "1.0.100"
 base64 = "0.22.1"
+bytes = "1.10.1"
 chrono = { version = "0.4.42", features = ["serde"] }
 futures = "0.3.31"
 image = { version = "0.25.8", default-features = false, features = ["jpeg", "png", "webp"] }

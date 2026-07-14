@@ -26,7 +26,8 @@ cargo test --manifest-path src-tauri/Cargo.toml
 
 ## 安全边界
 
-- 设备私钥、本地套餐、时间高水位与 TinyPNG Key 仅保存在 Rust 管理的 Stronghold 快照中；快照主密钥由 macOS Keychain 或 Windows Credential Manager 保存。
+- 设备私钥、本地套餐、时间高水位与 TinyPNG Key 仅保存在 Rust 管理的 Stronghold 快照中；48 字节随机主密钥保存在应用数据目录的受限权限文件中，macOS/Linux 固定为 `0600`，Windows 继承当前用户的 AppData ACL。
+- 从旧版升级且已存在 Stronghold 快照时，只读取一次旧系统密钥库完成主密钥迁移；迁移完成后以及所有新安装都不再访问 Keychain，避免未签名测试版反复弹出授权框。
 - WebView 只接收脱敏授权视图、文件任务和进度事件，Tauri capability 未开放 Stronghold 或网络插件权限。
 - 成功压缩数和有效期由客户端本地计算；系统时间回拨会锁定新批次，TinyPNG HTTPS 响应时间会在压缩时更新本地可信时间高水位。
 - 单次压缩不设固定张数上限，只受当前 Auth Link 套餐的剩余额度约束；Rust 始终保持 4 路并发。
@@ -50,6 +51,8 @@ cargo test --manifest-path src-tauri/Cargo.toml
 
 - 每张图片会依次显示“读取、上传并等待 TinyPNG、下载、写入”，写入完成后立即更新该条目，不等待同一组其他图片。
 - 历史待回传记录在后台同步，不阻塞首张图片开始；本次执行结束时仍会等待使用情况回传并提示同步结果。
+- 图片读取后使用引用计数字节缓冲完成上传重试与结果落盘，避免重试时复制整张原图和下载后再次复制结果。
+- Rust 回归测试使用 16MB 输入与 8MB Mock TinyPNG 输出，扣除模拟 TinyPNG 等待后，客户端读取、HTTP 搬运与原子落盘的额外耗时必须小于 5 秒。
 
 ## 测试版发布
 
