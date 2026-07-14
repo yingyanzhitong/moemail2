@@ -1,0 +1,56 @@
+desktop/smart-image-compressor/src-tauri/src/commands.rs
+  s_84e4a24965b28c::t_164306f23ce168 23,25,179-218
+desktop/smart-image-compressor/src-tauri/src/lib.rs
+  s_84e4a24965b28c::t_b3f3cd67491f1d 78
+desktop/smart-image-compressor/src-tauri/src/models.rs
+  s_84e4a24965b28c::t_7258d1d365308f 76-82
+desktop/smart-image-compressor/src-tauri/src/scanner.rs
+  s_84e4a24965b28c::t_b77048d921f13a 50,93,176-187
+desktop/smart-image-compressor/src/App.test.tsx
+  s_84e4a24965b28c::t_0912712ab4ddff 6,8,22,117,130
+desktop/smart-image-compressor/src/App.tsx
+  s_84e4a24965b28c::t_771f2d259375ae 13-14,41,47-51,53-55,82-91
+desktop/smart-image-compressor/src/lib/desktop-api.ts
+  s_84e4a24965b28c::t_bb84138c7738f4 55-59
+desktop/smart-image-compressor/src/types.ts
+  s_84e4a24965b28c::t_1916c406aab238 42-46
+CHANGELOG.md
+  s_5f5841f18f5bde::t_61d36627183007 5-16
+desktop/smart-image-compressor/README.md
+  s_5f5841f18f5bde::t_7278a382848c68 42-47
+desktop/smart-image-compressor/package.json
+  s_5f5841f18f5bde::t_6597000c36ad96 3
+desktop/smart-image-compressor/src-tauri/Cargo.lock
+  s_5f5841f18f5bde::t_92aa88c8620cdf 4488
+desktop/smart-image-compressor/src-tauri/Cargo.toml
+  s_5f5841f18f5bde::t_4da567e60a5ad5 3
+desktop/smart-image-compressor/src-tauri/tauri.conf.json
+  s_5f5841f18f5bde::t_2c8dd31bec73e7 4
+package.json
+  s_5f5841f18f5bde::t_87f48a66fe39be 3
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.12",
+  "base_commit_sha": "8ba277ccaad4d5097c0d2f6240b5d153868a8545",
+  "prompts": {},
+  "logical_commit_id": "8ba277ccaad4d5097c0d2f6240b5d153868a8545",
+  "sessions": {
+    "s_5f5841f18f5bde": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f5a71-61ad-7790-a2b9-69f9f31876a2",
+        "model": "unknown"
+      },
+      "human_author": "masongzhi <masongzhi@bigo.sg>"
+    },
+    "s_84e4a24965b28c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f5f56-230c-7c71-b4b2-5f4bd93f6e4a",
+        "model": "gpt-5.5"
+      },
+      "human_author": "masongzhi <masongzhi@bigo.sg>"
+    }
+  }
+}
