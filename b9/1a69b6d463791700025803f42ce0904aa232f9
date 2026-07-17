@@ -1,0 +1,56 @@
+drizzle/meta/0029_snapshot.json
+  s_08a5d2af59f20b::t_cbf846d5e726ee 1-1890
+drizzle/meta/_journal.json
+  s_08a5d2af59f20b::t_59c54f225a04f2 207-213
+.gitignore
+  s_08a5d2af59f20b::t_efa2693ffdec83 58-60
+app/api/admin/tinypng-pool/run/route.ts
+  s_08a5d2af59f20b::t_4a946fc7f5a60a 4,23-29
+app/api/admin/tinypng-pool/stats/route.ts
+  s_08a5d2af59f20b::t_9cc5cf5d728923 3,15,20,56-71,81,86-96,98,100-110,112-125,145-169,173-176,178-181,183-184,186-187
+app/components/profile/tinypng-pool-stats-card.tsx
+  s_08a5d2af59f20b::t_0c6f0a650affd6 4,27-50,82,106-120,257,260-261,399-401,493-501,503-570,605,640
+app/lib/schema.ts
+  s_08a5d2af59f20b::t_aede767fa13514 255-273,276-280,291-292
+app/lib/tinypng-pool-coordinator.ts
+  s_08a5d2af59f20b::t_4422cf326cf969 1-261
+app/lib/tinypng-pool-cycle-summary.ts
+  s_08a5d2af59f20b::t_515970eaa0836d 1-80
+app/lib/tinypng-pool-task.ts
+  s_08a5d2af59f20b::t_08d2a6bde8879f 3,9,11-12,14-15,19-21,27-28,34-47,50-133,136,138-139,141-143,145-147,153,155-158,161-162,166-170,181-189,192-201,211-223,225-240,243-248,250-251,254,256,271,274,277,287,293,295,301,307,319,324,330,333,343-364,366-367,374-375,380,382-391,393-402
+app/lib/tinypng-pool-workers.ts
+  s_08a5d2af59f20b::t_8793b7fe36ee07 1-68
+drizzle/0029_tinypng-worker-cluster.sql
+  s_08a5d2af59f20b::t_36d986dbabaf77 1-30
+types.d.ts
+  s_08a5d2af59f20b::t_772c8e6823f0d6 9-11
+workers/tinypng-pool.ts
+  s_08a5d2af59f20b::t_17c494a0ce96d1 3,25-31
+wrangler.example.json
+  s_08a5d2af59f20b::t_b3346b3d9c4fbb 20-33
+wrangler.tinypng.example.json
+  s_08a5d2af59f20b::t_3b2bb322a9abb3 28-41
+wrangler.tinypng.registrar-americas.example.json
+  s_08a5d2af59f20b::t_7962dd14b24bb1 1-26
+wrangler.tinypng.registrar-apac.example.json
+  s_08a5d2af59f20b::t_b0d9b0a0a0a2e1 1-26
+wrangler.tinypng.registrar-europe.example.json
+  s_08a5d2af59f20b::t_8cb2155b91f2ac 1-26
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.12",
+  "base_commit_sha": "b91a69b6d463791700025803f42ce0904aa232f9",
+  "prompts": {},
+  "logical_commit_id": "b91a69b6d463791700025803f42ce0904aa232f9",
+  "sessions": {
+    "s_08a5d2af59f20b": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f6e36-eb10-75f2-8bcf-261f89808829",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "masongzhi <masongzhi@bigo.sg>"
+    }
+  }
+}
