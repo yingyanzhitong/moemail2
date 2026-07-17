@@ -1,34 +1,12 @@
 # 通过临时邮箱获取 TinyPNG API Key
 
-1.通过moemail openapi生成临时邮箱
-curl -X POST https://snapmail.tinypng-token.site/api/emails/generate \
-  -H "X-API-Key: mk_XK1IQ0TC-OYvsIsRA2m7TrldUV1a31DK" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "test",
-    "expiryTime": 3600000,
-    "domain": "tinypng-token.site"
-  }'
-2.请求tinypng的注册接口，生成tinypng账号
-curl 'https://tinify.com/web/api' \
-  -H 'accept: application/json, text/plain, */*' \
-  -H 'accept-language: zh-CN,zh;q=0.9' \
-  -H 'cache-control: no-cache' \
-  -H 'content-type: application/json' \
-  -H 'origin: https://tinify.com' \
-  -H 'pragma: no-cache' \
-  -H 'priority: u=1, i' \
-  -H 'referer: https://tinify.com/developers' \
-  -H 'sec-ch-ua: "Google Chrome";v="143", "Chromium";v="143", "Not A(Brand";v="24"' \
-  -H 'sec-ch-ua-mobile: ?0' \
-  -H 'sec-ch-ua-platform: "macOS"' \
-  -H 'sec-fetch-dest: empty' \
-  -H 'sec-fetch-mode: cors' \
-  -H 'sec-fetch-site: same-origin' \
-  -H 'user-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36' \
-  --data-raw '{"fullName":"${生成的临时邮箱}","mail":"${生成的临时邮箱}"}'
+TinyPNG 账号注册必须由服务端发起。服务端会经由配置的 HTTP 代理建立 CONNECT 隧道后再请求 TinyPNG，代理令牌仅保存在运行时 Secret 中。
 
-3.通过moemail openapi获取临时邮箱的邮件，解析出magic link
-4.通过magic link获取token
-5.通过token获取api key
-6.把获取的api key启用，并输出
+请使用站内 TinyPNG 生成接口完成流程，不要在浏览器、终端或第三方客户端直接调用 `https://tinify.com/web/api`，也不要把代理令牌放入前端请求或脚本。
+
+流程如下：
+
+1. 服务端创建临时邮箱。
+2. 服务端经 HTTP 代理提交 TinyPNG 注册请求。
+3. 服务端接收验证邮件并解析 Magic Link。
+4. 服务端使用 Magic Link 获取 Token、创建并启用 API Key。

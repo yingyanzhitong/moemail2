@@ -105,7 +105,7 @@ export async function POST(request: Request) {
     const domain = body.domain && domains.includes(body.domain) ? body.domain : domains[0]
     
     // 执行 TinyPNG API Key 生成流程
-    const result = await generateTinyPngApiKey(db, userId, domain)
+    const result = await generateTinyPngApiKey(db, userId, domain, env.TINYPNG_PROXY_TOKEN)
 
     // 检查生成结果
     if (!result.success || !result.apiKey || !result.email) {

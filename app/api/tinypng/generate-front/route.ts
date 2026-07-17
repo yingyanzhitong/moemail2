@@ -5,8 +5,7 @@ import { getRequestContext } from "@cloudflare/next-on-pages"
 import { getUserId } from "@/lib/apiKey"
 import { getUserRole } from "@/lib/auth"
 import { ROLES, type Role } from "@/lib/permissions"
-import { createTinyPngTempEmail, finishTinyPngProcess, GenerateStep } from "@/lib/tinypng"
-import { getRegisterScripts } from "@/lib/tinypng-scripts"
+import { createTinyPngTempEmail, finishTinyPngProcess, GenerateStep, registerTinyPng } from "@/lib/tinypng"
 import {
   TINYPNG_DAILY_LIMIT_CONFIG_KEY,
   TINYPNG_PER_REQUEST_LIMIT_CONFIG_KEY,
@@ -102,11 +101,10 @@ const body = await request.json().catch(() => ({})) as {
              // Sequential to avoid potential race conditions in createTinyPngTempEmail if any, 
              // but mostly to keep logic simple. With D1 it should be fast enough.
              const createdEmail = await createTinyPngTempEmail(db, userId, domain)
-             const scripts = getRegisterScripts(createdEmail.address)
+             await registerTinyPng(createdEmail.address, env.TINYPNG_PROXY_TOKEN)
              results.push({
                  email: createdEmail.address,
                  emailId: createdEmail.id,
-                 scripts
              })
         }
         

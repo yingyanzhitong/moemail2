@@ -334,7 +334,8 @@ const pushPagesSecret = () => {
     'AUTH_GITHUB_SECRET', 
     'AUTH_GOOGLE_ID', 
     'AUTH_GOOGLE_SECRET', 
-    'AUTH_SECRET'
+    'AUTH_SECRET',
+    'TINYPNG_PROXY_TOKEN'
   ];
 
   try {
@@ -374,6 +375,14 @@ const pushPagesSecret = () => {
         secrets[key] = value;
       }
     });
+
+    // GitHub Actions 等部署环境通过进程环境变量注入密钥，应优先于仓库中的 .env 模板。
+    for (const key of runtimeEnvVars) {
+      const value = process.env[key];
+      if (value) {
+        secrets[key] = value;
+      }
+    }
 
     // 检查是否有需要推送的secrets
     if (Object.keys(secrets).length === 0) {
@@ -489,6 +498,23 @@ const deployTinyPngRegistrarWorkers = () => {
 };
 
 /**
+ * 将 TinyPNG 注册代理令牌写入三个区域注册 Worker，避免将凭据写进 Wrangler 配置或源码。
+ */
+const pushTinyPngRegistrarProxySecret = () => {
+  const proxyToken = process.env.TINYPNG_PROXY_TOKEN;
+  if (!proxyToken) {
+    throw new Error('Missing required environment variable: TINYPNG_PROXY_TOKEN');
+  }
+
+  for (const { file } of TINYPNG_REGISTRAR_CONFIGS) {
+    execSync(`${WRANGLER_COMMAND} secret put TINYPNG_PROXY_TOKEN --config ${file}`, {
+      input: proxyToken,
+      stdio: ['pipe', 'inherit', 'inherit'],
+    });
+  }
+};
+
+/**
  * 创建或更新环境变量文件
  */
 const setupEnvFile = () => {
@@ -567,6 +593,7 @@ const main = async () => {
     await checkAndCreatePages();
     pushPagesSecret();
     deployTinyPngRegistrarWorkers();
+    pushTinyPngRegistrarProxySecret();
     deployPages();
     deployEmailWorker();
     deployCleanupWorker();

@@ -12,6 +12,7 @@ import { nanoid } from "nanoid"
 import { emails, messages, tinypngKeyPool } from "@/lib/schema"
 import { eq, and, gt, desc } from "drizzle-orm"
 import type { DrizzleD1Database } from "drizzle-orm/d1"
+import { requestTinyPngRegistration } from "@/lib/tinypng-registration-proxy"
 
 // TinyPNG 相关常量
 const TINYPNG_LOGIN_URL = "https://tinypng.com/login"
@@ -26,21 +27,11 @@ const EMAIL_POLL_TIMEOUT = 120000 // 120秒超时
  * 在 TinyPNG 注册账号
  * @param email 邮箱地址
  */
-export async function registerTinyPng(email: string): Promise<void> {
-  const response = await fetch("https://tinify.com/web/api", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Accept": "application/json, text/plain, */*",
-      "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36",
-      "Origin": "https://tinify.com",
-      "Referer": "https://tinify.com/developers",
-    },
-    body: JSON.stringify({ 
-      fullName: email,
-      mail: email 
-    }),
-  })
+export async function registerTinyPng(
+  email: string,
+  proxyToken: string | undefined,
+): Promise<void> {
+  const response = await requestTinyPngRegistration(email, proxyToken)
 
   if (!response.ok) {
     const text = await response.text()
@@ -398,7 +389,8 @@ export async function finishTinyPngProcess(
 export async function generateTinyPngApiKey(
   db: DrizzleD1Database<Record<string, unknown>>,
   userId: string,
-  domain: string
+  domain: string,
+  proxyToken: string | undefined,
 ): Promise<GenerateResult> {
   const steps: GenerateResult['steps'] = []
   let currentStep: GenerateStep = GenerateStep.CREATE_EMAIL
@@ -478,7 +470,7 @@ export async function generateTinyPngApiKey(
     // 2. 在 TinyPNG 注册
     currentStep = GenerateStep.REGISTER_TINYPNG
     console.log(`[TinyPNG] 发送注册请求...`)
-    await registerTinyPng(createdEmail.address)
+    await registerTinyPng(createdEmail.address, proxyToken)
     recordStep(true, "注册请求已发送")
     
     // 3 - 6. 完成后续流程
@@ -581,7 +573,8 @@ export async function generateTinyPngApiKeysBatch(
   userId: string,
   domain: string,
   count: number,
-  expiresInHours: number = 1 // Default to 1 hour
+  expiresInHours: number = 1, // Default to 1 hour
+  proxyToken: string | undefined = undefined,
 ): Promise<BatchGenerateResult> {
   const results: BatchGenerateResult['results'] = []
   const preparedEmails: PreparedEmail[] = []
@@ -688,7 +681,7 @@ export async function generateTinyPngApiKeysBatch(
     const promises = chunk.map(async (email, chunkIndex) => {
       const globalIndex = i + chunkIndex
       try {
-        await registerTinyPng(email.address)
+        await registerTinyPng(email.address, proxyToken)
         email.registered = true
         console.log(`[TinyPNG Batch] 注册请求 ${globalIndex + 1}/${preparedEmails.length} 已发送: ${email.address}`)
       } catch (error) {

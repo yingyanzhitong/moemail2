@@ -6,6 +6,7 @@ interface RegistrarEnv {
   WORKER_ID: string
   WORKER_NAME: string
   WORKER_REGION: string
+  TINYPNG_PROXY_TOKEN?: string
 }
 
 interface RegistrarRequestPayload {
@@ -52,6 +53,7 @@ export default {
         || (request as Request & { cf?: { colo?: string } }).cf?.colo
         || null,
       taskRunId: `${payload.cycleId}:${worker.id}`,
+      proxyToken: env.TINYPNG_PROXY_TOKEN,
     })
 
     return Response.json({ result })

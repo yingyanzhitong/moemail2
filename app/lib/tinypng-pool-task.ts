@@ -8,6 +8,7 @@ import {
 import { calculateTinyPngRegistrationSuccessRate } from './tinypng-pool-success-rate'
 import type { TinyPngWorkerDefinition } from './tinypng-pool-workers'
 import { detectTinyPngEgressIp, formatTinyPngEgressIpLog } from './tinypng-pool-egress-ip'
+import { requestTinyPngRegistration } from './tinypng-registration-proxy'
 
 export const TINYPNG_POOL_LIMIT = 100000
 export const TINYPNG_REGISTRATION_BATCH_SIZE = 1
@@ -39,6 +40,7 @@ export interface TinyPngPoolTaskOptions {
   scheduleSlot: Date
   placement?: string | null
   taskRunId?: string
+  proxyToken?: string
 }
 
 interface ExecuteTaskOptions extends TinyPngPoolTaskOptions {
@@ -279,17 +281,7 @@ async function executeTinyPngPoolTask(
 
         try {
           await recordLog(`账号 ${i + 1}/${batchSize}：开始向 TinyPNG 提交注册请求\n步骤 2/6 执行中。`)
-          const response = await fetch('https://tinify.com/web/api', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Accept': 'application/json, text/plain, */*',
-              'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36',
-              'Origin': 'https://tinify.com',
-              'Referer': 'https://tinify.com/developers',
-            },
-            body: JSON.stringify({ fullName: emailAddress, mail: emailAddress }),
-          })
+          const response = await requestTinyPngRegistration(emailAddress, options.proxyToken)
 
           if (!response.ok) {
             const text = await response.text()

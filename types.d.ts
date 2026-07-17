@@ -6,6 +6,7 @@ declare global {
     DB: D1Database;
     SITE_CONFIG: KVNamespace;
     EMAIL_DOMAIN?: string;
+    TINYPNG_PROXY_TOKEN?: string;
     TINYPNG_REGISTRAR_APAC?: Fetcher;
     TINYPNG_REGISTRAR_AMERICAS?: Fetcher;
     TINYPNG_REGISTRAR_EUROPE?: Fetcher;

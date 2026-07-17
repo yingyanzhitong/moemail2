@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.14.21] - 2026-07-17
+
+### Features
+
+- **TinyPNG 注册代理**：单个生成、批量生成、前端辅助生成和区域账号池注册均通过固定 HTTP 代理的 CONNECT 隧道提交注册请求；Magic Link、Token 和 API Key 后续流程保持直连。
+
+### Security
+
+- **代理凭据隔离**：新增 `TINYPNG_PROXY_TOKEN` 运行时密钥；缺失时注册请求直接失败，不会回退为直连。GitHub Actions 会将密钥同步到 Pages 和三个区域注册 Worker，令牌不进入源码、配置示例或前端响应。
+
+### Tests
+
+- **代理回归**：新增无代理令牌时拒绝直连的测试；通过 TypeScript、TinyPNG Pool 17 项测试、Cloudflare Pages 构建以及区域注册 Worker 的 Wrangler dry-run。
+
 ## [1.14.20] - 2026-07-17
 
 ### Features
