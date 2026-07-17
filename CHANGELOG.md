@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.14.29] - 2026-07-17
+
+### Reliability
+
+- **TinyPNG 注册中转降级**：中转服务连接、请求或响应超过 10 秒，以及中转返回 HTTP 502 时，自动改为直连 TinyPNG；中转服务可用时仍优先使用中转。
+- **Pool 可观测性**：区域注册节点降级直连时，在步骤 2/6 写入中转失败原因与直连切换记录。
+
+### Tests
+
+- **中转降级回归**：覆盖中转异常、10 秒超时原因和 HTTP 502 后的直连注册路径；未配置中转令牌时仍不会直连。
+
 ## [1.14.28] - 2026-07-17
 
 ### Changed

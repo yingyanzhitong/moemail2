@@ -3,6 +3,7 @@ const PROXY_HOST = '198.12.67.119'
 const PROXY_PORT = 18080
 const PROXY_USERNAME = 'relay'
 const RESPONSE_LIMIT = 1024 * 1024
+export const TINYPNG_PROXY_TIMEOUT_MS = 10_000
 const encoder = new TextEncoder()
 const decoder = new TextDecoder()
 
@@ -25,6 +26,13 @@ async function getSocketConnector(): Promise<CloudflareSocketsModule['connect']>
     'cloudflare:sockets'
   ) as CloudflareSocketsModule
   return sockets.connect
+}
+
+class TinyPngProxyTimeoutError extends Error {
+  constructor() {
+    super(`TinyPNG 注册中转服务超时（${TINYPNG_PROXY_TIMEOUT_MS / 1000} 秒）`)
+    this.name = 'TinyPngProxyTimeoutError'
+  }
 }
 
 function concatBytes(chunks: Uint8Array[]): Uint8Array {
@@ -147,25 +155,27 @@ function parseHttpResponse(rawResponse: Uint8Array): Response {
   })
 }
 
-/**
- * 使用固定 HTTP 代理向 TinyPNG 提交注册请求。令牌仅应来自 Worker 运行时 Secret。
- */
-export async function requestTinyPngRegistration(
+async function requestTinyPngRegistrationViaProxy(
   email: string,
-  proxyToken: string | undefined,
+  proxyToken: string,
 ): Promise<Response> {
-  if (!proxyToken) throw new Error('未配置 TinyPNG 注册代理令牌')
-  if (!email || /[\r\n]/.test(email)) throw new Error('TinyPNG 注册邮箱格式无效')
-
   const proxyAuthorization = btoa(`${PROXY_USERNAME}:${proxyToken}`)
   const body = JSON.stringify({ fullName: email, mail: email })
-  const connect = await getSocketConnector()
-  const socket = connect(
-    { hostname: PROXY_HOST, port: PROXY_PORT },
-    { secureTransport: 'off' },
-  )
+  let socket: ProxySocket | undefined
+  let timedOut = false
+  let timeoutId: ReturnType<typeof setTimeout> | undefined
 
-  try {
+  const request = (async () => {
+    const connect = await getSocketConnector()
+    socket = connect(
+      { hostname: PROXY_HOST, port: PROXY_PORT },
+      { secureTransport: 'off' },
+    )
+    if (timedOut) {
+      void socket.close().catch(() => undefined)
+      throw new TinyPngProxyTimeoutError()
+    }
+
     const requestWriter = socket.writable.getWriter()
     await requestWriter.write(encoder.encode([
       `POST ${TINYPNG_REGISTRATION_URL.href} HTTP/1.1`,
@@ -187,7 +197,80 @@ export async function requestTinyPngRegistration(
     const response = await readAll(responseReader, RESPONSE_LIMIT)
     responseReader.releaseLock()
     return parseHttpResponse(response)
+  })()
+
+  const timeout = new Promise<never>((_, reject) => {
+    timeoutId = setTimeout(() => {
+      timedOut = true
+      void socket?.close().catch(() => undefined)
+      reject(new TinyPngProxyTimeoutError())
+    }, TINYPNG_PROXY_TIMEOUT_MS)
+  })
+
+  try {
+    return await Promise.race([request, timeout])
   } finally {
-    await socket.close().catch(() => undefined)
+    if (timeoutId !== undefined) clearTimeout(timeoutId)
+    void socket?.close().catch(() => undefined)
   }
+}
+
+async function requestTinyPngRegistrationDirect(email: string): Promise<Response> {
+  const body = JSON.stringify({ fullName: email, mail: email })
+
+  return fetch(TINYPNG_REGISTRATION_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json, text/plain, */*',
+      'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36',
+      'Origin': 'https://tinify.com',
+      'Referer': 'https://tinify.com/developers',
+    },
+    body,
+  })
+}
+
+export async function requestTinyPngRegistrationWithProxyFallback(
+  requestViaProxy: () => Promise<Response>,
+  requestDirect: () => Promise<Response>,
+  onProxyFallback?: (error: Error) => void | Promise<void>,
+): Promise<Response> {
+  try {
+    const response = await requestViaProxy()
+    if (response.status === 502) {
+      throw new Error('TinyPNG 注册中转服务返回 HTTP 502')
+    }
+    return response
+  } catch (error) {
+    const proxyError = error instanceof Error ? error : new Error(String(error))
+    if (onProxyFallback) {
+      try {
+        await onProxyFallback(proxyError)
+      } catch (logError) {
+        console.warn('[TinyPNG] 中转降级日志写入失败：', logError)
+      }
+    } else {
+      console.warn('[TinyPNG] 中转服务失败，已改为直连 TinyPNG：', proxyError.message)
+    }
+    return requestDirect()
+  }
+}
+
+/**
+ * 优先使用固定 HTTP 中转向 TinyPNG 提交注册请求；中转连接或响应超过 10 秒时自动改为直连。
+ */
+export async function requestTinyPngRegistration(
+  email: string,
+  proxyToken: string | undefined,
+  onProxyFallback?: (error: Error) => void | Promise<void>,
+): Promise<Response> {
+  if (!proxyToken) throw new Error('未配置 TinyPNG 注册代理令牌')
+  if (!email || /[\r\n]/.test(email)) throw new Error('TinyPNG 注册邮箱格式无效')
+
+  return requestTinyPngRegistrationWithProxyFallback(
+    () => requestTinyPngRegistrationViaProxy(email, proxyToken),
+    () => requestTinyPngRegistrationDirect(email),
+    onProxyFallback,
+  )
 }

@@ -281,7 +281,15 @@ async function executeTinyPngPoolTask(
 
         try {
           await recordLog(`账号 ${i + 1}/${batchSize}：开始向 TinyPNG 提交注册请求\n步骤 2/6 执行中。`)
-          const response = await requestTinyPngRegistration(emailAddress, options.proxyToken)
+          const response = await requestTinyPngRegistration(
+            emailAddress,
+            options.proxyToken,
+            async (proxyError) => {
+              await recordLog(
+                `账号 ${i + 1}/${batchSize}：TinyPNG 注册中转服务失败，已切换直连\n邮箱：${emailAddress}\n${proxyError.message}\n步骤 2/6 继续执行。`,
+              )
+            },
+          )
 
           if (!response.ok) {
             const text = await response.text()
