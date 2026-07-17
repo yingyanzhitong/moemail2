@@ -1,0 +1,24 @@
+CHANGELOG.md
+  s_e5002961b964c4::t_5123264725c938 5-10
+app/components/profile/tinypng-pool-stats-card.tsx
+  s_e5002961b964c4::t_96b48df7bba01b 215,220,236,765
+package.json
+  s_e5002961b964c4::t_aa7c58526f0499 3
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.12",
+  "base_commit_sha": "61075091cc949bf9980b0c4619ca156bea4c2db0",
+  "prompts": {},
+  "logical_commit_id": "61075091cc949bf9980b0c4619ca156bea4c2db0",
+  "sessions": {
+    "s_e5002961b964c4": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f6f35-d45f-7862-b4c9-994bca45b7a4",
+        "model": "unknown"
+      },
+      "human_author": "masongzhi <masongzhi@bigo.sg>"
+    }
+  }
+}
