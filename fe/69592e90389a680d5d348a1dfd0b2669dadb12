@@ -1,0 +1,56 @@
+.env.example
+  s_f8b011cb3e32ba::t_5630c19ee8a38c 6,13
+.github/workflows/deploy.yml
+  s_f8b011cb3e32ba::t_dcd1e206eaf5b3 55,86
+app/api/tinypng/generate-front/route.ts
+  s_f8b011cb3e32ba::t_458df399f95174 8,104
+app/api/tinypng/generate/batch/route.ts
+  s_f8b011cb3e32ba::t_6828912ac27eac 142-149
+app/api/tinypng/generate/route.ts
+  s_f8b011cb3e32ba::t_7d431dfe60cec6 108
+app/lib/tinypng-pool-task.ts
+  s_f8b011cb3e32ba::t_824e4f077e6524 11,43,284
+app/lib/tinypng-registration-proxy.ts
+  s_f8b011cb3e32ba::t_3bfbca5bfbb028 1-247
+app/lib/tinypng.ts
+  s_f8b011cb3e32ba::t_095e6a9e20c5ab 15,30-34,392-393,473,576-577,684
+types.d.ts
+  s_f8b011cb3e32ba::t_c6532003a9dbd7 9
+workers/tinypng-pool-registrar.ts
+  s_f8b011cb3e32ba::t_b42eeb1da9122d 9,56
+CHANGELOG.md
+  s_e5002961b964c4::t_2485afaefa2af6 5-18
+app/lib/tinypng-token.md
+  s_e5002961b964c4::t_89ab692282b573 3,5-12
+package.json
+  s_e5002961b964c4::t_569484ebebb627 3
+scripts/deploy/index.ts
+  s_e5002961b964c4::t_93a61b710d75de 337-338,379-386,497-513,596
+tests/tinypng-registration-proxy.test.mjs
+  s_e5002961b964c4::t_3465e19c79be33 1-11
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.12",
+  "base_commit_sha": "fe69592e90389a680d5d348a1dfd0b2669dadb12",
+  "prompts": {},
+  "logical_commit_id": "fe69592e90389a680d5d348a1dfd0b2669dadb12",
+  "sessions": {
+    "s_e5002961b964c4": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f6f35-d45f-7862-b4c9-994bca45b7a4",
+        "model": "unknown"
+      },
+      "human_author": "masongzhi <masongzhi@bigo.sg>"
+    },
+    "s_f8b011cb3e32ba": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f6ede-f74c-7a11-bc0c-47854485fbf3",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "masongzhi <masongzhi@bigo.sg>"
+    }
+  }
+}
