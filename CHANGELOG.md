@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.14.22] - 2026-07-17
+
+### Fixed
+
+- **注册代理 TLS 升级**：创建 HTTP 代理 Socket 时明确使用 `secureTransport: 'starttls'`，使 CONNECT 成功后可以升级为到 TinyPNG 的 TLS 隧道，修复三个区域注册节点在步骤 2/6 失败的问题。
+
+### Tests
+
+- **中转连通性验证**：通过 TypeScript、TinyPNG Pool 17 项测试、Cloudflare Pages 构建、区域注册 Worker 的 Wrangler dry-run、`http-relay-service` Go 测试以及 HTTPS 代理烟测。
+
 ## [1.14.21] - 2026-07-17
 
 ### Features

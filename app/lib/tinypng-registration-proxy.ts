@@ -15,7 +15,10 @@ type ProxySocket = {
 }
 
 type CloudflareSocketsModule = {
-  connect(address: { hostname: string; port: number }): ProxySocket
+  connect(
+    address: { hostname: string; port: number },
+    options?: { secureTransport?: 'off' | 'on' | 'starttls' },
+  ): ProxySocket
 }
 
 async function getSocketConnector(): Promise<CloudflareSocketsModule['connect']> {
@@ -195,7 +198,10 @@ export async function requestTinyPngRegistration(
   const proxyAuthorization = btoa(`${PROXY_USERNAME}:${proxyToken}`)
   const body = JSON.stringify({ fullName: email, mail: email })
   const connect = await getSocketConnector()
-  const socket = connect({ hostname: PROXY_HOST, port: PROXY_PORT })
+  const socket = connect(
+    { hostname: PROXY_HOST, port: PROXY_PORT },
+    { secureTransport: 'starttls' },
+  )
   let activeSocket = socket
 
   try {
