@@ -1,0 +1,40 @@
+app/api/admin/tinypng-pool/config/route.ts
+  s_f8b011cb3e32ba::t_0e4b284a6e77a4 24,27-28,31-36,39-45,48-51,54
+app/components/profile/tinypng-pool-stats-card.tsx
+  s_f8b011cb3e32ba::t_e87255d8369ff7 6,413-414,419,425,437
+app/lib/tinypng-pool-coordinator.ts
+  s_f8b011cb3e32ba::t_5524d1bbacf514 257
+app/lib/tinypng-pool-domain.ts
+  s_f8b011cb3e32ba::t_d440d7d5f0a59d 24,26
+CHANGELOG.md
+  s_e5002961b964c4::t_7c80e07a37d39e 5-18
+package.json
+  s_e5002961b964c4::t_be0fc237fd3071 3
+tests/tinypng-pool-workers.test.mjs
+  s_e5002961b964c4::t_f75dfd9fc06948 11,21-26
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.12",
+  "base_commit_sha": "2ea3bc445781fc55764375a64554823a544181fc",
+  "prompts": {},
+  "logical_commit_id": "2ea3bc445781fc55764375a64554823a544181fc",
+  "sessions": {
+    "s_e5002961b964c4": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f6f35-d45f-7862-b4c9-994bca45b7a4",
+        "model": "unknown"
+      },
+      "human_author": "masongzhi <masongzhi@bigo.sg>"
+    },
+    "s_f8b011cb3e32ba": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f6ede-f74c-7a11-bc0c-47854485fbf3",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "masongzhi <masongzhi@bigo.sg>"
+    }
+  }
+}
