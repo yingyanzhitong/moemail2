@@ -1,7 +1,7 @@
 import { getRequestContext } from "@cloudflare/next-on-pages"
 import { auth, getUserRole } from "@/lib/auth"
 import { getTinyPngPoolEmailDomain } from "@/lib/tinypng-pool-domain"
-import { runTinyPngPoolTask } from "@/lib/tinypng-pool-task"
+import { runTinyPngPoolCoordinator } from "@/lib/tinypng-pool-coordinator"
 import { ROLES } from "@/lib/permissions"
 import { NextResponse } from "next/server"
 
@@ -20,7 +20,13 @@ export async function POST() {
 
   const env = getRequestContext().env
   const emailDomain = await getTinyPngPoolEmailDomain(env.SITE_CONFIG, env.EMAIL_DOMAIN)
-  const result = await runTinyPngPoolTask(env.DB, emailDomain)
+    || env.EMAIL_DOMAIN
+    || 'tinypng-token.site'
+  const result = await runTinyPngPoolCoordinator(env, {
+    triggerType: 'manual',
+    scheduledAt: new Date(),
+    emailDomain,
+  })
 
   return NextResponse.json({ result })
 }

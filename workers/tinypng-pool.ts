@@ -1,6 +1,6 @@
 import type { Env } from '../types'
 import { getTinyPngPoolEmailDomain } from '../app/lib/tinypng-pool-domain'
-import { runTinyPngPoolTask } from '../app/lib/tinypng-pool-task'
+import { runTinyPngPoolCoordinator } from '../app/lib/tinypng-pool-coordinator'
 import { cleanupExpiredDesktopState } from '../app/lib/desktop-license-service'
 import {
   getTinyPngPoolCronExpression,
@@ -22,6 +22,12 @@ export default {
     }
 
     const emailDomain = await getTinyPngPoolEmailDomain(env.SITE_CONFIG, env.EMAIL_DOMAIN)
-    await runTinyPngPoolTask(env.DB, emailDomain)
+      || env.EMAIL_DOMAIN
+      || 'tinypng-token.site'
+    await runTinyPngPoolCoordinator(env, {
+      triggerType: 'scheduled',
+      scheduledAt,
+      emailDomain,
+    })
   }
 }

@@ -204,6 +204,13 @@
       "when": 1783998693517,
       "tag": "0028_brainy_callisto",
       "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "6",
+      "when": 1784262117229,
+      "tag": "0029_tinypng-worker-cluster",
+      "breakpoints": true
     }
   ]
 }

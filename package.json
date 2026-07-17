@@ -1,6 +1,6 @@
 {
   "name": "moemail",
-  "version": "1.14.17",
+  "version": "1.14.18",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -16,6 +16,7 @@
     "dev:tinypng": "wrangler dev --config wrangler.tinypng.json --test-scheduled",
     "test:cleanup": "curl http://localhost:8787/__scheduled",
     "test:desktop-backend": "node --import tsx --test tests/desktop-license-*.test.mjs",
+    "test:tinypng-pool": "node --import tsx --test tests/tinypng-pool-*.test.mjs",
     "deploy:local": "pnpm dlx tsx ./scripts/deploy/index.ts",
     "deploy:email": "wrangler deploy --config wrangler.email.json",
     "deploy:cleanup": "wrangler deploy --config wrangler.cleanup.json",

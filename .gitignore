@@ -55,3 +55,6 @@ wrangler.json
 wrangler.cleanup.json
 wrangler.email.json
 wrangler.tinypng.json
+wrangler.tinypng.registrar-apac.json
+wrangler.tinypng.registrar-americas.json
+wrangler.tinypng.registrar-europe.json

@@ -17,5 +17,19 @@
       "binding": "SITE_CONFIG",
       "id": "${KV_NAMESPACE_ID}"
     }
+  ],
+  "services": [
+    {
+      "binding": "TINYPNG_REGISTRAR_APAC",
+      "service": "tinypng-pool-registrar-apac"
+    },
+    {
+      "binding": "TINYPNG_REGISTRAR_AMERICAS",
+      "service": "tinypng-pool-registrar-americas"
+    },
+    {
+      "binding": "TINYPNG_REGISTRAR_EUROPE",
+      "service": "tinypng-pool-registrar-europe"
+    }
   ]
 }

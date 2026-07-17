@@ -252,8 +252,32 @@ export const tinypngKeyPool = sqliteTable('tinypng_key_pool', {
   taskRunIdx: index('tinypng_key_pool_task_run_idx').on(table.taskRunId),
 }));
 
+export const tinypngWorkerNodes = sqliteTable('tinypng_worker_nodes', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  role: text('role', { enum: ['coordinator', 'registrar'] }).notNull(),
+  configuredRegion: text('configured_region'),
+  actualPlacement: text('actual_placement'),
+  enabled: integer('enabled', { mode: 'boolean' }).notNull().default(true),
+  maintenanceOwner: integer('maintenance_owner', { mode: 'boolean' }).notNull().default(false),
+  lastStatus: text('last_status', { enum: ['idle', 'running', 'success', 'partial_failure', 'skipped', 'failed'] }).notNull().default('idle'),
+  lastRunId: text('last_run_id'),
+  lastRunAt: integer('last_run_at', { mode: 'timestamp_ms' }),
+  lastError: text('last_error'),
+  createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull().$defaultFn(() => new Date()),
+  updatedAt: integer('updated_at', { mode: 'timestamp_ms' }).notNull().$defaultFn(() => new Date()),
+}, (table) => ({
+  roleIdx: index('tinypng_worker_nodes_role_idx').on(table.role),
+  statusIdx: index('tinypng_worker_nodes_status_idx').on(table.lastStatus),
+}));
+
 export const tinypngTaskRuns = sqliteTable('tinypng_task_runs', {
   id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  workerId: text('worker_id').notNull().default('legacy'),
+  cycleId: text('cycle_id'),
+  triggerType: text('trigger_type', { enum: ['scheduled', 'manual'] }).notNull().default('scheduled'),
+  scheduleSlot: integer('schedule_slot', { mode: 'timestamp_ms' }),
+  placement: text('placement'),
   status: text('status', { enum: ['running', 'success', 'partial_failure', 'skipped', 'failed'] }).notNull(),
   message: text('message').notNull(),
   createdCount: integer('created_count').notNull().default(0),
@@ -264,6 +288,8 @@ export const tinypngTaskRuns = sqliteTable('tinypng_task_runs', {
   completedAt: integer('completed_at', { mode: 'timestamp_ms' }).notNull(),
 }, (table) => ({
   completedAtIdx: index('tinypng_task_runs_completed_at_idx').on(table.completedAt),
+  workerCompletedAtIdx: index('tinypng_task_runs_worker_completed_at_idx').on(table.workerId, table.completedAt),
+  cycleIdx: index('tinypng_task_runs_cycle_idx').on(table.cycleId),
 }));
 
 export const desktopLicenses = sqliteTable('desktop_licenses', {

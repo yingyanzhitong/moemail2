@@ -1,7 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useRef, useState } from "react"
-import { Database, Link, Copy, Check, Loader2, Clock3, History, Play, ScrollText } from "lucide-react"
+import { Activity, Database, Link, Copy, Check, Loader2, Clock3, History, MapPin, Network, Play, ScrollText, Server, Wrench } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useLocale, useTranslations } from "next-intl"
 import { Button } from "@/components/ui/button"
@@ -24,6 +24,30 @@ import {
 import { useToast } from "@/components/ui/use-toast"
 
 type TinyPngTaskRunStatus = 'running' | 'success' | 'partial_failure' | 'skipped' | 'failed'
+type TinyPngWorkerStatus = 'idle' | TinyPngTaskRunStatus
+
+interface TinyPngWorkerState {
+  id: string
+  name: string
+  role: 'coordinator' | 'registrar'
+  configuredRegion: string | null
+  actualPlacement: string | null
+  enabled: boolean
+  maintenanceOwner: boolean
+  status: TinyPngWorkerStatus
+  lastRunAt: string | null
+  lastError: string | null
+  lastRun: {
+    id: string
+    status: TinyPngTaskRunStatus
+    createdCount: number
+    cleanedCount: number
+    failedCount: number
+    successfulCount: number
+    successRate: number | null
+    completedAt: string
+  } | null
+}
 
 interface TinyPngTaskStatus {
   scheduleLabel: string
@@ -55,6 +79,7 @@ interface PoolStats {
   emailDomains: string[]
   emailDomain: string
   cronExpression: string
+  workers: TinyPngWorkerState[]
   taskStatus: TinyPngTaskStatus
 }
 
@@ -78,6 +103,21 @@ const TASK_STATUS_META: Record<TinyPngTaskRunStatus, { label: string; className:
   partial_failure: { label: '部分失败', className: 'text-amber-600 dark:text-amber-400' },
   skipped: { label: '本次跳过', className: 'text-muted-foreground' },
   failed: { label: '执行失败', className: 'text-destructive' },
+}
+
+const WORKER_STATUS_META: Record<TinyPngWorkerStatus, { label: string; dotClassName: string; className: string }> = {
+  idle: { label: '等待首次运行', dotClassName: 'bg-slate-400', className: 'text-muted-foreground' },
+  running: { label: '执行中', dotClassName: 'bg-sky-500 animate-pulse', className: 'text-sky-600 dark:text-sky-400' },
+  success: { label: '最近运行正常', dotClassName: 'bg-emerald-500', className: 'text-emerald-600 dark:text-emerald-400' },
+  partial_failure: { label: '最近部分失败', dotClassName: 'bg-amber-500', className: 'text-amber-600 dark:text-amber-400' },
+  skipped: { label: '最近已跳过', dotClassName: 'bg-slate-400', className: 'text-muted-foreground' },
+  failed: { label: '最近运行异常', dotClassName: 'bg-red-500', className: 'text-destructive' },
+}
+
+const WORKER_REGION_LABELS: Record<string, string> = {
+  'aws:ap-southeast-1': '亚太 · 新加坡',
+  'aws:us-east-1': '美洲 · 弗吉尼亚',
+  'aws:eu-central-1': '欧洲 · 法兰克福',
 }
 
 function formatTaskTime(value: string): string {
@@ -214,9 +254,11 @@ export function TinyPngPoolStatsCard() {
   }
 
   const handleRunTask = async () => {
+    const registrarCount = stats?.workers.filter((worker) => worker.enabled && worker.role === 'registrar').length ?? 0
     const pendingLogs = [
       '正在创建任务记录，日志会自动刷新。',
-      '本批次包含 5 个账号，将连续提交注册请求。',
+      `协调节点将先执行一次维护，再向 ${registrarCount} 个区域注册节点派发任务。`,
+      '每个区域节点本轮只提交 1 个注册请求，节点之间独立记录结果。',
       '验证邮件、Magic Link、Bearer Token 与 API Key 步骤将在收到邮件后继续写入。',
     ]
 
@@ -354,6 +396,9 @@ export function TinyPngPoolStatsCard() {
 
   const lastRun = stats.taskStatus.lastRun
   const lastRunMeta = lastRun ? TASK_STATUS_META[lastRun.status] : null
+  const enabledWorkers = stats.workers.filter((worker) => worker.enabled)
+  const registrarWorkers = enabledWorkers.filter((worker) => worker.role === 'registrar')
+  const healthyWorkers = enabledWorkers.filter((worker) => ['success', 'skipped'].includes(worker.status)).length
 
   return (
     <>
@@ -449,6 +494,83 @@ export function TinyPngPoolStatsCard() {
           </div>
         </div>
 
+        <div className="mb-4 rounded-lg border border-yellow-500/20 bg-yellow-500/[0.025] p-3">
+          <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-2">
+              <Network className="h-4 w-4 text-yellow-600 dark:text-yellow-400" />
+              <p className="text-sm font-medium">Worker 集群</p>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {enabledWorkers.length} 个启用节点 · {registrarWorkers.length} 个区域注册节点 · {healthyWorkers} 个最近正常
+            </p>
+          </div>
+
+          <div className="relative mt-3 grid gap-3 md:grid-cols-4" role="list" aria-label="TinyPNG Worker 集群状态">
+            <div className="pointer-events-none absolute left-[12.5%] right-[12.5%] top-4 hidden h-px bg-yellow-500/25 md:block" />
+            {stats.workers.map((worker) => {
+              const statusMeta = worker.enabled
+                ? WORKER_STATUS_META[worker.status]
+                : { label: '已停用', dotClassName: 'bg-slate-300', className: 'text-muted-foreground' }
+              const regionLabel = worker.configuredRegion
+                ? WORKER_REGION_LABELS[worker.configuredRegion] ?? worker.configuredRegion
+                : 'Cloudflare Cron'
+
+              return (
+                <div
+                  key={worker.id}
+                  role="listitem"
+                  className={`relative z-10 min-w-0 rounded-lg border p-3 ${
+                    worker.role === 'coordinator'
+                      ? 'border-yellow-500/30 bg-background'
+                      : 'border-border/70 bg-background/90'
+                  }`}
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex min-w-0 items-center gap-2">
+                      <span className={`h-2.5 w-2.5 shrink-0 rounded-full ring-4 ring-background ${statusMeta.dotClassName}`} />
+                      <p className="truncate text-sm font-medium">{worker.name}</p>
+                    </div>
+                    {worker.role === 'coordinator'
+                      ? <Wrench className="h-3.5 w-3.5 shrink-0 text-yellow-600 dark:text-yellow-400" />
+                      : <Server className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />}
+                  </div>
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    <span className="rounded border border-border/70 px-1.5 py-0.5 text-[10px] text-muted-foreground">
+                      {worker.role === 'coordinator' ? '维护 · 调度' : '区域注册'}
+                    </span>
+                    {worker.maintenanceOwner ? (
+                      <span className="rounded border border-yellow-500/30 bg-yellow-500/10 px-1.5 py-0.5 text-[10px] text-yellow-700 dark:text-yellow-300">
+                        唯一清理节点
+                      </span>
+                    ) : null}
+                  </div>
+                  <div className="mt-3 space-y-1.5 text-xs">
+                    <div className="flex items-center gap-1.5 text-muted-foreground">
+                      <MapPin className="h-3 w-3 shrink-0" />
+                      <span className="truncate font-mono">{regionLabel}</span>
+                    </div>
+                    <div className={`flex items-center gap-1.5 ${statusMeta.className}`}>
+                      <Activity className="h-3 w-3 shrink-0" />
+                      <span>{statusMeta.label}</span>
+                    </div>
+                  </div>
+                  <div className="mt-3 border-t border-border/60 pt-2 text-[11px] text-muted-foreground">
+                    <p className="truncate font-mono">
+                      {worker.actualPlacement || '等待上报实际位置'}
+                    </p>
+                    <p className="mt-1">
+                      {worker.lastRunAt ? `最近 ${formatTaskTime(worker.lastRunAt)}` : '暂无执行记录'}
+                      {worker.lastRun && worker.role === 'registrar'
+                        ? ` · ${worker.lastRun.successfulCount}/${worker.lastRun.createdCount}`
+                        : ''}
+                    </p>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
           <div className="p-3 bg-secondary/20 rounded-lg text-center">
               <div className="text-2xl font-bold">{stats.total}</div>
@@ -480,7 +602,7 @@ export function TinyPngPoolStatsCard() {
           <div className="flex min-w-0 items-start gap-3 border-b border-yellow-500/15 px-4 py-3 sm:border-b-0 sm:border-r">
             <History className="mt-0.5 h-4 w-4 shrink-0 text-yellow-600 dark:text-yellow-400" />
             <div className="min-w-0">
-              <p className="text-xs text-muted-foreground">上次任务</p>
+              <p className="text-xs text-muted-foreground">上一轮集群任务</p>
               <p className={`mt-0.5 text-sm font-medium ${lastRunMeta?.className ?? 'text-muted-foreground'}`}>
                 {lastRunMeta ? lastRunMeta.label : '暂无执行记录'}
               </p>
@@ -515,7 +637,7 @@ export function TinyPngPoolStatsCard() {
                     className="mt-3 h-8 gap-1.5 text-xs"
                   >
                     <ScrollText className="h-3.5 w-3.5" />
-                    查看完整执行日志
+                    查看全部节点日志
                   </Button>
                 </>
               ) : null}

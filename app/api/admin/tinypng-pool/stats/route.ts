@@ -1,6 +1,6 @@
 import { auth } from "@/lib/auth"
 import { createDb } from "@/lib/db"
-import { desktopLicenses, tinypngKeyPool, tinypngTaskRuns } from "@/lib/schema"
+import { desktopLicenses, tinypngKeyPool, tinypngTaskRuns, tinypngWorkerNodes } from "@/lib/schema"
 import {
   getNextTinyPngPoolRunAt,
   getTinyPngPoolScheduleLabel,
@@ -12,11 +12,12 @@ import {
   resolveTinyPngPoolEmailDomain,
   TINYPNG_POOL_EMAIL_DOMAIN_CONFIG_KEY,
 } from "@/lib/tinypng-pool-domain"
+import { summarizeTinyPngCycleRuns } from "@/lib/tinypng-pool-cycle-summary"
 import { getRequestContext } from "@cloudflare/next-on-pages"
 import { NextResponse } from "next/server"
 import { ROLES } from "@/lib/permissions"
 import { getUserRole } from "@/lib/auth"
-import { and, count, desc, eq, gte, lte } from "drizzle-orm"
+import { and, asc, count, desc, eq, gte, lte } from "drizzle-orm"
 import { calculateTinyPngRegistrationSuccessRate } from "@/lib/tinypng-pool-success-rate"
 
 export const runtime = "edge"
@@ -52,8 +53,22 @@ export async function GET() {
   try {
     const db = createDb()
     const env = getRequestContext().env
-    
-    const [totalResult, activeResult, pendingResult, usedResult, reservedResult, assignedResult, invalidResult, licenseResult, lastTaskRun, emailDomainsValue, selectedEmailDomain, cronExpressionValue] = await Promise.all([
+
+    const [
+      totalResult,
+      activeResult,
+      pendingResult,
+      usedResult,
+      reservedResult,
+      assignedResult,
+      invalidResult,
+      licenseResult,
+      latestTaskRun,
+      workerNodes,
+      emailDomainsValue,
+      selectedEmailDomain,
+      cronExpressionValue,
+    ] = await Promise.all([
       db.select({ value: count() }).from(tinypngKeyPool).get(),
       db.select({ value: count() }).from(tinypngKeyPool).where(eq(tinypngKeyPool.status, 'active')).get(),
       db.select({ value: count() }).from(tinypngKeyPool).where(eq(tinypngKeyPool.status, 'pending')).get(),
@@ -63,32 +78,51 @@ export async function GET() {
       db.select({ value: count() }).from(tinypngKeyPool).where(eq(tinypngKeyPool.status, 'invalid')).get(),
       db.select({ value: count() }).from(desktopLicenses).where(eq(desktopLicenses.status, 'active')).get(),
       db.query.tinypngTaskRuns.findFirst({ orderBy: desc(tinypngTaskRuns.completedAt) }),
+      db.select().from(tinypngWorkerNodes).orderBy(asc(tinypngWorkerNodes.role), asc(tinypngWorkerNodes.name)),
       env.SITE_CONFIG.get("EMAIL_DOMAINS"),
       env.SITE_CONFIG.get(TINYPNG_POOL_EMAIL_DOMAIN_CONFIG_KEY),
       env.SITE_CONFIG.get(TINYPNG_POOL_CRON_CONFIG_KEY),
     ])
-    const parsedLastRun = lastTaskRun
-      ? splitTaskMessage(lastTaskRun.message, lastTaskRun.status)
+
+    const cycleRuns = latestTaskRun?.cycleId
+      ? await db.select().from(tinypngTaskRuns)
+          .where(eq(tinypngTaskRuns.cycleId, latestTaskRun.cycleId))
+          .orderBy(asc(tinypngTaskRuns.startedAt))
+      : latestTaskRun
+        ? [latestTaskRun]
+        : []
+    const cycleSummary = summarizeTinyPngCycleRuns(cycleRuns)
+    const legacyParsedRun = latestTaskRun && !latestTaskRun.cycleId
+      ? splitTaskMessage(latestTaskRun.message, latestTaskRun.status)
       : null
-    const failedItems = lastTaskRun && parsedLastRun?.logs.length === 0
+    const failedItems = latestTaskRun && !latestTaskRun.cycleId && legacyParsedRun?.logs.length === 0
       ? await db.select({
-        email: tinypngKeyPool.email,
-        errorMessage: tinypngKeyPool.errorMessage,
-        createdAt: tinypngKeyPool.createdAt,
-      })
-        .from(tinypngKeyPool)
-        .where(and(
-          eq(tinypngKeyPool.status, "registration_failed"),
-          gte(tinypngKeyPool.createdAt, lastTaskRun.startedAt),
-          lte(tinypngKeyPool.createdAt, lastTaskRun.completedAt),
-        ))
-        .orderBy(desc(tinypngKeyPool.createdAt))
+          email: tinypngKeyPool.email,
+          errorMessage: tinypngKeyPool.errorMessage,
+          createdAt: tinypngKeyPool.createdAt,
+        })
+          .from(tinypngKeyPool)
+          .where(and(
+            eq(tinypngKeyPool.status, "registration_failed"),
+            gte(tinypngKeyPool.createdAt, latestTaskRun.startedAt),
+            lte(tinypngKeyPool.createdAt, latestTaskRun.completedAt),
+          ))
+          .orderBy(desc(tinypngKeyPool.createdAt))
       : []
-    const lastRunLogs = parsedLastRun?.logs.length
-      ? parsedLastRun.logs
-      : failedItems.map((item) =>
-        `注册失败：${item.email}\n${item.errorMessage || "未记录失败原因"}`,
-      )
+    const lastRunLogs = cycleSummary?.logs.length
+      ? cycleSummary.logs
+      : legacyParsedRun?.logs.length
+        ? legacyParsedRun.logs
+        : failedItems.map((item) =>
+            `注册失败：${item.email}\n${item.errorMessage || "未记录失败原因"}`,
+          )
+    const workerRuns = await Promise.all(workerNodes.map(async (worker) => ({
+      worker,
+      lastRun: await db.query.tinypngTaskRuns.findFirst({
+        where: eq(tinypngTaskRuns.workerId, worker.id),
+        orderBy: desc(tinypngTaskRuns.completedAt),
+      }),
+    })))
     const emailDomains = parseEmailDomains(emailDomainsValue)
     const cronExpression = parseTinyPngPoolCronExpression(cronExpressionValue)
 
@@ -108,24 +142,49 @@ export async function GET() {
         env.EMAIL_DOMAIN,
       ) || "",
       cronExpression,
+      workers: workerRuns.map(({ worker, lastRun }) => ({
+        id: worker.id,
+        name: worker.name,
+        role: worker.role,
+        configuredRegion: worker.configuredRegion,
+        actualPlacement: worker.actualPlacement,
+        enabled: worker.enabled,
+        maintenanceOwner: worker.maintenanceOwner,
+        status: worker.lastStatus,
+        lastRunAt: worker.lastRunAt,
+        lastError: worker.lastError,
+        lastRun: lastRun ? {
+          id: lastRun.id,
+          status: lastRun.status,
+          createdCount: lastRun.createdCount,
+          cleanedCount: lastRun.cleanedCount,
+          failedCount: lastRun.failedCount,
+          successfulCount: lastRun.successfulCount,
+          successRate: calculateTinyPngRegistrationSuccessRate(
+            lastRun.successfulCount,
+            lastRun.createdCount,
+          ),
+          completedAt: lastRun.completedAt,
+        } : null,
+      })),
       taskStatus: {
         scheduleLabel: getTinyPngPoolScheduleLabel(cronExpression),
         nextRunAt: getNextTinyPngPoolRunAt(new Date(), cronExpression).toISOString(),
-        lastRun: lastTaskRun ? {
-          id: lastTaskRun.id,
-          status: lastTaskRun.status,
-          message: parsedLastRun?.summary || lastTaskRun.message,
+        lastRun: cycleSummary ? {
+          id: cycleSummary.id,
+          status: cycleSummary.status,
+          message: cycleSummary.message,
           logs: lastRunLogs,
-          createdCount: lastTaskRun.createdCount,
-          cleanedCount: lastTaskRun.cleanedCount,
-          failedCount: lastTaskRun.failedCount,
-          successfulCount: lastTaskRun.successfulCount,
+          createdCount: cycleSummary.createdCount,
+          cleanedCount: cycleSummary.cleanedCount,
+          failedCount: cycleSummary.failedCount,
+          successfulCount: cycleSummary.successfulCount,
           successRate: calculateTinyPngRegistrationSuccessRate(
-            lastTaskRun.successfulCount,
-            lastTaskRun.createdCount,
+            cycleSummary.successfulCount,
+            cycleSummary.createdCount,
           ),
-          durationMs: Math.max(lastTaskRun.completedAt.getTime() - lastTaskRun.startedAt.getTime(), 0),
-          completedAt: lastTaskRun.completedAt,
+          durationMs: Math.max(cycleSummary.completedAt.getTime() - cycleSummary.startedAt.getTime(), 0),
+          completedAt: cycleSummary.completedAt,
         } : null,
       },
     })

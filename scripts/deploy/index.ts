@@ -18,6 +18,22 @@ const KV_NAMESPACE_NAME = process.env.KV_NAMESPACE_NAME || "moemail-kv";
 const CUSTOM_DOMAIN = process.env.CUSTOM_DOMAIN;
 const KV_NAMESPACE_ID = process.env.KV_NAMESPACE_ID;
 const WRANGLER_COMMAND = "pnpm exec wrangler";
+const TINYPNG_REGISTRAR_CONFIGS = [
+  { region: "apac", file: "wrangler.tinypng.registrar-apac.json" },
+  { region: "americas", file: "wrangler.tinypng.registrar-americas.json" },
+  { region: "europe", file: "wrangler.tinypng.registrar-europe.json" },
+];
+
+const getTinyPngRegistrarServiceName = (region: string) =>
+  PROJECT_NAME === "moemail"
+    ? `tinypng-pool-registrar-${region}`
+    : `${PROJECT_NAME}-tinypng-pool-registrar-${region}`;
+
+const getTinyPngServiceBindings = () => [
+  { binding: "TINYPNG_REGISTRAR_APAC", service: getTinyPngRegistrarServiceName("apac") },
+  { binding: "TINYPNG_REGISTRAR_AMERICAS", service: getTinyPngRegistrarServiceName("americas") },
+  { binding: "TINYPNG_REGISTRAR_EUROPE", service: getTinyPngRegistrarServiceName("europe") },
+];
 
 /**
  * 验证必要的环境变量
@@ -69,6 +85,15 @@ const setupConfigFile = (examplePath: string, targetPath: string) => {
         case "wrangler.tinypng.json":
           json.name = `${PROJECT_NAME}-tinypng-pool-worker`;
           break;
+        case "wrangler.tinypng.registrar-apac.json":
+          json.name = getTinyPngRegistrarServiceName("apac");
+          break;
+        case "wrangler.tinypng.registrar-americas.json":
+          json.name = getTinyPngRegistrarServiceName("americas");
+          break;
+        case "wrangler.tinypng.registrar-europe.json":
+          json.name = getTinyPngRegistrarServiceName("europe");
+          break;
         default:
           break;
       }
@@ -99,6 +124,9 @@ const setupWranglerConfigs = () => {
     { example: "wrangler.email.example.json", target: "wrangler.email.json" },
     { example: "wrangler.cleanup.example.json", target: "wrangler.cleanup.json" },
     { example: "wrangler.tinypng.example.json", target: "wrangler.tinypng.json" },
+    { example: "wrangler.tinypng.registrar-apac.example.json", target: "wrangler.tinypng.registrar-apac.json" },
+    { example: "wrangler.tinypng.registrar-americas.example.json", target: "wrangler.tinypng.registrar-americas.json" },
+    { example: "wrangler.tinypng.registrar-europe.example.json", target: "wrangler.tinypng.registrar-europe.json" },
   ];
 
   // 处理每个配置文件
@@ -107,6 +135,16 @@ const setupWranglerConfigs = () => {
       resolve(config.example),
       resolve(config.target)
     );
+  }
+
+  for (const filename of ["wrangler.json", "wrangler.tinypng.json"]) {
+    const configPath = resolve(filename);
+    if (!existsSync(configPath)) continue;
+
+    const json = JSON.parse(readFileSync(configPath, "utf-8"));
+    json.services = getTinyPngServiceBindings();
+    writeFileSync(configPath, JSON.stringify(json, null, 2));
+    console.log(`✅ Updated TinyPNG service bindings in ${filename}`);
   }
 };
 
@@ -122,6 +160,7 @@ const updateDatabaseConfig = (dbId: string) => {
     "wrangler.email.json",
     "wrangler.cleanup.json",
     "wrangler.tinypng.json",
+    ...TINYPNG_REGISTRAR_CONFIGS.map(({ file }) => file),
   ];
 
   for (const filename of configFiles) {
@@ -428,7 +467,24 @@ const deployTinyPngWorker = () => {
     console.log("✅ TinyPNG Pool Worker deployed successfully");
   } catch (error) {
     console.error("❌ TinyPNG Pool Worker deployment failed:", error);
-    // 继续执行而不中断
+    throw error;
+  }
+};
+
+/**
+ * 部署区域 TinyPNG 注册 Worker
+ */
+const deployTinyPngRegistrarWorkers = () => {
+  console.log("🚧 Deploying regional TinyPNG registrar Workers...");
+
+  for (const { region, file } of TINYPNG_REGISTRAR_CONFIGS) {
+    try {
+      execSync(`${WRANGLER_COMMAND} deploy --config ${file}`, { stdio: "inherit" });
+      console.log(`✅ TinyPNG registrar Worker deployed: ${region}`);
+    } catch (error) {
+      console.error(`❌ TinyPNG registrar Worker deployment failed: ${region}`, error);
+      throw error;
+    }
   }
 };
 
@@ -510,6 +566,7 @@ const main = async () => {
     await checkAndCreateKVNamespace();
     await checkAndCreatePages();
     pushPagesSecret();
+    deployTinyPngRegistrarWorkers();
     deployPages();
     deployEmailWorker();
     deployCleanupWorker();

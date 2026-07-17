@@ -2,6 +2,25 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.14.18] - 2026-07-17
+
+### Features
+
+- **TinyPNG 多区域节点**：新增亚太、美洲和欧洲三个独立注册 Worker，通过 fetch 型 Service Binding 接收协调节点派发，并分别配置 Cloudflare Placement Hint。
+- **职责隔离**：保留唯一协调节点负责 Cron、失效记录清理、Pool 容量检查与区域任务派发；区域节点每轮只新增并提交自己的一个注册任务，不再执行清理。
+- **集群状态面板**：TinyPNG Pool 卡片新增 Worker 节点轨道，展示协调/注册职责、配置区域、实际执行位置、最近状态、执行时间和单节点成功数；上一轮任务改为集群汇总。
+
+### Reliability
+
+- **重复投递幂等**：定时轮次使用稳定 `cycleId`，每个节点以 `cycleId + workerId` 生成唯一任务标识，避免 Cloudflare Cron 重复投递造成同节点重复注册。
+- **容量统一控制**：协调节点清理后统一计算剩余 Pool 容量，只派发容量允许的区域节点；派发失败也会持久化到节点与任务记录中。
+- **部署依赖顺序**：自动发布流程改为先迁移 D1、部署三个区域 Worker，再部署带 Service Binding 的 Pages 与协调 Worker。
+
+### Tests
+
+- **多 Worker 回归**：新增 Worker 注册表、唯一清理职责、区域配置、D1 迁移和集群统计测试；TinyPNG Pool 10 项、桌面授权后端 16 项全部通过。
+- **构建与配置验证**：通过 TypeScript、ESLint、Next.js 生产构建、Cloudflare Pages 构建，以及三个区域 Worker 与协调 Worker 的 Wrangler dry-run。
+
 ## [1.14.17] - 2026-07-14
 
 ### Performance
