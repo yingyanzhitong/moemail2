@@ -1,0 +1,38 @@
+app/lib/tinypng-pool-egress-ip.ts
+  s_016fa4053668b5::t_11349ddc42aa76 1-62
+app/lib/tinypng-pool-task.ts
+  s_016fa4053668b5::t_b075d1274cbc6a 10,210-212
+tests/tinypng-pool-egress-ip.test.mjs
+  s_016fa4053668b5::t_b455bcde12b451 1-47
+app/components/profile/tinypng-pool-stats-card.tsx
+  s_08a5d2af59f20b::t_deddb0c870f42d 3,25-29,127-133,185-189,756,764-765,768-823
+app/lib/tinypng-pool-log-columns.ts
+  s_08a5d2af59f20b::t_6bbde49ad27481 1-36
+tests/tinypng-pool-log-columns.test.mjs
+  s_08a5d2af59f20b::t_d1974d9f4fea2e 1-36
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.12",
+  "base_commit_sha": "22654e9c771aade16ebf4300827ddbb231b93e1c",
+  "prompts": {},
+  "logical_commit_id": "22654e9c771aade16ebf4300827ddbb231b93e1c",
+  "sessions": {
+    "s_016fa4053668b5": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f4cce-0e1e-7a00-b270-cd79fbd1f593",
+        "model": "gpt-5.5"
+      },
+      "human_author": "masongzhi <masongzhi@bigo.sg>"
+    },
+    "s_08a5d2af59f20b": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f6e36-eb10-75f2-8bcf-261f89808829",
+        "model": "unknown"
+      },
+      "human_author": "masongzhi <masongzhi@bigo.sg>"
+    }
+  }
+}
