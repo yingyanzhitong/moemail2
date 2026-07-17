@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.14.24] - 2026-07-17
+
+### Fixed
+
+- **中转响应读取**：发送完整 HTTP 请求后释放 Socket 写锁而不主动关闭写流，依靠 `Connection: close` 由中转服务在响应后关闭连接，避免 Cloudflare Socket 提前结束读取而将 TinyPNG 响应识别为空。
+
+### Tests
+
+- **中转 POST 验证**：通过中转服务向 TinyPNG 提交无效测试载荷，确认可获得完整的 HTTP 400 响应头与正文长度。
+
 ## [1.14.23] - 2026-07-17
 
 ### Fixed

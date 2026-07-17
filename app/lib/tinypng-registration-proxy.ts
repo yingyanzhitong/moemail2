@@ -181,7 +181,7 @@ export async function requestTinyPngRegistration(
       '',
       body,
     ].join('\r\n')))
-    await requestWriter.close()
+    requestWriter.releaseLock()
 
     const responseReader = socket.readable.getReader()
     const response = await readAll(responseReader, RESPONSE_LIMIT)
