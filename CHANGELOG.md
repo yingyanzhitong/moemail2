@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.14.23] - 2026-07-17
+
+### Fixed
+
+- **注册代理转发方式**：TinyPNG 注册改为通过中转服务的 HTTPS 正向转发提交，由中转机建立到 TinyPNG 的 TLS 连接，消除 Cloudflare Socket 在 CONNECT 后升级 TLS 时出现的握手失败；Magic Link、Token 和 API Key 获取继续直连。
+
+### Tests
+
+- **中转 HTTPS 转发验证**：已通过中转服务以绝对 HTTPS URL 转发到 TinyPNG，确认返回目标站点响应；并通过 TypeScript、TinyPNG Pool 17 项测试及 Cloudflare Pages 构建。
+
 ## [1.14.22] - 2026-07-17
 
 ### Fixed
