@@ -1,0 +1,24 @@
+CHANGELOG.md
+  s_e5002961b964c4::t_1d7152c58175bc 5-14
+app/lib/tinypng-registration-proxy.ts
+  s_e5002961b964c4::t_0061018e98b965 18,165,169,171,173,186,191
+package.json
+  s_e5002961b964c4::t_011bd01e239fd0 3
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.12",
+  "base_commit_sha": "ff025a6393e9453906b4f81db24bdb42b6f085c0",
+  "prompts": {},
+  "logical_commit_id": "ff025a6393e9453906b4f81db24bdb42b6f085c0",
+  "sessions": {
+    "s_e5002961b964c4": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f6f35-d45f-7862-b4c9-994bca45b7a4",
+        "model": "unknown"
+      },
+      "human_author": "masongzhi <masongzhi@bigo.sg>"
+    }
+  }
+}
