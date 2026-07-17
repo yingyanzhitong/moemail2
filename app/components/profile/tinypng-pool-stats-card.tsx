@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { Activity, Database, Link, Copy, Check, Loader2, Clock3, History, MapPin, Network, Play, ScrollText, Server, Wrench } from "lucide-react"
 import { useRouter } from "next/navigation"
-import { useLocale, useTranslations } from "next-intl"
+import { useLocale } from "next-intl"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -14,13 +14,6 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
 import { useToast } from "@/components/ui/use-toast"
 import {
   groupTinyPngTaskLogs,
@@ -37,7 +30,6 @@ interface TinyPngWorkerState {
   role: 'coordinator' | 'registrar'
   configuredRegion: string | null
   actualPlacement: string | null
-  emailDomain: string | null
   enabled: boolean
   maintenanceOwner: boolean
   status: TinyPngWorkerStatus
@@ -82,8 +74,6 @@ interface PoolStats {
   assigned: number
   invalid: number
   desktopLicenses: number
-  emailDomains: string[]
-  emailDomain: string
   cronExpression: string
   workers: TinyPngWorkerState[]
   taskStatus: TinyPngTaskStatus
@@ -133,8 +123,6 @@ const WORKER_LOG_FALLBACK_META: Record<TinyPngTaskLogWorkerId, { name: string; r
   'registrar-americas': { name: '美洲注册节点', region: '美洲 · 弗吉尼亚' },
 }
 
-const DEFAULT_EMAIL_DOMAIN_VALUE = '__default__'
-
 function formatTaskTime(value: string): string {
   return new Intl.DateTimeFormat('zh-CN', {
     month: 'numeric',
@@ -160,9 +148,6 @@ export function TinyPngPoolStatsCard() {
   const [stats, setStats] = useState<PoolStats | null>(null)
   const [loading, setLoading] = useState(true)
   const [running, setRunning] = useState(false)
-  const [emailDomain, setEmailDomain] = useState("")
-  const [savingEmailDomain, setSavingEmailDomain] = useState(false)
-  const [savingWorkerEmailDomainId, setSavingWorkerEmailDomainId] = useState<string | null>(null)
   const [cronExpression, setCronExpression] = useState("0 * * * *")
   const [savingCronExpression, setSavingCronExpression] = useState(false)
   const [generateLoading, setGenerateLoading] = useState(false)
@@ -180,7 +165,6 @@ export function TinyPngPoolStatsCard() {
   const lastTaskLogValueRef = useRef('')
   const router = useRouter()
   const locale = useLocale()
-  const tWebsite = useTranslations("profile.website")
   const { toast } = useToast()
   const taskLogsByWorker = useMemo(() => groupTinyPngTaskLogs(taskLogs), [taskLogs])
   const workersById = useMemo(
@@ -195,7 +179,6 @@ export function TinyPngPoolStatsCard() {
       if (!res.ok) throw new Error("获取缓冲池状态失败")
       const data = await res.json() as PoolStats
       setStats(data)
-      setEmailDomain(data.emailDomain)
       setCronExpression(data.cronExpression)
       return data
     } catch (error) {
@@ -343,85 +326,6 @@ export function TinyPngPoolStatsCard() {
     setTaskLogDialogOpen(true)
   }
 
-  const handleEmailDomainChange = async (nextEmailDomain: string) => {
-    const previousEmailDomain = emailDomain
-    setEmailDomain(nextEmailDomain)
-    setSavingEmailDomain(true)
-
-    try {
-      const res = await fetch("/api/admin/tinypng-pool/config", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ emailDomain: nextEmailDomain }),
-      })
-      const data = await res.json() as { emailDomain?: string; error?: string }
-      if (!res.ok || !data.emailDomain) {
-        throw new Error(data.error || "保存邮箱域名失败")
-      }
-
-      setEmailDomain(data.emailDomain)
-      toast({
-        title: "Pool 默认邮箱域名已更新",
-        description: `未单独配置的区域节点将使用 @${data.emailDomain}`,
-      })
-    } catch (error) {
-      setEmailDomain(previousEmailDomain)
-      toast({
-        title: "保存邮箱域名失败",
-        description: error instanceof Error ? error.message : "请稍后重试",
-        variant: "destructive",
-      })
-    } finally {
-      setSavingEmailDomain(false)
-    }
-  }
-
-  const handleWorkerEmailDomainChange = async (
-    worker: TinyPngWorkerState,
-    nextValue: string,
-  ) => {
-    const nextEmailDomain = nextValue === DEFAULT_EMAIL_DOMAIN_VALUE ? null : nextValue
-    const previousStats = stats
-    setSavingWorkerEmailDomainId(worker.id)
-    setStats((currentStats) => currentStats ? {
-      ...currentStats,
-      workers: currentStats.workers.map((currentWorker) => currentWorker.id === worker.id
-        ? {
-            ...currentWorker,
-            emailDomain: nextEmailDomain,
-          }
-        : currentWorker),
-    } : currentStats)
-
-    try {
-      const res = await fetch("/api/admin/tinypng-pool/config", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ workerId: worker.id, emailDomain: nextEmailDomain }),
-      })
-      const data = await res.json() as { workerId?: string; error?: string }
-      if (!res.ok || data.workerId !== worker.id) {
-        throw new Error(data.error || "保存节点邮箱域名失败")
-      }
-
-      toast({
-        title: `${worker.name} 邮箱域名已更新`,
-        description: nextEmailDomain
-          ? `后续注册将使用 @${nextEmailDomain}`
-          : `后续注册将跟随默认域名 @${emailDomain}`,
-      })
-    } catch (error) {
-      setStats(previousStats)
-      toast({
-        title: "保存节点邮箱域名失败",
-        description: error instanceof Error ? error.message : "请稍后重试",
-        variant: "destructive",
-      })
-    } finally {
-      setSavingWorkerEmailDomainId(null)
-    }
-  }
-
   const handleSaveCronExpression = async () => {
     const previousCronExpression = stats?.cronExpression ?? "0 * * * *"
     setSavingCronExpression(true)
@@ -506,43 +410,19 @@ export function TinyPngPoolStatsCard() {
           </div>
         </div>
 
-        <div className="mb-4 grid gap-3 lg:grid-cols-2">
-          <div className="flex flex-col gap-3 rounded-lg border border-yellow-500/20 bg-yellow-500/[0.025] p-3 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <p className="text-sm font-medium">{tWebsite("tinypngPoolEmailDomain")}</p>
-              <p className="mt-1 text-xs text-muted-foreground">
-                {tWebsite("tinypngPoolEmailDomainDescription")}
-              </p>
-            </div>
-            <Select
-              value={emailDomain}
-              onValueChange={handleEmailDomainChange}
-              disabled={savingEmailDomain || stats.emailDomains.length === 0}
-            >
-              <SelectTrigger className="w-full sm:w-64">
-                <SelectValue placeholder={tWebsite("tinypngPoolEmailDomainPlaceholder")} />
-              </SelectTrigger>
-              <SelectContent>
-                {stats.emailDomains.map((domain) => (
-                  <SelectItem key={domain} value={domain}>
-                    @{domain}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="flex flex-col gap-3 rounded-lg border border-yellow-500/20 bg-yellow-500/[0.025] p-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="mb-4 rounded-lg border border-yellow-500/20 bg-yellow-500/[0.025] p-3">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
             <div>
               <p className="text-sm font-medium">定时任务 Cron</p>
               <p className="mt-1 text-xs text-muted-foreground">Linux 五段 Cron，按北京时间执行；支持数字、*、,、-、/。</p>
             </div>
-            <div className="flex w-full gap-2 sm:w-auto">
+            <div className="flex w-full flex-col gap-2 sm:flex-row lg:w-auto">
               <Input
                 value={cronExpression}
                 onChange={(event) => setCronExpression(event.target.value)}
                 disabled={savingCronExpression || running}
                 placeholder="0 * * * *"
-                className="w-full font-mono sm:w-48"
+                className="w-full font-mono sm:flex-1 lg:w-48 lg:flex-none"
                 aria-label="TinyPNG Pool 定时任务 Cron 表达式"
               />
               <Button
@@ -554,6 +434,7 @@ export function TinyPngPoolStatsCard() {
                   || !cronExpression.trim()
                   || cronExpression.trim() === stats.cronExpression
                 }
+                className="w-full sm:w-auto"
               >
                 {savingCronExpression ? <Loader2 className="h-4 w-4 animate-spin" /> : '保存'}
               </Button>
@@ -611,33 +492,6 @@ export function TinyPngPoolStatsCard() {
                       </span>
                     ) : null}
                   </div>
-                  {worker.role === 'registrar' ? (
-                    <div className="mt-3">
-                      <p className="mb-1 text-[10px] text-muted-foreground">注册邮箱域名</p>
-                      <Select
-                        value={worker.emailDomain || DEFAULT_EMAIL_DOMAIN_VALUE}
-                        onValueChange={(value) => handleWorkerEmailDomainChange(worker, value)}
-                        disabled={savingWorkerEmailDomainId === worker.id || stats.emailDomains.length === 0}
-                      >
-                        <SelectTrigger
-                          className="h-8 w-full px-2 text-xs"
-                          aria-label={`${worker.name}注册邮箱域名`}
-                        >
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value={DEFAULT_EMAIL_DOMAIN_VALUE}>
-                            跟随默认 · @{emailDomain}
-                          </SelectItem>
-                          {stats.emailDomains.map((domain) => (
-                            <SelectItem key={domain} value={domain}>
-                              @{domain}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  ) : null}
                   <div className="mt-3 space-y-1.5 text-xs">
                     <div className="flex items-center gap-1.5 text-muted-foreground">
                       <MapPin className="h-3 w-3 shrink-0" />
@@ -807,11 +661,6 @@ export function TinyPngPoolStatsCard() {
                         <MapPin className="h-3 w-3 shrink-0" />
                         <span className="truncate">{regionLabel}</span>
                       </div>
-                      {!isCoordinator ? (
-                        <p className="mt-1.5 truncate font-mono text-[11px] text-muted-foreground">
-                          @{worker?.emailDomain || emailDomain}
-                        </p>
-                      ) : null}
                     </div>
                     <pre className="m-0 min-h-0 flex-1 overflow-auto whitespace-pre-wrap break-words p-3 font-mono text-[11px] leading-5 text-foreground">
                       {workerLogs.length > 0 ? workerLogs.join("\n\n") : '本轮暂无日志。'}

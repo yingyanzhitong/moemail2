@@ -14,7 +14,6 @@ import {
   type TinyPngRegistrarBindingEnv,
   type TinyPngWorkerDefinition,
 } from './tinypng-pool-workers'
-import { resolveTinyPngWorkerEmailDomain } from './tinypng-pool-domain'
 
 export interface TinyPngPoolCoordinatorEnv extends TinyPngRegistrarBindingEnv {
   DB: D1Database
@@ -237,7 +236,6 @@ export async function runTinyPngPoolCoordinator(
   const db = drizzle(env.DB, { schema: { tinypngWorkerNodes } })
   const enabledNodes = await db.select({
     id: tinypngWorkerNodes.id,
-    emailDomain: tinypngWorkerNodes.emailDomain,
   })
     .from(tinypngWorkerNodes)
     .where(and(
@@ -256,10 +254,7 @@ export async function runTinyPngPoolCoordinator(
       cycleId,
       triggerType: options.triggerType,
       scheduleSlot: options.scheduledAt.toISOString(),
-      emailDomain: resolveTinyPngWorkerEmailDomain(
-        enabledNodeMap.get(worker.id)?.emailDomain,
-        options.emailDomain,
-      ),
+      emailDomain: options.emailDomain,
     })),
   )
 

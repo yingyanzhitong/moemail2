@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.14.26] - 2026-07-17
+
+### Changed
+
+- **Pool 域名策略**：移除 TinyPNG Pool 默认域名及各区域 Worker 的域名选择；所有区域注册统一使用站点邮箱域名列表中的第一个域名，运行时默认域名仅作为回退。
+
+### Fixed
+
+- **Cron 保存布局**：定时任务输入框与保存按钮改为自适应布局，卡片宽度不足时自动分行，不再溢出。
+
+### Tests
+
+- **域名策略回归**：覆盖站点域名首选与运行时默认域名回退场景。
+
 ## [1.14.25] - 2026-07-17
 
 ### Fixed
