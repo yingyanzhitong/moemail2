@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.14.25] - 2026-07-17
+
+### Fixed
+
+- **Pool 后续日志刷新**：完整执行日志弹窗在打开期间每 2 秒读取一次最新任务记录，不再因注册请求在步骤 2/6 返回而停止刷新；验证邮件、Magic Link、Bearer Token 和 API Key 的异步步骤会持续显示至 6/6。
+
 ## [1.14.24] - 2026-07-17
 
 ### Fixed

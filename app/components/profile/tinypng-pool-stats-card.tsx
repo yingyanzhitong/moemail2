@@ -212,12 +212,12 @@ export function TinyPngPoolStatsCard() {
   }, [fetchStats])
 
   useEffect(() => {
-    if (!running) return
+    if (!taskLogDialogOpen) return
 
     const refreshTaskLogs = async () => {
       const data = await fetchStats(false)
       const lastRun = data?.taskStatus.lastRun
-      if (!lastRun || lastRun.status !== 'running') return
+      if (!lastRun) return
 
       const nextLogs = lastRun.logs.length > 0 ? lastRun.logs : [lastRun.message]
       const nextValue = nextLogs.join("\n\n")
@@ -233,7 +233,7 @@ export function TinyPngPoolStatsCard() {
     }, 2000)
 
     return () => window.clearInterval(timer)
-  }, [fetchStats, running])
+  }, [fetchStats, taskLogDialogOpen])
 
   const handleGenerate = async () => {
     setGenerateLoading(true)
@@ -762,7 +762,7 @@ export function TinyPngPoolStatsCard() {
             <DialogDescription>
               {running
                 ? '四列日志每 2 秒自动刷新；验证邮件到达后会继续显示 Token 与 API Key 获取步骤。'
-                : '按协调、亚太、欧洲和美洲节点分列展示；已隐藏 Magic Link、Token、Bearer Token 与 API Key 的敏感内容。'}
+                : '弹窗打开期间每 2 秒自动刷新；已隐藏 Magic Link、Token、Bearer Token 与 API Key 的敏感内容。'}
             </DialogDescription>
           </DialogHeader>
           <div className="min-h-0 overflow-x-auto pb-1">
