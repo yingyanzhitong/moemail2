@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.14.27] - 2026-07-17
+
+### Changed
+
+- **Cron 保存操作**：保存按钮改为固定宽度的暖黄色主操作，加入保存图标与保存中状态，避免文字换行并增强与 Pool 主色的一致性。
+
 ## [1.14.26] - 2026-07-17
 
 ### Changed

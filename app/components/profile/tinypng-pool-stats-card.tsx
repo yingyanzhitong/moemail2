@@ -1,7 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { Activity, Database, Link, Copy, Check, Loader2, Clock3, History, MapPin, Network, Play, ScrollText, Server, Wrench } from "lucide-react"
+import { Activity, Database, Link, Copy, Check, Loader2, Clock3, History, MapPin, Network, Play, Save, ScrollText, Server, Wrench } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useLocale } from "next-intl"
 import { Button } from "@/components/ui/button"
@@ -426,7 +426,6 @@ export function TinyPngPoolStatsCard() {
                 aria-label="TinyPNG Pool 定时任务 Cron 表达式"
               />
               <Button
-                variant="outline"
                 onClick={handleSaveCronExpression}
                 disabled={
                   savingCronExpression
@@ -434,9 +433,14 @@ export function TinyPngPoolStatsCard() {
                   || !cronExpression.trim()
                   || cronExpression.trim() === stats.cronExpression
                 }
-                className="w-full sm:w-auto"
+                className="h-9 min-w-20 shrink-0 gap-1.5 whitespace-nowrap border border-yellow-500/80 bg-yellow-500 px-3 text-yellow-950 shadow-sm hover:bg-yellow-400 focus-visible:ring-yellow-500 active:translate-y-px dark:border-yellow-400/70 dark:bg-yellow-400 dark:text-yellow-950 dark:hover:bg-yellow-300"
               >
-                {savingCronExpression ? <Loader2 className="h-4 w-4 animate-spin" /> : '保存'}
+                {savingCronExpression ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Save className="h-3.5 w-3.5" />
+                )}
+                <span>{savingCronExpression ? '保存中' : '保存'}</span>
               </Button>
             </div>
           </div>
