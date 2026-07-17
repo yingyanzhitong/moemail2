@@ -1,50 +1,58 @@
 ---
 name: 智能压缩工具
-description: 面向批量图片压缩的影像校准工作台，强调精密、可信与可恢复。
-version: 1.0.0
+description: macOS 优先的本地图片压缩工具，以原生工具栏、队列工作区和检查器组织高频批处理任务。
+version: 2.0.0
 tokens:
   color:
-    ink: "#172033"
-    canvas: "#F3F6FA"
+    ink: "#1D1D1F"
+    canvas: "#F5F5F7"
     panel: "#FFFFFF"
-    line: "#D6DDE8"
-    calibration-blue: "#2956D8"
-    success: "#15806A"
-    danger: "#C53D47"
-    muted: "#667085"
+    line: "#D2D2D7"
+    calibration-blue: "#0A63C9"
+    success: "#26845B"
+    danger: "#C13C45"
+    muted: "#6E6E73"
   typography:
-    sans: "Source Han Sans SC, Noto Sans CJK SC, PingFang SC, Microsoft YaHei, sans-serif"
-    mono: "JetBrains Mono, SFMono-Regular, Consolas, monospace"
+    sans: "-apple-system, BlinkMacSystemFont, PingFang SC, Hiragino Sans GB, Microsoft YaHei, sans-serif"
+    mono: "SF Mono, JetBrains Mono, SFMono-Regular, Menlo, Consolas, monospace"
   radius:
-    control: 8px
+    control: 9px
     panel: 12px
   spacing:
     unit: 4px
   motion:
-    compression-duration: 220ms
-    easing: cubic-bezier(0.22, 1, 0.36, 1)
+    compression-duration: 200ms
+    easing: ease-out
 ---
 
 # 设计方向
 
-界面采用“影像校准工作台”语义：浅色画布、清晰分隔线、接触印样式队列和克制的蓝色校准标记。它应像专业摄影工具，而不是营销型 SaaS 仪表盘。
+界面采用 macOS 专业工具语义，而非网页仪表盘。系统原生标题栏和菜单负责应用级操作；内容区域是紧凑工具栏、任务工作区和右侧检查器。表面以系统灰阶、细分隔线和克制的蓝色动作色建立层级，不使用渐变与玻璃叠层。
 
 # 布局
 
-单窗口最小尺寸为 `960 × 640`。左侧为文件入口和任务队列，右侧固定展示授权周期、逻辑额度和输出规则。系统原生标题栏保留；主要内容使用 24px 外边距与 12px 面板圆角。
+- 系统菜单：导入图片、导入文件夹、开始压缩及标准系统命令。
+- 工作区工具栏：产品上下文、当前批次的开始或取消操作。
+- 主工作区：导入条与虚拟化压缩队列。只渲染可视行；缩略图在可视范围内按需生成。
+- 检查器：Auth Link 授予的逻辑额度、有效期、续费入口与输出策略。
+- 激活页：单独的设备授权表单；预览失败或超时不能阻止用户继续兑换 Auth Link。
 
 # 排版
 
-中文正文优先使用思源黑体系统回退。路径、尺寸与压缩比例使用 JetBrains Mono。标题不使用超大字号，信息层级依靠字重、间距和细线建立。
+中文正文使用系统无衬线字体，以符合 macOS 和 Windows 的本地文本渲染；文件大小、数量和路径使用等宽字体。
 
 # 颜色与质感
 
-禁止渐变和大面积发光效果。阴影仅用于弹窗与悬浮状态，面板默认依靠 `Line` 描边分隔。Calibration Blue 只用于主要动作、焦点和进度；成功与错误颜色必须同时配合文字或图标。
+`Ink` 用于内容，`Muted` 用于辅助说明，`Calibration Blue` 仅用于主要动作、焦点和进行中状态。状态颜色永远同时配合图标或文本，不能仅靠颜色传达含义。
+
+# 性能与队列
+
+队列采用固定行高虚拟列表，避免大批图片导入时创建全部行节点。来自 Rust 的进度事件只替换对应任务记录，并通过非紧急更新进入渲染器。缩略图最多两路后台生成，压缩开始后让位于网络和磁盘传输。
 
 # 交互与动效
 
-代表性交互是图片条目的“原始大小 → 压缩大小”双刻度条，完成时执行一次 220ms 收缩动画。输出方式只提供“导出到新文件夹”和“覆盖原文件”；后者开始前必须展示明确的二次确认弹窗。其他状态变化保持即时。系统开启 `prefers-reduced-motion` 时禁用所有非必要动画。
+导出只提供“新文件夹”和“覆盖原文件”两种模式；覆盖模式必须二次确认。完成后，原始大小与压缩后大小的双刻度条以 200ms 收缩动画显示结果；启用 reduced motion 时取消该动画。
 
 # 可访问性
 
-所有操作支持键盘导航，并提供明显的 `:focus-visible` 外环。按钮禁用时同时给出原因；错误信息说明恢复动作。正文与背景保持 WCAG AA 对比度。v1 仅提供浅色模式与简体中文。
+所有按钮、单选项、队列行和错误恢复操作均可通过键盘聚焦，最小窗口为 `960 × 640`。

@@ -1,15 +1,12 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { App } from '@/App'
-import type { ActivationPlanPreview, BootstrapView, CompressionSummary, ImageJob, LicenseView, OutputMode } from '@/types'
+import type { ActivationPlanPreview, BootstrapView, LicenseView } from '@/types'
 
-const { bootstrapMock, loadThumbnailsMock, previewMock, redeemMock, pickImagesMock, startCompressionMock } = vi.hoisted(() => ({
+const { bootstrapMock, previewMock, redeemMock } = vi.hoisted(() => ({
   bootstrapMock: vi.fn<() => Promise<BootstrapView>>(),
-  loadThumbnailsMock: vi.fn<(ids: string[]) => Promise<void>>(),
   previewMock: vi.fn<(code: string) => Promise<ActivationPlanPreview>>(),
   redeemMock: vi.fn<(code: string) => Promise<LicenseView>>(),
-  pickImagesMock: vi.fn<() => Promise<ImageJob[]>>(),
-  startCompressionMock: vi.fn<(ids: string[], outputMode: OutputMode) => Promise<CompressionSummary>>(),
 }))
 
 vi.mock('@tauri-apps/api/core', () => ({ isTauri: () => false }))
@@ -18,12 +15,13 @@ vi.mock('@/lib/desktop-api', () => ({
   bootstrap: bootstrapMock,
   cancelCompression: vi.fn(),
   pickFolder: vi.fn(),
-  pickImages: pickImagesMock,
-  loadThumbnails: loadThumbnailsMock,
+  pickImages: vi.fn(),
+  requestThumbnails: vi.fn(),
   previewActivation: previewMock,
   redeem: redeemMock,
   refreshLicense: vi.fn(),
-  startCompression: startCompressionMock,
+  removeJobs: vi.fn(),
+  startCompression: vi.fn(),
   takeActivationCode: vi.fn(),
 }))
 
@@ -95,6 +93,18 @@ describe('桌面端授权入口', () => {
     expect(screen.queryByRole('heading', { name: '激活后进入压缩工作台' })).not.toBeInTheDocument()
   })
 
+  it('授权方案预览未完成时仍允许直接激活，避免界面卡在解析状态', async () => {
+    bootstrapMock.mockResolvedValue({ license: unlicensed, reconciledReservations: 0, pendingUsageReports: 0 })
+    previewMock.mockImplementation(() => new Promise<ActivationPlanPreview>(() => undefined))
+
+    render(<App />)
+    fireEvent.change(await screen.findByLabelText('Auth Link 或授权码'), {
+      target: { value: 'https://compress.example.com/activate/grant-code-12345678901234567890' },
+    })
+
+    expect(screen.getByRole('button', { name: '激活并进入工作台' })).toBeEnabled()
+  })
+
   it('启动时提示尚未回传的使用记录', async () => {
     bootstrapMock.mockResolvedValue({ license: active, reconciledReservations: 0, pendingUsageReports: 2 })
 
@@ -103,38 +113,13 @@ describe('桌面端授权入口', () => {
     expect(await screen.findByText('有 2 个使用记录待联网回传，将在下次压缩时继续同步。')).toBeInTheDocument()
   })
 
-  it('覆盖原文件必须二次确认后才开始压缩', async () => {
+  it('工作台保留原生导入入口，并提供两种明确的输出策略', async () => {
     bootstrapMock.mockResolvedValue({ license: active, reconciledReservations: 0, pendingUsageReports: 0 })
-    pickImagesMock.mockResolvedValue([{
-      id: 'image-1',
-      name: '照片.png',
-      sourcePath: '/图片/照片.png',
-      outputPath: '/图片/压缩结果/照片.png',
-      parentLabel: '/图片',
-      originalSize: 1024,
-      thumbnailDataUrl: null,
-    }])
-    loadThumbnailsMock.mockResolvedValue()
-    startCompressionMock.mockResolvedValue({
-      completed: 1,
-      failed: 0,
-      skipped: 0,
-      cancelled: 0,
-      license: { ...active, used: 1 },
-      pendingUsageReports: 0,
-    })
 
     render(<App />)
-    fireEvent.click(await screen.findByRole('button', { name: '选择图片' }))
-    expect(await screen.findByText('照片.png')).toBeInTheDocument()
-    expect(loadThumbnailsMock).toHaveBeenCalledWith(['image-1'])
-    fireEvent.click(screen.getByRole('radio', { name: /覆盖原文件/ }))
-    fireEvent.click(screen.getByRole('button', { name: '开始压缩' }))
-
-    expect(await screen.findByRole('heading', { name: '确认覆盖 1 张原图？' })).toBeInTheDocument()
-    expect(startCompressionMock).not.toHaveBeenCalled()
-    fireEvent.click(screen.getByRole('button', { name: '确认覆盖并开始' }))
-    await waitFor(() => expect(startCompressionMock).toHaveBeenCalledWith(['image-1'], 'overwrite'))
-    expect(await screen.findByText(/使用情况已回传/)).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: '导入图片' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '导入文件夹' })).toBeInTheDocument()
+    expect(screen.getByRole('radio', { name: /导出到新文件夹/ })).toBeChecked()
+    expect(screen.getByRole('radio', { name: /覆盖原文件/ })).not.toBeChecked()
   })
 })

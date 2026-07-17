@@ -1,14 +1,18 @@
-import { memo } from 'react'
-import { AlertCircle, Check, FileImage, Loader2, MinusCircle, X } from 'lucide-react'
+import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { AlertCircle, Check, FileImage, Loader2, MinusCircle, Trash2, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import type { QueueSnapshot } from '@/lib/queue-store'
 import type { CompressionStage, QueueItem } from '@/types'
 
+const ROW_HEIGHT = 92
+const OVERSCAN = 5
+
 const stageLabels: Record<CompressionStage, string> = {
-  preparing: '正在准备',
-  reading: '正在读取',
-  uploading: '上传并等待 TinyPNG',
-  downloading: '正在下载',
-  writing: '正在写入',
+  preparing: '准备中',
+  reading: '读取原图',
+  uploading: '上传至 TinyPNG',
+  downloading: '下载压缩结果',
+  writing: '写入文件',
 }
 
 function formatBytes(bytes: number) {
@@ -18,38 +22,19 @@ function formatBytes(bytes: number) {
 }
 
 function StatusIcon({ item }: { item: QueueItem }) {
-  if (item.status === 'compressing') return <Loader2 className="h-4 w-4 animate-spin text-[#2956D8]" />
-  if (item.status === 'completed') return <Check className="h-4 w-4 text-[#15806A]" />
-  if (item.status === 'failed') return <AlertCircle className="h-4 w-4 text-[#C53D47]" />
-  if (item.status === 'skipped' || item.status === 'cancelled') return <MinusCircle className="h-4 w-4 text-[#778196]" />
-  return <span className="h-2 w-2 rounded-full border border-[#9DA9BC]" />
+  if (item.status === 'compressing') return <Loader2 className="h-4 w-4 animate-spin text-[#0A63C9]" />
+  if (item.status === 'completed') return <Check className="h-4 w-4 text-[#26845B]" />
+  if (item.status === 'failed') return <AlertCircle className="h-4 w-4 text-[#C13C45]" />
+  if (item.status === 'skipped' || item.status === 'cancelled') return <MinusCircle className="h-4 w-4 text-[#8A8A8E]" />
+  return <span className="h-2 w-2 rounded-full bg-[#B4B4BA]" />
 }
 
-function CalibrationBars({ item }: { item: QueueItem }) {
-  const compressedRatio = item.compressedSize ? Math.max(5, Math.min(100, item.compressedSize / item.originalSize * 100)) : 100
-  const progressLabel = item.status === 'compressing'
-    ? item.stage ? stageLabels[item.stage] : '正在准备'
-    : '等待压缩'
-  return (
-    <div className="mt-3 grid grid-cols-[88px_1fr] items-center gap-x-3 gap-y-1.5 text-[10px] text-[#778196]">
-      <span className="font-mono">原始 {formatBytes(item.originalSize)}</span>
-      <span className="h-1.5 overflow-hidden rounded-full bg-[#E4E9F1]"><span className="block h-full w-full rounded-full bg-[#AEB9CA]" /></span>
-      <span className="font-mono">{item.compressedSize ? `压缩 ${formatBytes(item.compressedSize)}` : progressLabel}</span>
-      <span className="h-1.5 overflow-hidden rounded-full bg-[#E4E9F1]">
-        <span
-          className={`block h-full rounded-full bg-[#2956D8] ${item.status === 'completed' ? 'transition-[width] duration-[220ms] ease-out motion-reduce:transition-none' : ''}`}
-          style={{ width: `${item.status === 'completed' ? compressedRatio : 0}%` }}
-        />
-      </span>
-    </div>
-  )
-}
-
-interface FileQueueProps {
-  items: QueueItem[]
-  running: boolean
-  onRemove: (id: string) => void
-  onClear: () => void
+function ResultValue({ item }: { item: QueueItem }) {
+  if (item.status === 'compressing') return <span className="text-[#0A63C9]">{item.stage ? stageLabels[item.stage] : '处理中'}</span>
+  if (item.compressedSize) return <span className="font-mono text-[#343438]">{formatBytes(item.compressedSize)}</span>
+  if (item.status === 'failed') return <span className="text-[#C13C45]">失败</span>
+  if (item.status === 'skipped') return <span>已跳过</span>
+  return <span>—</span>
 }
 
 interface QueueRowProps {
@@ -60,53 +45,123 @@ interface QueueRowProps {
 }
 
 const QueueRow = memo(function QueueRow({ item, index, running, onRemove }: QueueRowProps) {
+  const ratio = item.compressedSize ? Math.max(5, Math.min(100, item.compressedSize / item.originalSize * 100)) : 100
   return (
-    <article className="group grid grid-cols-[44px_minmax(0,1fr)_auto] gap-3 rounded-[10px] border border-transparent px-2.5 py-3 hover:border-[#D6DDE8] hover:bg-[#FAFBFD]">
-      <div className="relative flex h-11 w-11 items-center justify-center overflow-hidden rounded-[7px] border border-[#D6DDE8] bg-[#EEF2F7]">
-        {item.thumbnailDataUrl ? <img src={item.thumbnailDataUrl} alt="" className="h-full w-full object-cover" /> : <FileImage className="h-5 w-5 text-[#7E8BA1]" />}
-        <span className="absolute left-0 top-0 bg-[#172033]/75 px-1 font-mono text-[8px] text-white">{String(index + 1).padStart(2, '0')}</span>
+    <article className="queue-row grid h-[92px] grid-cols-[38px_minmax(0,1fr)_112px_96px_34px] items-center gap-3 border-b border-[#E5E5EA] px-4" role="listitem">
+      <div className="relative flex h-9 w-9 items-center justify-center overflow-hidden rounded-[7px] bg-[#ECECF0] text-[#6E6E73]">
+        {item.thumbnailDataUrl ? <img src={item.thumbnailDataUrl} alt="" className="h-full w-full object-cover" /> : <FileImage className="h-4 w-4" />}
+        <span className="absolute bottom-0 right-0 bg-black/55 px-1 font-mono text-[8px] leading-3 text-white">{index + 1}</span>
       </div>
       <div className="min-w-0">
         <div className="flex items-center gap-2">
-          <p className="truncate text-sm font-medium" title={item.sourcePath}>{item.name}</p>
-          {item.savingsPercent !== undefined ? <span className="shrink-0 rounded-full bg-[#15806A]/10 px-1.5 py-0.5 font-mono text-[10px] text-[#15806A]">−{item.savingsPercent.toFixed(1)}%</span> : null}
+          <p className="truncate text-[13px] font-medium text-[#1D1D1F]" title={item.sourcePath}>{item.name}</p>
+          {item.savingsPercent !== undefined ? <span className="rounded-full bg-[#E9F5EE] px-1.5 py-0.5 font-mono text-[10px] text-[#26845B]">−{item.savingsPercent.toFixed(1)}%</span> : null}
         </div>
-        <p className="mt-0.5 truncate font-mono text-[10px] text-[#8792A5]" title={item.outputPath}>{item.parentLabel}</p>
-        <CalibrationBars item={item} />
-        {item.error ? <p className={`mt-2 text-xs ${item.status === 'failed' ? 'text-[#C53D47]' : 'text-[#667085]'}`}>{item.error}</p> : null}
+        <p className={`mt-1 truncate text-[11px] ${item.error ? 'text-[#C13C45]' : 'text-[#86868B]'}`} title={item.error ?? item.parentLabel}>{item.error ?? item.parentLabel}</p>
       </div>
-      <div className="flex items-start gap-1 pt-1">
+      <div className="min-w-0 text-right text-[11px] text-[#6E6E73]">
+        <p className="font-mono text-[#343438]">{formatBytes(item.originalSize)}</p>
+        <div className="mt-1.5 h-1 overflow-hidden rounded-full bg-[#E5E5EA]"><span className="block h-full rounded-full bg-[#A1A1A6]" style={{ width: '100%' }} /></div>
+      </div>
+      <div className="min-w-0 text-right text-[11px] text-[#6E6E73]">
+        <p className="truncate"><ResultValue item={item} /></p>
+        <div className="mt-1.5 h-1 overflow-hidden rounded-full bg-[#E5E5EA]"><span className={`block h-full rounded-full bg-[#0A63C9] ${item.status === 'completed' ? 'transition-[width] duration-200 motion-reduce:transition-none' : ''}`} style={{ width: `${item.status === 'completed' ? ratio : item.status === 'compressing' ? 42 : 0}%` }} /></div>
+      </div>
+      <div className="flex items-center justify-end gap-1">
         <span className="flex h-7 w-7 items-center justify-center" aria-label={item.status}><StatusIcon item={item} /></span>
-        {!running && item.status === 'queued' ? (
-          <Button variant="ghost" size="icon" className="h-7 w-7 opacity-0 group-hover:opacity-100 focus:opacity-100" onClick={() => onRemove(item.id)} aria-label={`移除 ${item.name}`}><X className="h-3.5 w-3.5" /></Button>
-        ) : null}
+        {!running && item.status === 'queued' ? <button type="button" className="queue-remove absolute flex h-7 w-7 items-center justify-center rounded-md text-[#86868B] hover:bg-[#F2F2F7] hover:text-[#C13C45] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0A63C9]" onClick={() => onRemove(item.id)} aria-label={`移除 ${item.name}`}><X className="h-3.5 w-3.5" /></button> : null}
       </div>
     </article>
   )
 })
 
-export function FileQueue({ items, running, onRemove, onClear }: FileQueueProps) {
+interface FileQueueProps {
+  snapshot: QueueSnapshot
+  running: boolean
+  scanning: boolean
+  onRemove: (id: string) => void
+  onClear: () => void
+  onRequestThumbnails: (ids: string[]) => void
+}
+
+export function FileQueue({ snapshot, running, scanning, onRemove, onClear, onRequestThumbnails }: FileQueueProps) {
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const frameRef = useRef<number | null>(null)
+  const requestedSignatureRef = useRef('')
+  const [viewport, setViewport] = useState({ scrollTop: 0, height: 420 })
+  const itemCount = snapshot.order.length
+  const visibleRange = useMemo(() => {
+    const start = Math.max(0, Math.floor(viewport.scrollTop / ROW_HEIGHT) - OVERSCAN)
+    const end = Math.min(itemCount, Math.ceil((viewport.scrollTop + viewport.height) / ROW_HEIGHT) + OVERSCAN)
+    return { start, end }
+  }, [itemCount, viewport])
+  const visibleIds = useMemo(() => snapshot.order.slice(visibleRange.start, visibleRange.end), [snapshot.order, visibleRange])
+
+  const measure = useCallback(() => {
+    const element = scrollRef.current
+    if (!element) return
+    setViewport({ scrollTop: element.scrollTop, height: element.clientHeight || 420 })
+  }, [])
+
+  useLayoutEffect(() => {
+    measure()
+    const element = scrollRef.current
+    if (!element || typeof ResizeObserver === 'undefined') return
+    const observer = new ResizeObserver(measure)
+    observer.observe(element)
+    return () => observer.disconnect()
+  }, [measure])
+
+  useEffect(() => {
+    const missing = visibleIds.filter((id) => !snapshot.items.get(id)?.thumbnailDataUrl)
+    const signature = `${running}:${missing.join(',')}`
+    if (missing.length === 0 || requestedSignatureRef.current === signature) return
+    requestedSignatureRef.current = signature
+    onRequestThumbnails(missing)
+  }, [onRequestThumbnails, running, snapshot.revision, snapshot.items, visibleIds])
+
+  const onScroll = useCallback(() => {
+    if (frameRef.current !== null) return
+    frameRef.current = window.requestAnimationFrame(() => {
+      frameRef.current = null
+      measure()
+    })
+  }, [measure])
+
+  useEffect(() => () => {
+    if (frameRef.current !== null) window.cancelAnimationFrame(frameRef.current)
+  }, [])
+
   return (
-    <section className="min-h-0 flex-1 overflow-hidden rounded-xl border border-[#D6DDE8] bg-white">
-      <header className="flex h-12 items-center justify-between border-b border-[#D6DDE8] px-4">
-        <div className="flex items-baseline gap-2">
-          <h2 className="text-sm font-semibold">接触印样</h2>
-          <span className="font-mono text-[11px] text-[#778196]">{items.length.toString().padStart(2, '0')} IMAGES</span>
+    <section className="queue-panel flex min-h-0 flex-1 flex-col" aria-labelledby="queue-title">
+      <header className="flex h-12 shrink-0 items-center justify-between border-b border-[#D2D2D7] px-4">
+        <div className="flex items-center gap-2">
+          <h2 id="queue-title" className="text-[13px] font-semibold text-[#1D1D1F]">压缩队列</h2>
+          <span className="rounded-full bg-[#ECECF0] px-2 py-0.5 font-mono text-[10px] text-[#6E6E73]">{itemCount}</span>
+          {scanning ? <span className="flex items-center gap-1 text-[11px] text-[#0A63C9]"><Loader2 className="h-3 w-3 animate-spin" />正在导入</span> : null}
         </div>
-        <Button variant="ghost" size="sm" onClick={onClear} disabled={running || items.length === 0}>清空</Button>
+        <Button variant="ghost" size="sm" onClick={onClear} disabled={running || itemCount === 0}><Trash2 className="h-3.5 w-3.5" />清空</Button>
       </header>
-      {items.length === 0 ? (
-        <div className="flex h-[290px] flex-col items-center justify-center text-center text-[#778196]">
-          <FileImage className="mb-3 h-8 w-8 stroke-[1.4]" />
-          <p className="text-sm">尚未加入图片</p>
-          <p className="mt-1 text-xs">任务完成后仍会保留结果，便于核对。</p>
+      {itemCount === 0 ? (
+        <div className="flex flex-1 flex-col items-center justify-center text-center text-[#86868B]">
+          <FileImage className="mb-3 h-7 w-7 stroke-[1.3]" />
+          <p className="text-[13px]">尚未加入图片</p>
+          <p className="mt-1 text-[11px]">导入后将立即显示文件列表。</p>
         </div>
       ) : (
-        <div className="queue-scroll max-h-[calc(100vh-265px)] min-h-[290px] overflow-y-auto p-2">
-          {items.map((item, index) => (
-            <QueueRow key={item.id} item={item} index={index} running={running} onRemove={onRemove} />
-          ))}
-        </div>
+        <>
+          <div className="queue-columns grid shrink-0 grid-cols-[38px_minmax(0,1fr)_112px_96px_34px] gap-3 border-b border-[#E5E5EA] px-4 py-2 text-[10px] font-medium uppercase tracking-[0.06em] text-[#86868B]"><span /><span>文件</span><span className="text-right">原始</span><span className="text-right">压缩后</span><span /></div>
+          <div ref={scrollRef} className="min-h-0 flex-1 overflow-auto" onScroll={onScroll} role="list" aria-label="图片压缩队列">
+            <div className="relative" style={{ height: itemCount * ROW_HEIGHT }}>
+              <div className="absolute inset-x-0" style={{ transform: `translateY(${visibleRange.start * ROW_HEIGHT}px)` }}>
+                {visibleIds.map((id, offset) => {
+                  const item = snapshot.items.get(id)
+                  return item ? <QueueRow key={id} item={item} index={visibleRange.start + offset} running={running} onRemove={onRemove} /> : null
+                })}
+              </div>
+            </div>
+          </div>
+        </>
       )}
     </section>
   )

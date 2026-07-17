@@ -1,5 +1,5 @@
 import { invoke, isTauri } from '@tauri-apps/api/core'
-import type { ActivationPlanPreview, BootstrapView, CompressionSummary, ImageJob, LicenseView, OutputMode } from '@/types'
+import type { ActivationPlanPreview, BootstrapView, CompressionStart, LicenseView, OutputMode } from '@/types'
 
 const demoLicense: LicenseView = {
   id: 'preview',
@@ -40,25 +40,30 @@ export async function refreshLicense(): Promise<LicenseView> {
   return invoke<LicenseView>('refresh_license')
 }
 
-export async function pickImages(): Promise<ImageJob[]> {
-  return invoke<ImageJob[]>('pick_images')
+export async function pickImages(): Promise<void> {
+  return invoke('pick_images')
 }
 
-export async function pickFolder(): Promise<ImageJob[]> {
-  return invoke<ImageJob[]>('pick_folder')
+export async function pickFolder(): Promise<void> {
+  return invoke('pick_folder')
 }
 
-export async function addDroppedPaths(paths: string[]): Promise<ImageJob[]> {
-  return invoke<ImageJob[]>('add_paths', { paths })
+export async function addDroppedPaths(paths: string[]): Promise<void> {
+  return invoke('add_paths', { paths })
 }
 
-export async function loadThumbnails(ids: string[]): Promise<void> {
+export async function requestThumbnails(ids: string[]): Promise<void> {
   if (!isTauri()) return
-  return invoke('load_thumbnails', { ids })
+  return invoke('request_thumbnails', { ids })
 }
 
-export async function startCompression(ids: string[], outputMode: OutputMode): Promise<CompressionSummary> {
-  return invoke<CompressionSummary>('start_compression', { ids, outputMode })
+export async function removeJobs(ids: string[]): Promise<void> {
+  if (!isTauri()) return
+  return invoke('remove_jobs', { ids })
+}
+
+export async function startCompression(ids: string[], outputMode: OutputMode): Promise<CompressionStart> {
+  return invoke<CompressionStart>('start_compression', { ids, outputMode })
 }
 
 export async function cancelCompression(): Promise<void> {

@@ -1,6 +1,6 @@
 [package]
 name = "smart-image-compressor"
-version = "0.1.10"
+version = "0.2.0"
 description = "智能压缩工具"
 authors = ["moemail"]
 edition = "2021"
@@ -22,7 +22,7 @@ image = { version = "0.25.8", default-features = false, features = ["jpeg", "png
 iota_stronghold = "2.1.0"
 keyring = "4.1.4"
 rand = "0.8.5"
-reqwest = { version = "0.12.24", default-features = false, features = ["json", "rustls-tls"] }
+reqwest = { version = "0.12.24", default-features = false, features = ["json", "rustls-tls", "stream"] }
 serde = { version = "1.0.228", features = ["derive"] }
 serde_json = "1.0.145"
 sha2 = "0.10.9"
@@ -33,7 +33,8 @@ tauri-plugin-single-instance = { version = "2.4.2", features = ["deep-link"] }
 tauri-plugin-stronghold = "2.3.1"
 tempfile = "3.23.0"
 thiserror = "2.0.17"
-tokio = { version = "1.48.0", features = ["fs", "sync", "time"] }
+tokio = { version = "1.48.0", features = ["fs", "io-util", "sync", "time"] }
+tokio-util = { version = "0.7.16", features = ["io"] }
 url = "2.5.7"
 uuid = { version = "1.18.1", features = ["v4", "serde"] }
 walkdir = "2.5.0"

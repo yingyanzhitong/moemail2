@@ -35,81 +35,39 @@ export function LicensePanel({ license, refreshing, onRefresh, onActivate, outpu
   const expiresSoon = active && license.expiresAt !== null && new Date(license.expiresAt).getTime() - Date.now() <= 3 * 86400000
   const statusText = expiresSoon ? '授权即将到期' : STATUS_TEXT[license.status]
   return (
-    <aside className="flex min-h-0 flex-col gap-4">
-      <section className="rounded-xl border border-[#D6DDE8] bg-white p-5">
-        <div className="flex items-start justify-between">
+    <aside className="inspector-panel" aria-label="授权与输出设置">
+      <section className="inspector-group">
+        <div className="flex items-start justify-between gap-3">
           <div>
-            <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#778196]">License calibration</p>
-            <div className="mt-2 flex items-center gap-2">
-              <span className={`h-2 w-2 rounded-full ${active ? 'bg-[#15806A]' : 'bg-[#C53D47]'}`} />
-              <h2 className="text-sm font-semibold">{statusText}</h2>
-            </div>
+            <p className="inspector-label">套餐</p>
+            <div className="mt-1.5 flex items-center gap-2"><span className={`h-2 w-2 rounded-full ${active ? 'bg-[#26845B]' : 'bg-[#C13C45]'}`} /><h2 className="text-[13px] font-semibold text-[#1D1D1F]">{statusText}</h2></div>
           </div>
-          <Button variant="ghost" size="icon" onClick={onRefresh} disabled={refreshing || license.status === 'unlicensed'} aria-label="重新校验本地授权">
-            <RotateCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
-          </Button>
+          <Button variant="ghost" size="icon" onClick={onRefresh} disabled={refreshing || license.status === 'unlicensed'} aria-label="重新校验本地授权"><RotateCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} /></Button>
         </div>
 
-        <div className="mt-6 flex items-end justify-between">
-          <div>
-            <p className="font-mono text-[30px] font-semibold leading-none tracking-tight">{license.used.toLocaleString()}</p>
-            <p className="mt-2 text-xs text-[#667085]">已压缩数量</p>
-          </div>
-          <p className="font-mono text-sm text-[#667085]">/ {license.limit.toLocaleString()}</p>
-        </div>
-        <Progress value={percent} className="mt-4" aria-label={`已使用 ${percent.toFixed(1)}%`} />
-        <div className="mt-2 flex justify-between font-mono text-[10px] text-[#8792A5]"><span>0</span><span>{license.limit.toLocaleString()}</span></div>
-
-        <div className="mt-5 grid gap-3 border-t border-[#E1E6EE] pt-4 text-sm">
-          <div className="flex items-center justify-between gap-3">
-            <span className="flex items-center gap-2 text-[#667085]"><KeyRound className="h-4 w-4" />Token 数量</span>
-            <span className="font-mono text-xs">{license.tokenCount.toLocaleString()}</span>
-          </div>
-          <div className="flex items-center justify-between gap-3">
-            <span className="flex items-center gap-2 text-[#667085]"><CalendarClock className="h-4 w-4" />当前周期</span>
-            <span className="font-mono text-xs">至 {formatDate(license.expiresAt)}</span>
-          </div>
-          {license.scheduledPeriods.length > 0 ? (
-            <div className="flex items-center justify-between gap-3">
-              <span className="flex items-center gap-2 text-[#667085]"><CircleGauge className="h-4 w-4" />续费排期</span>
-              <span className="text-xs text-[#15806A]">已排 {license.scheduledPeriods.length} 期</span>
-            </div>
-          ) : null}
+        <div className="mt-5 rounded-xl bg-[#F5F5F7] p-3.5">
+          <div className="flex items-end justify-between"><div><p className="font-mono text-[28px] font-semibold leading-none tracking-tight text-[#1D1D1F]">{license.used.toLocaleString()}</p><p className="mt-1.5 text-[11px] text-[#6E6E73]">已压缩数量</p></div><p className="font-mono text-[12px] text-[#6E6E73]">/ {license.limit.toLocaleString()}</p></div>
+          <Progress value={percent} className="mt-3 h-1.5" aria-label={`已使用 ${percent.toFixed(1)}%`} />
         </div>
 
-        {!active ? (
-          <div className="mt-5 rounded-[8px] border border-[#C53D47]/20 bg-[#C53D47]/5 p-3">
-            <p className="flex items-center gap-2 text-xs font-medium text-[#A4313A]"><ShieldAlert className="h-4 w-4" />新批次已暂停</p>
-            <p className="mt-1 text-xs leading-5 text-[#7A4A4F]">{license.message ?? '队列和历史结果仍可查看，粘贴新授权链接后即可继续。'}</p>
-          </div>
-        ) : null}
-        <Button className="mt-4 w-full" variant={active ? 'outline' : 'default'} onClick={onActivate}>{active ? '粘贴续费或换机链接' : '激活授权'}</Button>
+        <dl className="inspector-details mt-3">
+          <div><dt><KeyRound className="h-3.5 w-3.5" />Token 数量</dt><dd className="font-mono">{license.tokenCount.toLocaleString()}</dd></div>
+          <div><dt><CalendarClock className="h-3.5 w-3.5" />到期时间</dt><dd>{formatDate(license.expiresAt)}</dd></div>
+          {license.scheduledPeriods.length > 0 ? <div><dt><CircleGauge className="h-3.5 w-3.5" />续费排期</dt><dd className="text-[#26845B]">已排 {license.scheduledPeriods.length} 期</dd></div> : null}
+        </dl>
+
+        {!active ? <div className="mt-3 rounded-lg bg-[#FFF1F1] px-3 py-2.5"><p className="flex items-center gap-1.5 text-[11px] font-medium text-[#B4232B]"><ShieldAlert className="h-3.5 w-3.5" />新批次已暂停</p><p className="mt-1 text-[11px] leading-4 text-[#8D464B]">{license.message ?? '粘贴新的授权链接后可继续使用。'}</p></div> : null}
+        <Button className="mt-3 w-full" variant={active ? 'outline' : 'default'} size="sm" onClick={onActivate}>{active ? '续费或换机' : '激活授权'}</Button>
       </section>
 
-      <section className="rounded-xl border border-[#D6DDE8] bg-white p-5">
-        <div className="flex items-center gap-2"><FolderOutput className="h-4 w-4 text-[#2956D8]" /><h2 className="text-sm font-semibold">输出位置</h2></div>
-        <div className="mt-4 grid gap-2" role="radiogroup" aria-label="输出方式">
-          <button
-            type="button"
-            role="radio"
-            aria-checked={outputMode === 'new_folder'}
-            disabled={outputDisabled}
-            onClick={() => onOutputModeChange('new_folder')}
-            className={`rounded-[9px] border p-3 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${outputMode === 'new_folder' ? 'border-[#2956D8] bg-[#2956D8]/5' : 'border-[#D6DDE8] hover:border-[#AEBBD0]'}`}
-          >
-            <span className="text-xs font-semibold text-[#172033]">导出到新文件夹</span>
-            <span className="mt-1 block text-[11px] leading-4 text-[#667085]">生成“压缩结果”目录并保留原文件。</span>
+      <section className="inspector-group">
+        <div className="flex items-center gap-2"><FolderOutput className="h-4 w-4 text-[#0A63C9]" /><h2 className="text-[13px] font-semibold text-[#1D1D1F]">输出方式</h2></div>
+        <div className="mt-3 grid gap-2" role="radiogroup" aria-label="输出方式">
+          <button type="button" role="radio" aria-checked={outputMode === 'new_folder'} disabled={outputDisabled} onClick={() => onOutputModeChange('new_folder')} className={`output-choice ${outputMode === 'new_folder' ? 'output-choice-active' : ''}`}>
+            <span>导出到新文件夹</span><small>保留原图，在同级创建结果目录。</small>
           </button>
-          <button
-            type="button"
-            role="radio"
-            aria-checked={outputMode === 'overwrite'}
-            disabled={outputDisabled}
-            onClick={() => onOutputModeChange('overwrite')}
-            className={`rounded-[9px] border p-3 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${outputMode === 'overwrite' ? 'border-[#C53D47] bg-[#C53D47]/5' : 'border-[#D6DDE8] hover:border-[#AEBBD0]'}`}
-          >
-            <span className="flex items-center gap-1.5 text-xs font-semibold text-[#172033]"><Replace className="h-3.5 w-3.5 text-[#C53D47]" />覆盖原文件</span>
-            <span className="mt-1 block text-[11px] leading-4 text-[#667085]">直接替换源图片，开始前需要再次确认。</span>
+          <button type="button" role="radio" aria-checked={outputMode === 'overwrite'} disabled={outputDisabled} onClick={() => onOutputModeChange('overwrite')} className={`output-choice ${outputMode === 'overwrite' ? 'output-choice-danger' : ''}`}>
+            <span className="flex items-center gap-1.5"><Replace className="h-3.5 w-3.5 text-[#C13C45]" />覆盖原文件</span><small>开始前会再次确认，无法恢复原图。</small>
           </button>
         </div>
       </section>

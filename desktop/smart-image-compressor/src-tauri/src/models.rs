@@ -103,6 +103,28 @@ pub struct CompressionSummary {
     pub pending_usage_reports: usize,
 }
 
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CompressionStart {
+    pub accepted_count: usize,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CompressionFinished {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub summary: Option<CompressionSummary>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub error: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ScanComplete {
+    pub discovered: usize,
+    pub skipped: usize,
+}
+
 #[derive(Clone, Serialize, Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct KeyState {

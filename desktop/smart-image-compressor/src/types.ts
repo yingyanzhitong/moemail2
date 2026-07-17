@@ -69,3 +69,17 @@ export interface CompressionSummary {
   license: LicenseView
   pendingUsageReports: number
 }
+
+export interface CompressionStart {
+  acceptedCount: number
+}
+
+export interface CompressionFinished {
+  summary?: CompressionSummary
+  error?: string
+}
+
+export interface ScanComplete {
+  discovered: number
+  skipped: number
+}

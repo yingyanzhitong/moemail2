@@ -1,4 +1,5 @@
 mod commands;
+mod compression;
 mod license_api;
 mod models;
 mod scanner;
@@ -8,6 +9,8 @@ mod vault;
 use std::sync::Arc;
 
 use commands::AppState;
+#[cfg(desktop)]
+use tauri::menu::{Menu, MenuItem, PredefinedMenuItem};
 use tauri::{Emitter, Manager};
 use tauri_plugin_deep_link::DeepLinkExt;
 use url::Url;
@@ -40,14 +43,64 @@ fn emit_activation(app: &tauri::AppHandle, value: &str) {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    tauri::Builder::default()
+    let builder = tauri::Builder::default()
         .plugin(tauri_plugin_single_instance::init(|app, argv, _cwd| {
             for argument in argv {
                 emit_activation(app, &argument);
             }
         }))
         .plugin(tauri_plugin_deep_link::init())
-        .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_dialog::init());
+
+    #[cfg(desktop)]
+    let builder = builder
+        .menu(|app| {
+            let menu = Menu::default(app)?;
+            let import_images = MenuItem::with_id(
+                app,
+                "command.import-images",
+                "导入图片…",
+                true,
+                Some("CmdOrCtrl+O"),
+            )?;
+            let import_folder = MenuItem::with_id(
+                app,
+                "command.import-folder",
+                "导入文件夹…",
+                true,
+                Some("CmdOrCtrl+Shift+O"),
+            )?;
+            let compress = MenuItem::with_id(
+                app,
+                "command.compress",
+                "开始压缩",
+                true,
+                Some("CmdOrCtrl+Enter"),
+            )?;
+            let separator = PredefinedMenuItem::separator(app)?;
+            if let Some(file_item) = menu.get("File") {
+                if let Some(file_menu) = file_item.as_submenu() {
+                    file_menu.insert_items(
+                        &[&import_images, &import_folder, &separator, &compress],
+                        0,
+                    )?;
+                }
+            }
+            Ok(menu)
+        })
+        .on_menu_event(|app, event| {
+            let command = match event.id().as_ref() {
+                "command.import-images" => Some("import-images"),
+                "command.import-folder" => Some("import-folder"),
+                "command.compress" => Some("compress"),
+                _ => None,
+            };
+            if let Some(command) = command {
+                let _ = app.emit("workspace-command", command);
+            }
+        });
+
+    builder
         .setup(|app| {
             let vault = Arc::new(CredentialVault::open(app.handle())?);
             vault.ensure_device_identity()?;
@@ -75,7 +128,8 @@ pub fn run() {
             commands::pick_images,
             commands::pick_folder,
             commands::add_paths,
-            commands::load_thumbnails,
+            commands::request_thumbnails,
+            commands::remove_jobs,
             commands::start_compression,
             commands::cancel_compression,
         ])

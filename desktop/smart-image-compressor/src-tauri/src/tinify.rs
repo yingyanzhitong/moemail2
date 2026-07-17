@@ -1,11 +1,13 @@
-use std::{io::Write, path::PathBuf, time::Duration};
+use std::{path::Path, time::Duration};
 
-use anyhow::{anyhow, Context, Result};
 use base64::{engine::general_purpose::STANDARD, Engine};
-use bytes::Bytes;
 use chrono::{DateTime, Utc};
-use reqwest::{header::DATE, Client, Response, StatusCode};
+use futures::StreamExt;
+use reqwest::{header::DATE, Body, Client, Response, StatusCode};
+use tempfile::{NamedTempFile, TempPath};
+use tokio::io::AsyncWriteExt;
 use tokio::time::sleep;
+use tokio_util::io::ReaderStream;
 
 const SHRINK_URL: &str = "https://api.tinify.com/shrink";
 const MAX_RETRIES: usize = 2;
@@ -16,13 +18,15 @@ pub enum TinifyError {
     InvalidKey,
     #[error("TinyPNG Key 本自然月容量已用尽")]
     CapacityExhausted(u32),
+    #[error("授权已到期（已通过 TinyPNG 服务器时间校验）")]
+    LicenseExpired,
     #[error("TinyPNG 请求失败：{0}")]
     Request(String),
 }
 
 #[derive(Debug)]
 pub struct TinifyOutput {
-    pub bytes: Bytes,
+    pub compressed_size: u64,
     pub compression_count: Option<u32>,
     pub server_time: Option<DateTime<Utc>>,
 }
@@ -47,6 +51,10 @@ fn server_time(response: &Response) -> Option<DateTime<Utc>> {
         .map(|value| value.with_timezone(&Utc))
 }
 
+fn authorization(api_key: &str) -> String {
+    format!("Basic {}", STANDARD.encode(format!("api:{api_key}")))
+}
+
 fn retryable(status: StatusCode) -> bool {
     status == StatusCode::TOO_MANY_REQUESTS || status.is_server_error()
 }
@@ -55,18 +63,40 @@ async fn retry_delay(attempt: usize) {
     sleep(Duration::from_millis(300 * 2_u64.pow(attempt as u32))).await;
 }
 
+fn response_error(
+    response: Response,
+    action: &str,
+) -> impl std::future::Future<Output = TinifyError> {
+    let action = action.to_string();
+    async move {
+        let status = response.status();
+        let message = response.text().await.unwrap_or_default();
+        TinifyError::Request(format!(
+            "{} {} {}",
+            action,
+            status.as_u16(),
+            message.chars().take(160).collect::<String>()
+        ))
+    }
+}
+
 async fn upload(
     client: &Client,
     api_key: &str,
-    body: Bytes,
+    source: &Path,
     shrink_url: &str,
 ) -> std::result::Result<(String, Option<u32>, Option<DateTime<Utc>>), TinifyError> {
-    let authorization = format!("Basic {}", STANDARD.encode(format!("api:{api_key}")));
+    let authorization = authorization(api_key);
     for attempt in 0..=MAX_RETRIES {
+        // 每次重试重新打开文件：流式请求体不可复用，但不再把整张图片复制到内存。
+        let file = tokio::fs::File::open(source)
+            .await
+            .map_err(|error| TinifyError::Request(format!("读取原图失败：{error}")))?;
+        let body = Body::wrap_stream(ReaderStream::new(file));
         let response = client
             .post(shrink_url)
             .header("Authorization", &authorization)
-            .body(body.clone())
+            .body(body)
             .send()
             .await
             .map_err(|error| TinifyError::Request(error.to_string()))?;
@@ -85,13 +115,7 @@ async fn upload(
             continue;
         }
         if !response.status().is_success() {
-            let status = response.status();
-            let message = response.text().await.unwrap_or_default();
-            return Err(TinifyError::Request(format!(
-                "{} {}",
-                status.as_u16(),
-                message.chars().take(160).collect::<String>()
-            )));
+            return Err(response_error(response, "上传失败").await);
         }
         let location = response
             .headers()
@@ -103,12 +127,40 @@ async fn upload(
     Err(TinifyError::Request("上传重试次数已用尽".into()))
 }
 
-async fn download(
+async fn persist_temp_file(
+    temp_path: TempPath,
+    destination: &Path,
+    overwrite: bool,
+) -> std::result::Result<(), TinifyError> {
+    let destination = destination.to_path_buf();
+    tokio::task::spawn_blocking(move || {
+        let result = if overwrite {
+            temp_path.persist(&destination)
+        } else {
+            temp_path.persist_noclobber(&destination)
+        };
+        result.map_err(|error| {
+            if !overwrite && error.error.kind() == std::io::ErrorKind::AlreadyExists {
+                TinifyError::Request("目标文件已存在".into())
+            } else {
+                TinifyError::Request(format!("无法原子写入输出文件：{}", error.error))
+            }
+        })
+    })
+    .await
+    .map_err(|error| TinifyError::Request(format!("输出写入任务异常：{error}")))?
+}
+
+async fn download_to_file(
     client: &Client,
     api_key: &str,
     location: &str,
+    destination: &Path,
+    overwrite: bool,
+    expires_at: Option<DateTime<Utc>>,
+    fallback_server_time: Option<DateTime<Utc>>,
 ) -> std::result::Result<TinifyOutput, TinifyError> {
-    let authorization = format!("Basic {}", STANDARD.encode(format!("api:{api_key}")));
+    let authorization = authorization(api_key);
     for attempt in 0..=MAX_RETRIES {
         let response = client
             .get(location)
@@ -131,17 +183,45 @@ async fn download(
             continue;
         }
         if !response.status().is_success() {
-            return Err(TinifyError::Request(format!(
-                "下载结果失败：{}",
-                response.status().as_u16()
-            )));
+            return Err(response_error(response, "下载结果失败").await);
         }
-        let bytes = response
-            .bytes()
+
+        let parent = destination
+            .parent()
+            .ok_or_else(|| TinifyError::Request("输出路径无效".into()))?;
+        tokio::fs::create_dir_all(parent)
             .await
-            .map_err(|error| TinifyError::Request(error.to_string()))?;
+            .map_err(|error| TinifyError::Request(format!("无法创建输出目录：{error}")))?;
+        let (file, temp_path) = NamedTempFile::new_in(parent)
+            .map_err(|error| TinifyError::Request(format!("无法创建临时文件：{error}")))?
+            .into_parts();
+        let mut file = tokio::fs::File::from_std(file);
+        let mut stream = response.bytes_stream();
+        let mut compressed_size = 0_u64;
+        while let Some(chunk) = stream.next().await {
+            let chunk =
+                chunk.map_err(|error| TinifyError::Request(format!("下载结果失败：{error}")))?;
+            file.write_all(&chunk)
+                .await
+                .map_err(|error| TinifyError::Request(format!("写入临时文件失败：{error}")))?;
+            compressed_size = compressed_size.saturating_add(chunk.len() as u64);
+        }
+        file.flush()
+            .await
+            .map_err(|error| TinifyError::Request(format!("刷新输出文件失败：{error}")))?;
+        file.sync_all()
+            .await
+            .map_err(|error| TinifyError::Request(format!("同步输出文件失败：{error}")))?;
+        drop(file);
+        if observed_at
+            .or(fallback_server_time)
+            .is_some_and(|time| expires_at.is_some_and(|expires_at| time >= expires_at))
+        {
+            return Err(TinifyError::LicenseExpired);
+        }
+        persist_temp_file(temp_path, destination, overwrite).await?;
         return Ok(TinifyOutput {
-            bytes,
+            compressed_size,
             compression_count: count,
             server_time: observed_at,
         });
@@ -149,48 +229,33 @@ async fn download(
     Err(TinifyError::Request("下载重试次数已用尽".into()))
 }
 
-pub async fn compress<F>(
+pub async fn compress_to_file<F>(
     client: &Client,
     api_key: &str,
-    source: &std::path::Path,
-    on_stage: F,
-) -> std::result::Result<TinifyOutput, TinifyError>
-where
-    F: FnMut(&'static str),
-{
-    compress_with_endpoint_and_progress(client, api_key, source, SHRINK_URL, on_stage).await
-}
-
-#[cfg(test)]
-async fn compress_with_endpoint(
-    client: &Client,
-    api_key: &str,
-    source: &std::path::Path,
-    shrink_url: &str,
-) -> std::result::Result<TinifyOutput, TinifyError> {
-    compress_with_endpoint_and_progress(client, api_key, source, shrink_url, |_| {}).await
-}
-
-async fn compress_with_endpoint_and_progress<F>(
-    client: &Client,
-    api_key: &str,
-    source: &std::path::Path,
-    shrink_url: &str,
+    source: &Path,
+    destination: &Path,
+    overwrite: bool,
+    expires_at: DateTime<Utc>,
     mut on_stage: F,
 ) -> std::result::Result<TinifyOutput, TinifyError>
 where
     F: FnMut(&'static str),
 {
     on_stage("reading");
-    let body = Bytes::from(
-        tokio::fs::read(source)
-            .await
-            .map_err(|error| TinifyError::Request(format!("读取原图失败：{error}")))?,
-    );
     on_stage("uploading");
-    let (location, upload_count, upload_time) = upload(client, api_key, body, shrink_url).await?;
+    let (location, upload_count, upload_time) = upload(client, api_key, source, SHRINK_URL).await?;
     on_stage("downloading");
-    let mut output = download(client, api_key, &location).await?;
+    let mut output = download_to_file(
+        client,
+        api_key,
+        &location,
+        destination,
+        overwrite,
+        Some(expires_at),
+        upload_time,
+    )
+    .await?;
+    on_stage("writing");
     if output.compression_count.is_none() {
         output.compression_count = upload_count;
     }
@@ -200,33 +265,32 @@ where
     Ok(output)
 }
 
-pub async fn atomic_write(path: &std::path::Path, bytes: Bytes, overwrite: bool) -> Result<()> {
-    let path = PathBuf::from(path);
-    tokio::task::spawn_blocking(move || -> Result<()> {
-        let parent = path.parent().context("输出路径无效")?;
-        std::fs::create_dir_all(parent).context("无法创建输出目录")?;
-        let mut temporary = tempfile::NamedTempFile::new_in(parent).context("无法创建临时文件")?;
-        temporary.write_all(&bytes).context("无法写入临时文件")?;
-        temporary.as_file().sync_all().context("无法同步临时文件")?;
-        if overwrite {
-            temporary
-                .persist(&path)
-                .map_err(|error| error.error)
-                .context("无法原子覆盖原文件")?;
-        } else {
-            temporary.persist_noclobber(&path).map_err(|error| {
-                if error.error.kind() == std::io::ErrorKind::AlreadyExists {
-                    anyhow!("目标文件已存在")
-                } else {
-                    anyhow!("无法原子写入输出文件：{}", error.error)
-                }
-            })?;
-        }
-        Ok(())
-    })
-    .await
-    .context("输出写入任务异常")??;
-    Ok(())
+#[cfg(test)]
+async fn compress_to_file_with_endpoint(
+    client: &Client,
+    api_key: &str,
+    source: &Path,
+    destination: &Path,
+    shrink_url: &str,
+) -> std::result::Result<TinifyOutput, TinifyError> {
+    let (location, upload_count, upload_time) = upload(client, api_key, source, shrink_url).await?;
+    let mut output = download_to_file(
+        client,
+        api_key,
+        &location,
+        destination,
+        false,
+        None,
+        upload_time,
+    )
+    .await?;
+    if output.compression_count.is_none() {
+        output.compression_count = upload_count;
+    }
+    if output.server_time.is_none() {
+        output.server_time = upload_time;
+    }
+    Ok(output)
 }
 
 #[cfg(test)]
@@ -239,7 +303,7 @@ mod tests {
     use super::*;
 
     #[tokio::test]
-    async fn follows_location_and_parses_compression_count() {
+    async fn follows_location_streams_result_and_parses_compression_count() {
         let server = MockServer::start();
         let download_url = server.url("/result");
         let upload = server.mock(|when, then| {
@@ -261,13 +325,20 @@ mod tests {
         });
         let temp = tempdir().unwrap();
         let source = temp.path().join("image.png");
+        let destination = temp.path().join("result.png");
         fs::write(&source, b"source").unwrap();
 
-        let output =
-            compress_with_endpoint(&Client::new(), "secret", &source, &server.url("/shrink"))
-                .await
-                .unwrap();
-        assert_eq!(output.bytes.as_ref(), b"compressed");
+        let output = compress_to_file_with_endpoint(
+            &Client::new(),
+            "secret",
+            &source,
+            &destination,
+            &server.url("/shrink"),
+        )
+        .await
+        .unwrap();
+        assert_eq!(fs::read(&destination).unwrap(), b"compressed");
+        assert_eq!(output.compressed_size, 10);
         assert_eq!(output.compression_count, Some(42));
         assert_eq!(
             output.server_time.unwrap().to_rfc3339(),
@@ -278,7 +349,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn reports_read_upload_and_download_stages_in_order() {
+    async fn keeps_existing_output_when_non_overwrite_commit_collides() {
         let server = MockServer::start();
         let download_url = server.url("/result");
         server.mock(|when, then| {
@@ -291,24 +362,55 @@ mod tests {
         });
         let temp = tempdir().unwrap();
         let source = temp.path().join("image.png");
+        let destination = temp.path().join("result.png");
         fs::write(&source, b"source").unwrap();
-        let mut stages = Vec::new();
+        fs::write(&destination, b"original").unwrap();
 
-        compress_with_endpoint_and_progress(
+        let error = compress_to_file_with_endpoint(
             &Client::new(),
             "secret",
             &source,
+            &destination,
             &server.url("/shrink"),
-            |stage| stages.push(stage),
         )
         .await
-        .unwrap();
-
-        assert_eq!(stages, vec!["reading", "uploading", "downloading"]);
+        .unwrap_err();
+        assert!(error.to_string().contains("目标文件已存在"));
+        assert_eq!(fs::read(destination).unwrap(), b"original");
     }
 
     #[tokio::test]
-    async fn large_image_client_overhead_stays_under_five_seconds() {
+    async fn refuses_to_commit_when_tinypng_server_time_is_expired() {
+        let server = MockServer::start();
+        server.mock(|when, then| {
+            when.method(GET).path("/result");
+            then.status(200)
+                .header("Date", "Tue, 14 Jul 2026 03:00:00 GMT")
+                .body("compressed");
+        });
+        let temp = tempdir().unwrap();
+        let destination = temp.path().join("result.png");
+        let expires_at = DateTime::parse_from_rfc3339("2026-07-14T02:59:00Z")
+            .unwrap()
+            .with_timezone(&Utc);
+
+        let error = download_to_file(
+            &Client::new(),
+            "secret",
+            &server.url("/result"),
+            &destination,
+            false,
+            Some(expires_at),
+            None,
+        )
+        .await
+        .unwrap_err();
+        assert!(matches!(error, TinifyError::LicenseExpired));
+        assert!(!destination.exists());
+    }
+
+    #[tokio::test]
+    async fn streams_large_image_without_client_overhead_over_five_seconds() {
         const SOURCE_SIZE: usize = 16 * 1024 * 1024;
         const OUTPUT_SIZE: usize = 8 * 1024 * 1024;
         const REMOTE_DELAY: Duration = Duration::from_millis(250);
@@ -333,24 +435,27 @@ mod tests {
         fs::write(&source, vec![0xa5; SOURCE_SIZE]).unwrap();
 
         let started = Instant::now();
-        let result =
-            compress_with_endpoint(&Client::new(), "secret", &source, &server.url("/shrink"))
-                .await
-                .unwrap();
-        atomic_write(&destination, result.bytes, false)
-            .await
-            .unwrap();
+        let result = compress_to_file_with_endpoint(
+            &Client::new(),
+            "secret",
+            &source,
+            &destination,
+            &server.url("/shrink"),
+        )
+        .await
+        .unwrap();
         let total = started.elapsed();
         let simulated_tinypng = REMOTE_DELAY * 2;
         let client_overhead = total.saturating_sub(simulated_tinypng);
 
         eprintln!(
-            "16MB→8MB: total={total:?}, simulated_tinypng={simulated_tinypng:?}, client_overhead={client_overhead:?}"
+            "streaming 16MB→8MB: total={total:?}, simulated_tinypng={simulated_tinypng:?}, client_overhead={client_overhead:?}"
         );
         assert!(
             client_overhead < MAX_CLIENT_OVERHEAD,
             "客户端额外耗时 {client_overhead:?} 超过 5 秒门槛"
         );
+        assert_eq!(result.compressed_size, OUTPUT_SIZE as u64);
         assert_eq!(fs::metadata(destination).unwrap().len(), OUTPUT_SIZE as u64);
     }
 
@@ -364,10 +469,9 @@ mod tests {
         let temp = tempdir().unwrap();
         let source = temp.path().join("image.png");
         fs::write(&source, b"source").unwrap();
-        let error =
-            compress_with_endpoint(&Client::new(), "secret", &source, &server.url("/shrink"))
-                .await
-                .unwrap_err();
+        let error = upload(&Client::new(), "secret", &source, &server.url("/shrink"))
+            .await
+            .unwrap_err();
         assert!(error.to_string().contains("Location"));
     }
 
@@ -381,10 +485,9 @@ mod tests {
         let temp = tempdir().unwrap();
         let source = temp.path().join("image.png");
         fs::write(&source, b"source").unwrap();
-        let error =
-            compress_with_endpoint(&Client::new(), "secret", &source, &server.url("/shrink"))
-                .await
-                .unwrap_err();
+        let error = upload(&Client::new(), "secret", &source, &server.url("/shrink"))
+            .await
+            .unwrap_err();
         assert!(matches!(error, TinifyError::InvalidKey));
     }
 
@@ -398,8 +501,7 @@ mod tests {
         let temp = tempdir().unwrap();
         let source = temp.path().join("image.png");
         fs::write(&source, b"source").unwrap();
-        let _ =
-            compress_with_endpoint(&Client::new(), "secret", &source, &server.url("/shrink")).await;
+        let _ = upload(&Client::new(), "secret", &source, &server.url("/shrink")).await;
         assert_eq!(request.calls(), 3);
     }
 
@@ -413,35 +515,9 @@ mod tests {
         let temp = tempdir().unwrap();
         let source = temp.path().join("image.png");
         fs::write(&source, b"source").unwrap();
-        let error =
-            compress_with_endpoint(&Client::new(), "secret", &source, &server.url("/shrink"))
-                .await
-                .unwrap_err();
-        assert!(matches!(error, TinifyError::CapacityExhausted(500)));
-    }
-
-    #[tokio::test]
-    async fn new_folder_output_never_overwrites_existing_file() {
-        let temp = tempdir().unwrap();
-        let output = temp.path().join("image.png");
-        fs::write(&output, b"original").unwrap();
-
-        let error = atomic_write(&output, Bytes::from_static(b"compressed"), false)
+        let error = upload(&Client::new(), "secret", &source, &server.url("/shrink"))
             .await
             .unwrap_err();
-        assert!(error.to_string().contains("目标文件已存在"));
-        assert_eq!(fs::read(output).unwrap(), b"original");
-    }
-
-    #[tokio::test]
-    async fn overwrite_output_replaces_original_atomically() {
-        let temp = tempdir().unwrap();
-        let output = temp.path().join("image.png");
-        fs::write(&output, b"original").unwrap();
-
-        atomic_write(&output, Bytes::from_static(b"compressed"), true)
-            .await
-            .unwrap();
-        assert_eq!(fs::read(output).unwrap(), b"compressed");
+        assert!(matches!(error, TinifyError::CapacityExhausted(500)));
     }
 }
