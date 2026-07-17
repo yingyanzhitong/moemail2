@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { Activity, Database, Link, Copy, Check, Loader2, Clock3, History, MapPin, Network, Play, ScrollText, Server, Wrench } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useLocale, useTranslations } from "next-intl"
@@ -22,6 +22,11 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { useToast } from "@/components/ui/use-toast"
+import {
+  groupTinyPngTaskLogs,
+  TINYPNG_TASK_LOG_WORKER_IDS,
+  type TinyPngTaskLogWorkerId,
+} from "@/lib/tinypng-pool-log-columns"
 
 type TinyPngTaskRunStatus = 'running' | 'success' | 'partial_failure' | 'skipped' | 'failed'
 type TinyPngWorkerStatus = 'idle' | TinyPngTaskRunStatus
@@ -121,6 +126,13 @@ const WORKER_REGION_LABELS: Record<string, string> = {
   'aws:eu-central-1': '欧洲 · 法兰克福',
 }
 
+const WORKER_LOG_FALLBACK_META: Record<TinyPngTaskLogWorkerId, { name: string; region: string }> = {
+  coordinator: { name: '协调节点', region: 'Cloudflare Cron' },
+  'registrar-apac': { name: '亚太注册节点', region: '亚太 · 新加坡' },
+  'registrar-europe': { name: '欧洲注册节点', region: '欧洲 · 法兰克福' },
+  'registrar-americas': { name: '美洲注册节点', region: '美洲 · 弗吉尼亚' },
+}
+
 const DEFAULT_EMAIL_DOMAIN_VALUE = '__default__'
 
 function formatTaskTime(value: string): string {
@@ -170,6 +182,11 @@ export function TinyPngPoolStatsCard() {
   const locale = useLocale()
   const tWebsite = useTranslations("profile.website")
   const { toast } = useToast()
+  const taskLogsByWorker = useMemo(() => groupTinyPngTaskLogs(taskLogs), [taskLogs])
+  const workersById = useMemo(
+    () => new Map(stats?.workers.map((worker) => [worker.id, worker]) ?? []),
+    [stats?.workers],
+  )
 
   const fetchStats = useCallback(async (showLoading = true) => {
     try {
@@ -736,7 +753,7 @@ export function TinyPngPoolStatsCard() {
       </div>
 
       <Dialog open={taskLogDialogOpen} onOpenChange={setTaskLogDialogOpen}>
-        <DialogContent className="max-h-[85vh] sm:max-w-2xl">
+        <DialogContent className="h-[88vh] w-[calc(100vw-1.5rem)] max-w-[1600px] grid-rows-[auto_minmax(0,1fr)] gap-4 overflow-hidden p-4 sm:p-6">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               {running ? <Loader2 className="h-4 w-4 animate-spin text-sky-600" /> : <ScrollText className="h-4 w-4 text-yellow-600" />}
@@ -744,13 +761,66 @@ export function TinyPngPoolStatsCard() {
             </DialogTitle>
             <DialogDescription>
               {running
-                ? '日志每 2 秒自动刷新；验证邮件到达后会继续显示 Token 与 API Key 获取步骤。'
-                : '已隐藏 Magic Link、Token、Bearer Token 与 API Key 的敏感内容。'}
+                ? '四列日志每 2 秒自动刷新；验证邮件到达后会继续显示 Token 与 API Key 获取步骤。'
+                : '按协调、亚太、欧洲和美洲节点分列展示；已隐藏 Magic Link、Token、Bearer Token 与 API Key 的敏感内容。'}
             </DialogDescription>
           </DialogHeader>
-          <pre className="max-h-[58vh] overflow-auto whitespace-pre-wrap break-words rounded-lg border border-yellow-500/20 bg-muted/30 p-4 font-mono text-xs leading-6 text-foreground">
-            {taskLogs.length > 0 ? taskLogs.join("\n\n") : '暂无执行日志。'}
-          </pre>
+          <div className="min-h-0 overflow-x-auto pb-1">
+            <div className="grid h-full min-w-[1120px] grid-cols-4 gap-3">
+              {TINYPNG_TASK_LOG_WORKER_IDS.map((workerId) => {
+                const worker = workersById.get(workerId)
+                const fallbackMeta = WORKER_LOG_FALLBACK_META[workerId]
+                const statusMeta = WORKER_STATUS_META[worker?.status ?? 'idle']
+                const isCoordinator = workerId === 'coordinator'
+                const regionLabel = worker?.configuredRegion
+                  ? WORKER_REGION_LABELS[worker.configuredRegion] ?? worker.configuredRegion
+                  : fallbackMeta.region
+                const workerLogs = taskLogsByWorker[workerId]
+
+                return (
+                  <section
+                    key={workerId}
+                    className={`flex min-h-0 min-w-0 flex-col overflow-hidden rounded-lg border ${
+                      isCoordinator
+                        ? 'border-yellow-500/30 bg-yellow-500/[0.025]'
+                        : 'border-border/80 bg-muted/15'
+                    }`}
+                    aria-label={`${worker?.name ?? fallbackMeta.name}执行日志`}
+                  >
+                    <div className="shrink-0 border-b border-border/70 bg-background/90 p-3">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex min-w-0 items-center gap-2">
+                          <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${statusMeta.dotClassName}`} />
+                          <p className="truncate text-sm font-medium">{worker?.name ?? fallbackMeta.name}</p>
+                        </div>
+                        {isCoordinator
+                          ? <Wrench className="h-3.5 w-3.5 shrink-0 text-yellow-600 dark:text-yellow-400" />
+                          : <Server className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />}
+                      </div>
+                      <div className="mt-2 flex items-center justify-between gap-2">
+                        <span className="rounded border border-border/70 px-1.5 py-0.5 text-[10px] text-muted-foreground">
+                          {isCoordinator ? '维护 · 调度' : '区域注册'}
+                        </span>
+                        <span className={`truncate text-[10px] ${statusMeta.className}`}>{statusMeta.label}</span>
+                      </div>
+                      <div className="mt-2 flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                        <MapPin className="h-3 w-3 shrink-0" />
+                        <span className="truncate">{regionLabel}</span>
+                      </div>
+                      {!isCoordinator ? (
+                        <p className="mt-1.5 truncate font-mono text-[11px] text-muted-foreground">
+                          @{worker?.emailDomain || emailDomain}
+                        </p>
+                      ) : null}
+                    </div>
+                    <pre className="m-0 min-h-0 flex-1 overflow-auto whitespace-pre-wrap break-words p-3 font-mono text-[11px] leading-5 text-foreground">
+                      {workerLogs.length > 0 ? workerLogs.join("\n\n") : '本轮暂无日志。'}
+                    </pre>
+                  </section>
+                )
+              })}
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
 

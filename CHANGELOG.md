@@ -2,6 +2,23 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.14.20] - 2026-07-17
+
+### Features
+
+- **四列节点日志**：TinyPNG Pool 执行日志按协调、亚太、欧洲和美洲节点固定分为四列，每列展示节点状态、职责、区域、邮箱域名及独立滚动的执行明细。
+- **出口 IP 观测**：四个节点每轮通过免费 ipify 双栈接口探测一次公网出口，并在对应日志列标记为“观测出口 IP”，便于对照节点实际执行位置。
+
+### Reliability
+
+- **非阻塞探测**：出口 IP 探测设置 2 秒超时并校验 IPv4/IPv6 格式；接口超时、异常响应或网络失败只写入日志，不中断维护及注册任务。
+- **日志稳定分组**：新增 Worker 标记解析器，将多行日志持续归入对应节点；任务启动阶段尚未带节点标记的提示默认归入协调节点。
+
+### Tests
+
+- **日志与探测回归**：新增四列日志分组、IPv4/IPv6、异常响应、超时取消和动态出口说明测试；TinyPNG Pool 17 项测试全部通过。
+- **构建与 Worker 验证**：通过 TypeScript、ESLint、Next.js 生产构建、Cloudflare Pages 构建，以及三个区域 Worker 与协调 Worker 的 Wrangler dry-run；ipify 官方接口联网烟测成功。
+
 ## [1.14.19] - 2026-07-17
 
 ### Features

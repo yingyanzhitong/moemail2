@@ -7,6 +7,7 @@ import {
 } from './tinypng-pool-task-log'
 import { calculateTinyPngRegistrationSuccessRate } from './tinypng-pool-success-rate'
 import type { TinyPngWorkerDefinition } from './tinypng-pool-workers'
+import { detectTinyPngEgressIp, formatTinyPngEgressIpLog } from './tinypng-pool-egress-ip'
 
 export const TINYPNG_POOL_LIMIT = 100000
 export const TINYPNG_REGISTRATION_BATCH_SIZE = 1
@@ -206,6 +207,9 @@ async function executeTinyPngPoolTask(
       console.error('Failed to append tinypng pool task log:', error)
     }
   }
+
+  const egressIpProbe = await detectTinyPngEgressIp()
+  await recordLog(formatTinyPngEgressIpLog(egressIpProbe))
 
   try {
     if (options.shouldCleanup) {
