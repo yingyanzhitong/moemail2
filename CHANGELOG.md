@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.14.28] - 2026-07-17
+
+### Changed
+
+- **区域 Worker 邮箱域名**：恢复亚太、欧洲和美洲注册节点的独立域名选择与持久化配置；节点未选择时继续使用站点默认邮箱域名，顶部 Pool 默认域名卡片保持移除。
+
+### Tests
+
+- **域名派发回归**：覆盖区域节点自定义域名优先和恢复站点默认域名的派发逻辑。
+
 ## [1.14.27] - 2026-07-17
 
 ### Changed

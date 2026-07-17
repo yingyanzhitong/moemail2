@@ -8,7 +8,10 @@ import {
   TINYPNG_POOL_WORKERS,
   TINYPNG_REGISTRAR_WORKERS,
 } from '../app/lib/tinypng-pool-workers.ts'
-import { resolveTinyPngPoolEmailDomain } from '../app/lib/tinypng-pool-domain.ts'
+import {
+  resolveTinyPngPoolEmailDomain,
+  resolveTinyPngWorkerEmailDomain,
+} from '../app/lib/tinypng-pool-domain.ts'
 
 test('Worker 注册表只有一个清理节点，三个注册节点使用不同区域', () => {
   assert.equal(TINYPNG_POOL_WORKERS.length, 4)
@@ -24,6 +27,12 @@ test('Pool 使用站点邮箱域名列表的第一个域名，未配置时回退
     'first.example.com',
   )
   assert.equal(resolveTinyPngPoolEmailDomain('  ', 'fallback.example.com'), 'fallback.example.com')
+})
+
+test('区域节点可覆盖站点默认邮箱域名，也可恢复默认值', () => {
+  assert.equal(resolveTinyPngWorkerEmailDomain('europe.example.com', 'default.example.com'), 'europe.example.com')
+  assert.equal(resolveTinyPngWorkerEmailDomain(null, 'default.example.com'), 'default.example.com')
+  assert.equal(resolveTinyPngWorkerEmailDomain('  ', 'default.example.com'), 'default.example.com')
 })
 
 test('上一轮集群任务按区域节点聚合，不把维护节点算作注册成功', () => {

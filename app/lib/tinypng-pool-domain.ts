@@ -17,6 +17,13 @@ export function resolveTinyPngPoolEmailDomain(
   return domains[0] || fallback
 }
 
+export function resolveTinyPngWorkerEmailDomain(
+  workerEmailDomain: string | null | undefined,
+  defaultEmailDomain: string,
+): string {
+  return workerEmailDomain?.trim() || defaultEmailDomain.trim()
+}
+
 export async function getTinyPngPoolEmailDomain(
   siteConfig: Pick<KVNamespace, "get">,
   fallbackDomain?: string,

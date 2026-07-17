@@ -7,6 +7,7 @@ import {
   parseTinyPngPoolCronExpression,
   TINYPNG_POOL_CRON_CONFIG_KEY,
 } from "@/lib/tinypng-pool-schedule"
+import { parseEmailDomains } from "@/lib/tinypng-pool-domain"
 import { summarizeTinyPngCycleRuns } from "@/lib/tinypng-pool-cycle-summary"
 import { getRequestContext } from "@cloudflare/next-on-pages"
 import { NextResponse } from "next/server"
@@ -60,6 +61,7 @@ export async function GET() {
       licenseResult,
       latestTaskRun,
       workerNodes,
+      emailDomainsValue,
       cronExpressionValue,
     ] = await Promise.all([
       db.select({ value: count() }).from(tinypngKeyPool).get(),
@@ -72,6 +74,7 @@ export async function GET() {
       db.select({ value: count() }).from(desktopLicenses).where(eq(desktopLicenses.status, 'active')).get(),
       db.query.tinypngTaskRuns.findFirst({ orderBy: desc(tinypngTaskRuns.completedAt) }),
       db.select().from(tinypngWorkerNodes).orderBy(asc(tinypngWorkerNodes.role), asc(tinypngWorkerNodes.name)),
+      env.SITE_CONFIG.get("EMAIL_DOMAINS"),
       env.SITE_CONFIG.get(TINYPNG_POOL_CRON_CONFIG_KEY),
     ])
 
@@ -115,6 +118,7 @@ export async function GET() {
       }),
     })))
     const cronExpression = parseTinyPngPoolCronExpression(cronExpressionValue)
+    const emailDomains = parseEmailDomains(emailDomainsValue)
 
     return NextResponse.json({
       total: totalResult?.value ?? 0,
@@ -125,6 +129,7 @@ export async function GET() {
       assigned: assignedResult?.value ?? 0,
       invalid: invalidResult?.value ?? 0,
       desktopLicenses: licenseResult?.value ?? 0,
+      emailDomains,
       cronExpression,
       workers: workerRuns.map(({ worker, lastRun }) => ({
         id: worker.id,
@@ -132,6 +137,7 @@ export async function GET() {
         role: worker.role,
         configuredRegion: worker.configuredRegion,
         actualPlacement: worker.actualPlacement,
+        emailDomain: worker.emailDomain,
         enabled: worker.enabled,
         maintenanceOwner: worker.maintenanceOwner,
         status: worker.lastStatus,
