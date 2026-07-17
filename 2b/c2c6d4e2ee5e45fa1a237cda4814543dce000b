@@ -1,0 +1,30 @@
+CHANGELOG.md
+  s_e5002961b964c4::t_6424c5d8cd42fa 5-15
+app/lib/tinypng-pool-task.ts
+  s_e5002961b964c4::t_93d5cdbc51e63c 284-292
+app/lib/tinypng-registration-proxy.ts
+  s_e5002961b964c4::t_1f4099c8aaeb24 6,31-37,158,160,164-177,200-211,213-256,258-275
+app/lib/tinypng-token.md
+  s_e5002961b964c4::t_516b4829e74fe3 3,10
+package.json
+  s_e5002961b964c4::t_78d0e2e47db86b 3
+tests/tinypng-registration-proxy.test.mjs
+  s_e5002961b964c4::t_f573d4502288d9 4-7,14-43
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.12",
+  "base_commit_sha": "2bc2c6d4e2ee5e45fa1a237cda4814543dce000b",
+  "prompts": {},
+  "logical_commit_id": "2bc2c6d4e2ee5e45fa1a237cda4814543dce000b",
+  "sessions": {
+    "s_e5002961b964c4": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f6f35-d45f-7862-b4c9-994bca45b7a4",
+        "model": "unknown"
+      },
+      "human_author": "masongzhi <masongzhi@bigo.sg>"
+    }
+  }
+}
