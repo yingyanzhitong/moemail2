@@ -32,6 +32,7 @@ interface TinyPngWorkerState {
   role: 'coordinator' | 'registrar'
   configuredRegion: string | null
   actualPlacement: string | null
+  emailDomain: string | null
   enabled: boolean
   maintenanceOwner: boolean
   status: TinyPngWorkerStatus
@@ -120,6 +121,8 @@ const WORKER_REGION_LABELS: Record<string, string> = {
   'aws:eu-central-1': '欧洲 · 法兰克福',
 }
 
+const DEFAULT_EMAIL_DOMAIN_VALUE = '__default__'
+
 function formatTaskTime(value: string): string {
   return new Intl.DateTimeFormat('zh-CN', {
     month: 'numeric',
@@ -147,6 +150,7 @@ export function TinyPngPoolStatsCard() {
   const [running, setRunning] = useState(false)
   const [emailDomain, setEmailDomain] = useState("")
   const [savingEmailDomain, setSavingEmailDomain] = useState(false)
+  const [savingWorkerEmailDomainId, setSavingWorkerEmailDomainId] = useState<string | null>(null)
   const [cronExpression, setCronExpression] = useState("0 * * * *")
   const [savingCronExpression, setSavingCronExpression] = useState(false)
   const [generateLoading, setGenerateLoading] = useState(false)
@@ -340,8 +344,8 @@ export function TinyPngPoolStatsCard() {
 
       setEmailDomain(data.emailDomain)
       toast({
-        title: "Pool 邮箱域名已更新",
-        description: `后续注册将使用 @${data.emailDomain}`,
+        title: "Pool 默认邮箱域名已更新",
+        description: `未单独配置的区域节点将使用 @${data.emailDomain}`,
       })
     } catch (error) {
       setEmailDomain(previousEmailDomain)
@@ -352,6 +356,52 @@ export function TinyPngPoolStatsCard() {
       })
     } finally {
       setSavingEmailDomain(false)
+    }
+  }
+
+  const handleWorkerEmailDomainChange = async (
+    worker: TinyPngWorkerState,
+    nextValue: string,
+  ) => {
+    const nextEmailDomain = nextValue === DEFAULT_EMAIL_DOMAIN_VALUE ? null : nextValue
+    const previousStats = stats
+    setSavingWorkerEmailDomainId(worker.id)
+    setStats((currentStats) => currentStats ? {
+      ...currentStats,
+      workers: currentStats.workers.map((currentWorker) => currentWorker.id === worker.id
+        ? {
+            ...currentWorker,
+            emailDomain: nextEmailDomain,
+          }
+        : currentWorker),
+    } : currentStats)
+
+    try {
+      const res = await fetch("/api/admin/tinypng-pool/config", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ workerId: worker.id, emailDomain: nextEmailDomain }),
+      })
+      const data = await res.json() as { workerId?: string; error?: string }
+      if (!res.ok || data.workerId !== worker.id) {
+        throw new Error(data.error || "保存节点邮箱域名失败")
+      }
+
+      toast({
+        title: `${worker.name} 邮箱域名已更新`,
+        description: nextEmailDomain
+          ? `后续注册将使用 @${nextEmailDomain}`
+          : `后续注册将跟随默认域名 @${emailDomain}`,
+      })
+    } catch (error) {
+      setStats(previousStats)
+      toast({
+        title: "保存节点邮箱域名失败",
+        description: error instanceof Error ? error.message : "请稍后重试",
+        variant: "destructive",
+      })
+    } finally {
+      setSavingWorkerEmailDomainId(null)
     }
   }
 
@@ -544,6 +594,33 @@ export function TinyPngPoolStatsCard() {
                       </span>
                     ) : null}
                   </div>
+                  {worker.role === 'registrar' ? (
+                    <div className="mt-3">
+                      <p className="mb-1 text-[10px] text-muted-foreground">注册邮箱域名</p>
+                      <Select
+                        value={worker.emailDomain || DEFAULT_EMAIL_DOMAIN_VALUE}
+                        onValueChange={(value) => handleWorkerEmailDomainChange(worker, value)}
+                        disabled={savingWorkerEmailDomainId === worker.id || stats.emailDomains.length === 0}
+                      >
+                        <SelectTrigger
+                          className="h-8 w-full px-2 text-xs"
+                          aria-label={`${worker.name}注册邮箱域名`}
+                        >
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value={DEFAULT_EMAIL_DOMAIN_VALUE}>
+                            跟随默认 · @{emailDomain}
+                          </SelectItem>
+                          {stats.emailDomains.map((domain) => (
+                            <SelectItem key={domain} value={domain}>
+                              @{domain}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  ) : null}
                   <div className="mt-3 space-y-1.5 text-xs">
                     <div className="flex items-center gap-1.5 text-muted-foreground">
                       <MapPin className="h-3 w-3 shrink-0" />

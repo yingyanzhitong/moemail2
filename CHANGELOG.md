@@ -2,6 +2,24 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.14.19] - 2026-07-17
+
+### Features
+
+- **区域节点独立邮箱域名**：亚太、美洲和欧洲注册 Worker 可分别选择站点已配置的邮箱域名，协调节点派发任务时按节点传递对应域名。
+- **默认域名回退**：顶部配置调整为默认邮箱域名；区域节点可选择“跟随默认”，未设置独立域名时自动使用默认值。
+- **节点内配置入口**：在 Worker 集群的三个区域注册节点卡片内加入域名选择器，配置位置与实际执行节点保持对应。
+
+### Reliability
+
+- **服务端域名校验**：节点域名只能从站点邮箱域名列表中选择，协调节点仍是唯一清理节点，区域 Worker 继续只执行新增注册任务。
+- **配置持久化**：新增 D1 `tinypng_worker_nodes.email_domain` 字段和迁移，定时执行与手动执行共用同一套节点域名配置。
+
+### Tests
+
+- **节点域名回归**：补充独立域名优先、默认域名回退及 D1 迁移测试；TinyPNG Pool 11 项测试全部通过。
+- **构建验证**：通过 TypeScript、ESLint、Next.js 生产构建与 Cloudflare Pages 构建。
+
 ## [1.14.18] - 2026-07-17
 
 ### Features

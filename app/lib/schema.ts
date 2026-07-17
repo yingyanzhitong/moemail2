@@ -257,6 +257,7 @@ export const tinypngWorkerNodes = sqliteTable('tinypng_worker_nodes', {
   name: text('name').notNull(),
   role: text('role', { enum: ['coordinator', 'registrar'] }).notNull(),
   configuredRegion: text('configured_region'),
+  emailDomain: text('email_domain'),
   actualPlacement: text('actual_placement'),
   enabled: integer('enabled', { mode: 'boolean' }).notNull().default(true),
   maintenanceOwner: integer('maintenance_owner', { mode: 'boolean' }).notNull().default(false),

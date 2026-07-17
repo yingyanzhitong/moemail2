@@ -211,6 +211,13 @@
       "when": 1784262117229,
       "tag": "0029_tinypng-worker-cluster",
       "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "6",
+      "when": 1784268346922,
+      "tag": "0030_tinypng-worker-email-domains",
+      "breakpoints": true
     }
   ]
 }

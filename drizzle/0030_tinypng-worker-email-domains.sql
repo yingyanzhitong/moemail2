@@ -1,0 +1,1 @@
+ALTER TABLE `tinypng_worker_nodes` ADD `email_domain` text;

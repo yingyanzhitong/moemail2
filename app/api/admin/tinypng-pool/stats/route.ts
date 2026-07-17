@@ -124,6 +124,11 @@ export async function GET() {
       }),
     })))
     const emailDomains = parseEmailDomains(emailDomainsValue)
+    const emailDomain = resolveTinyPngPoolEmailDomain(
+      emailDomainsValue,
+      selectedEmailDomain,
+      env.EMAIL_DOMAIN,
+    ) || ""
     const cronExpression = parseTinyPngPoolCronExpression(cronExpressionValue)
 
     return NextResponse.json({
@@ -136,11 +141,7 @@ export async function GET() {
       invalid: invalidResult?.value ?? 0,
       desktopLicenses: licenseResult?.value ?? 0,
       emailDomains,
-      emailDomain: resolveTinyPngPoolEmailDomain(
-        emailDomainsValue,
-        selectedEmailDomain,
-        env.EMAIL_DOMAIN,
-      ) || "",
+      emailDomain,
       cronExpression,
       workers: workerRuns.map(({ worker, lastRun }) => ({
         id: worker.id,
@@ -148,6 +149,7 @@ export async function GET() {
         role: worker.role,
         configuredRegion: worker.configuredRegion,
         actualPlacement: worker.actualPlacement,
+        emailDomain: worker.emailDomain,
         enabled: worker.enabled,
         maintenanceOwner: worker.maintenanceOwner,
         status: worker.lastStatus,

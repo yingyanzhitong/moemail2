@@ -14,6 +14,7 @@ import {
   type TinyPngRegistrarBindingEnv,
   type TinyPngWorkerDefinition,
 } from './tinypng-pool-workers'
+import { resolveTinyPngWorkerEmailDomain } from './tinypng-pool-domain'
 
 export interface TinyPngPoolCoordinatorEnv extends TinyPngRegistrarBindingEnv {
   DB: D1Database
@@ -234,27 +235,32 @@ export async function runTinyPngPoolCoordinator(
   }
 
   const db = drizzle(env.DB, { schema: { tinypngWorkerNodes } })
-  const enabledNodes = await db.select({ id: tinypngWorkerNodes.id })
+  const enabledNodes = await db.select({
+    id: tinypngWorkerNodes.id,
+    emailDomain: tinypngWorkerNodes.emailDomain,
+  })
     .from(tinypngWorkerNodes)
     .where(and(
       eq(tinypngWorkerNodes.role, 'registrar'),
       eq(tinypngWorkerNodes.enabled, true),
     ))
     .all()
-  const enabledIds = new Set(enabledNodes.map((node) => node.id))
+  const enabledNodeMap = new Map(enabledNodes.map((node) => [node.id, node]))
   const availableSlots = Math.max(TINYPNG_POOL_LIMIT - maintenance.poolSize, 0)
   const workers = TINYPNG_REGISTRAR_WORKERS
-    .filter((worker) => enabledIds.has(worker.id))
+    .filter((worker) => enabledNodeMap.has(worker.id))
     .slice(0, availableSlots)
 
-  const payload: RegistrarRequestPayload = {
-    cycleId,
-    triggerType: options.triggerType,
-    scheduleSlot: options.scheduledAt.toISOString(),
-    emailDomain: options.emailDomain,
-  }
   const results = await Promise.all(
-    workers.map((worker) => dispatchRegistrar(env, worker, payload)),
+    workers.map((worker) => dispatchRegistrar(env, worker, {
+      cycleId,
+      triggerType: options.triggerType,
+      scheduleSlot: options.scheduledAt.toISOString(),
+      emailDomain: resolveTinyPngWorkerEmailDomain(
+        enabledNodeMap.get(worker.id)?.emailDomain,
+        options.emailDomain,
+      ),
+    })),
   )
 
   return summarizeTinyPngPoolCycle(cycleId, maintenance, results)
