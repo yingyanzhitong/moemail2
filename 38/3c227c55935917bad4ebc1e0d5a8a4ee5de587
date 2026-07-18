@@ -1,0 +1,70 @@
+desktop/smart-image-compressor/DESIGN.md
+  s_c15e5e6a50bd30::t_9d9f833a7f9a2a 37,50
+desktop/smart-image-compressor/src-tauri/Cargo.lock
+  s_5f5841f18f5bde::t_e547039c97b6c6 4491
+desktop/smart-image-compressor/src-tauri/src/commands.rs
+  s_c15e5e6a50bd30::t_e8d9f8514954bb 15,119-125
+desktop/smart-image-compressor/src-tauri/src/compression.rs
+  s_c15e5e6a50bd30::t_503ea54ce27f54 22,41,62,99-158,591-593
+desktop/smart-image-compressor/src-tauri/src/lib.rs
+  s_c15e5e6a50bd30::t_25aeeee21fae46 129
+desktop/smart-image-compressor/src-tauri/src/license_api.rs
+  s_c15e5e6a50bd30::t_838381e175d775 400-406
+desktop/smart-image-compressor/src-tauri/src/models.rs
+  s_c15e5e6a50bd30::t_4c40b16ceb285e 123-142
+desktop/smart-image-compressor/src-tauri/src/tinify.rs
+  s_5f5841f18f5bde::t_c5191838bdee50 4,34-60,83-160,163-166,458-502
+desktop/smart-image-compressor/src/App.tsx
+  s_c15e5e6a50bd30::t_95da3683b554e3 12,14,16,45-48,84-93,265,269
+desktop/smart-image-compressor/src/lib/desktop-api.ts
+  s_c15e5e6a50bd30::t_43ee440d091161 2,41-53
+desktop/smart-image-compressor/src/types.ts
+  s_c15e5e6a50bd30::t_5c697eae08da78 82-97
+CHANGELOG.md
+  s_5f5841f18f5bde::t_2669e73f470849 5-18
+desktop/smart-image-compressor/package.json
+  s_5f5841f18f5bde::t_136da28e9980a0 3
+desktop/smart-image-compressor/src-tauri/Cargo.toml
+  s_5f5841f18f5bde::t_25fd6405d21994 3
+desktop/smart-image-compressor/src-tauri/tauri.conf.json
+  s_5f5841f18f5bde::t_dbe979ea461681 4
+desktop/smart-image-compressor/src/App.test.tsx
+  s_5f5841f18f5bde::t_09e0237cc45c80 19
+desktop/smart-image-compressor/src/components/license-panel.test.tsx
+  s_5f5841f18f5bde::t_edaec5b889acb8 1,18-19,24-25,32,75-80
+desktop/smart-image-compressor/src/components/license-panel.tsx
+  s_5f5841f18f5bde::t_c25fb2b7a8187b 26-27,34,50,53-54
+desktop/smart-image-compressor/src/components/token-usage-dialog.test.tsx
+  s_5f5841f18f5bde::t_51ff0fe7c75d52 1-30
+desktop/smart-image-compressor/src/components/token-usage-dialog.tsx
+  s_5f5841f18f5bde::t_2f2d6d1e5cfe80 1-68
+desktop/smart-image-compressor/src/styles.css
+  s_5f5841f18f5bde::t_150da3d2ddd6c5 52-58
+package.json
+  s_5f5841f18f5bde::t_83536947ef868c 3
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "383c227c55935917bad4ebc1e0d5a8a4ee5de587",
+  "prompts": {},
+  "logical_commit_id": "383c227c55935917bad4ebc1e0d5a8a4ee5de587",
+  "sessions": {
+    "s_5f5841f18f5bde": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f5a71-61ad-7790-a2b9-69f9f31876a2",
+        "model": "gpt-5.6-terra"
+      },
+      "human_author": "masongzhi <masongzhi@bigo.sg>"
+    },
+    "s_c15e5e6a50bd30": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f7514-cc4b-7461-a78c-3c999e5b9185",
+        "model": "gpt-5.6-terra"
+      },
+      "human_author": "masongzhi <masongzhi@bigo.sg>"
+    }
+  }
+}
