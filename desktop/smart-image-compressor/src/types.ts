@@ -79,6 +79,22 @@ export interface CompressionFinished {
   error?: string
 }
 
+export type TokenUsageStatus = 'active' | 'exhausted' | 'invalid' | 'unavailable'
+
+export interface TokenUsage {
+  index: number
+  used?: number
+  limit: number
+  status: TokenUsageStatus
+  resetAt: string
+  message?: string
+}
+
+export interface TokenUsageReport {
+  tokens: TokenUsage[]
+  checkedAt: string
+}
+
 export interface ScanComplete {
   discovered: number
   skipped: number

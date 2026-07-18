@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.14.32] - 2026-07-18
+
+### Features
+
+- **TinyPNG 用量检查器**：点击授权额度卡片即可在原生弹窗内逐个校验本机 Token，展示 TinyPNG 返回的当月压缩次数、可用状态及下一个自然月重置日。
+
+### Security
+
+- **Key 最小暴露**：Token 原文始终只在 Rust/Stronghold 中使用；弹窗只接收 Token 序号、计数、状态和重置日期。查询使用 TinyPNG 官方客户端同类的空 `POST /shrink` 校验，不上传图片、不消耗压缩额度。
+
+### Tests
+
+- **桌面端回归**：Rust 29 项、React 23 项测试通过，覆盖真实计数响应、无效 Token 和重置日期；完成 Vite 生产构建和设计规范检查。
+
 ## [1.14.31] - 2026-07-18
 
 ### Features

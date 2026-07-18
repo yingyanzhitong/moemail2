@@ -1,7 +1,7 @@
 use std::{path::Path, time::Duration};
 
 use base64::{engine::general_purpose::STANDARD, Engine};
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, Datelike, TimeZone, Utc};
 use futures::StreamExt;
 use reqwest::{header::DATE, Body, Client, Response, StatusCode};
 use tempfile::{NamedTempFile, TempPath};
@@ -31,6 +31,33 @@ pub struct TinifyOutput {
     pub server_time: Option<DateTime<Utc>>,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum UsageStatus {
+    Active,
+    Exhausted,
+    Invalid,
+    Unavailable,
+}
+
+impl UsageStatus {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Active => "active",
+            Self::Exhausted => "exhausted",
+            Self::Invalid => "invalid",
+            Self::Unavailable => "unavailable",
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct UsageSnapshot {
+    pub count: Option<u32>,
+    pub status: UsageStatus,
+    pub observed_at: DateTime<Utc>,
+    pub message: Option<String>,
+}
+
 fn compression_count(response: &Response) -> Option<u32> {
     response
         .headers()
@@ -53,6 +80,88 @@ fn server_time(response: &Response) -> Option<DateTime<Utc>> {
 
 fn authorization(api_key: &str) -> String {
     format!("Basic {}", STANDARD.encode(format!("api:{api_key}")))
+}
+
+fn next_month_reset(observed_at: DateTime<Utc>) -> DateTime<Utc> {
+    let (year, month) = if observed_at.month() == 12 {
+        (observed_at.year() + 1, 1)
+    } else {
+        (observed_at.year(), observed_at.month() + 1)
+    };
+    Utc.with_ymd_and_hms(year, month, 1, 0, 0, 0)
+        .single()
+        .expect("有效的下一个自然月起点")
+}
+
+/// TinyPNG 官方客户端以空 POST /shrink 校验 Key；400 Input missing 是有效校验响应，不会上传图片或计费。
+pub async fn query_usage(client: &Client, api_key: &str) -> UsageSnapshot {
+    query_usage_with_endpoint(client, api_key, SHRINK_URL).await
+}
+
+async fn query_usage_with_endpoint(
+    client: &Client,
+    api_key: &str,
+    endpoint: &str,
+) -> UsageSnapshot {
+    let response = match client
+        .post(endpoint)
+        .header("Authorization", authorization(api_key))
+        .send()
+        .await
+    {
+        Ok(response) => response,
+        Err(_) => {
+            let observed_at = Utc::now();
+            return UsageSnapshot {
+                count: None,
+                status: UsageStatus::Unavailable,
+                observed_at,
+                message: Some("无法连接 TinyPNG，请稍后重试".into()),
+            };
+        }
+    };
+    let count = compression_count(&response);
+    let observed_at = server_time(&response).unwrap_or_else(Utc::now);
+    let status = response.status();
+    if status == StatusCode::UNAUTHORIZED {
+        return UsageSnapshot {
+            count: None,
+            status: UsageStatus::Invalid,
+            observed_at,
+            message: Some("TinyPNG 未接受此 Token".into()),
+        };
+    }
+    if status == StatusCode::TOO_MANY_REQUESTS && count.is_some_and(|value| value >= 500) {
+        return UsageSnapshot {
+            count,
+            status: UsageStatus::Exhausted,
+            observed_at,
+            message: None,
+        };
+    }
+    // 空请求预期为 400 Input missing；该响应证明 Key 有效，且 Compression-Count 是本自然月真实计数。
+    if status == StatusCode::BAD_REQUEST || status.is_success() {
+        return UsageSnapshot {
+            count,
+            status: match count {
+                Some(value) if value >= 500 => UsageStatus::Exhausted,
+                Some(_) => UsageStatus::Active,
+                None => UsageStatus::Unavailable,
+            },
+            observed_at,
+            message: count.is_none().then(|| "TinyPNG 未返回当月使用计数".into()),
+        };
+    }
+    UsageSnapshot {
+        count,
+        status: UsageStatus::Unavailable,
+        observed_at,
+        message: Some(format!("TinyPNG 暂时无法查询（HTTP {}）", status.as_u16())),
+    }
+}
+
+pub fn monthly_reset_at(observed_at: DateTime<Utc>) -> DateTime<Utc> {
+    next_month_reset(observed_at)
 }
 
 fn retryable(status: StatusCode) -> bool {
@@ -346,6 +455,51 @@ mod tests {
         );
         upload.assert();
         download.assert();
+    }
+
+    #[tokio::test]
+    async fn reads_monthly_usage_from_the_zero_input_key_validation_response() {
+        let server = MockServer::start();
+        let request = server.mock(|when, then| {
+            when.method(POST)
+                .path("/shrink")
+                .header_exists("authorization");
+            then.status(400)
+                .header("Compression-Count", "214")
+                .header("Date", "Tue, 14 Jul 2026 03:00:00 GMT")
+                .body(r#"{"error":"Input missing","message":"No input"}"#);
+        });
+
+        let usage =
+            query_usage_with_endpoint(&Client::new(), "secret", &server.url("/shrink")).await;
+
+        assert_eq!(usage.count, Some(214));
+        assert_eq!(usage.status, UsageStatus::Active);
+        assert_eq!(
+            monthly_reset_at(usage.observed_at).to_rfc3339(),
+            "2026-08-01T00:00:00+00:00"
+        );
+        request.assert();
+    }
+
+    #[tokio::test]
+    async fn reports_invalid_keys_without_returning_the_key_material() {
+        let server = MockServer::start();
+        server.mock(|when, then| {
+            when.method(POST)
+                .path("/shrink")
+                .header_exists("authorization");
+            then.status(401)
+                .header("Date", "Tue, 14 Jul 2026 03:00:00 GMT")
+                .body(r#"{"error":"Unauthorized"}"#);
+        });
+
+        let usage =
+            query_usage_with_endpoint(&Client::new(), "secret", &server.url("/shrink")).await;
+
+        assert_eq!(usage.status, UsageStatus::Invalid);
+        assert_eq!(usage.count, None);
+        assert!(!usage.message.unwrap_or_default().contains("secret"));
     }
 
     #[tokio::test]

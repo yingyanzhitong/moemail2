@@ -19,7 +19,7 @@ use crate::{
     license_api::LicenseApi,
     models::{
         CompressionFinished, CompressionProgress, CompressionStart, CompressionSummary,
-        ImageJobView, KeyState, LicenseView,
+        ImageJobView, KeyState, LicenseView, TokenUsageReport, TokenUsageView,
     },
     scanner::ImageJob,
     tinify::{self, TinifyError},
@@ -38,6 +38,7 @@ pub struct CompressionRuntime {
     pub overwrite_manifest: crate::overwrite_manifest::OverwriteManifestStore,
     pub cancel: Arc<AtomicBool>,
     pub running: Arc<AtomicBool>,
+    pub usage_inspecting: Arc<AtomicBool>,
 }
 
 impl CompressionRuntime {
@@ -58,6 +59,7 @@ impl CompressionRuntime {
             overwrite_manifest: crate::overwrite_manifest::OverwriteManifestStore::default(),
             cancel: Arc::new(AtomicBool::new(false)),
             running: Arc::new(AtomicBool::new(false)),
+            usage_inspecting: Arc::new(AtomicBool::new(false)),
         })
     }
 
@@ -93,6 +95,66 @@ impl CompressionRuntime {
             stored.remove(id);
         }
         Ok(())
+    }
+
+    pub async fn token_usage(&self) -> Result<TokenUsageReport> {
+        if self.running.load(Ordering::SeqCst) {
+            anyhow::bail!("压缩进行中，请在当前任务完成后查询 TinyPNG 使用情况");
+        }
+        if self.usage_inspecting.swap(true, Ordering::SeqCst) {
+            anyhow::bail!("正在查询 TinyPNG 使用情况");
+        }
+        let _usage_guard = RunningGuard(self.usage_inspecting.clone());
+        let mut keys = self.license_api.key_states()?;
+        if keys.is_empty() {
+            anyhow::bail!("本机没有可查询的 TinyPNG Token");
+        }
+        let query_keys = keys
+            .iter()
+            .map(|key| key.api_key.clone())
+            .collect::<Vec<_>>();
+        let mut results =
+            stream::iter(query_keys.into_iter().enumerate().map(|(index, api_key)| {
+                let client = self.http.clone();
+                async move { (index, tinify::query_usage(&client, &api_key).await) }
+            }))
+            .buffer_unordered(COMPRESSION_CONCURRENCY)
+            .collect::<Vec<_>>()
+            .await;
+        results.sort_by_key(|(index, _)| *index);
+
+        let mut views = Vec::with_capacity(results.len());
+        let mut checked_at = Utc::now();
+        for (index, usage) in results {
+            checked_at = checked_at.max(usage.observed_at);
+            if let Some(key) = keys.get_mut(index) {
+                key.month = usage.observed_at.format("%Y-%m").to_string();
+                if let Some(count) = usage.count {
+                    key.count = count;
+                }
+                if usage.status == tinify::UsageStatus::Invalid {
+                    key.invalid = true;
+                } else if matches!(
+                    usage.status,
+                    tinify::UsageStatus::Active | tinify::UsageStatus::Exhausted
+                ) {
+                    key.invalid = false;
+                }
+            }
+            views.push(TokenUsageView {
+                index: index + 1,
+                used: usage.count,
+                limit: 500,
+                status: usage.status.as_str().into(),
+                reset_at: tinify::monthly_reset_at(usage.observed_at).to_rfc3339(),
+                message: usage.message,
+            });
+        }
+        self.license_api.replace_key_states(keys)?;
+        Ok(TokenUsageReport {
+            tokens: views,
+            checked_at: checked_at.to_rfc3339(),
+        })
     }
 }
 
@@ -526,6 +588,9 @@ pub async fn start(
     let remaining = current_license.limit.saturating_sub(current_license.used);
     if jobs.len() as u32 > remaining {
         anyhow::bail!("本地授权仅剩 {remaining} 张额度，请减少本批图片数量");
+    }
+    if runtime.usage_inspecting.load(Ordering::SeqCst) {
+        anyhow::bail!("正在查询 TinyPNG 使用情况，请稍候开始压缩");
     }
     if runtime.running.swap(true, Ordering::SeqCst) {
         anyhow::bail!("已有任务正在执行");

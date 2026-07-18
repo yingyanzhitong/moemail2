@@ -9,10 +9,11 @@ import { DropZone } from '@/components/drop-zone'
 import { FileQueue } from '@/components/file-queue'
 import { LicensePanel } from '@/components/license-panel'
 import { OverwriteConfirmDialog } from '@/components/overwrite-confirm-dialog'
+import { TokenUsageDialog } from '@/components/token-usage-dialog'
 import { Button } from '@/components/ui/button'
-import { addDroppedPaths, bootstrap, cancelCompression, pickFolder, pickImages, previewActivation, redeem, refreshLicense, removeJobs, requestThumbnails, startCompression, takeActivationCode } from '@/lib/desktop-api'
+import { addDroppedPaths, bootstrap, cancelCompression, pickFolder, pickImages, previewActivation, queryTokenUsage, redeem, refreshLicense, removeJobs, requestThumbnails, startCompression, takeActivationCode } from '@/lib/desktop-api'
 import { QueueStore } from '@/lib/queue-store'
-import type { CompressionFinished, CompressionProgress, ImageJob, LicenseView, OutputMode, ScanComplete, ThumbnailReady } from '@/types'
+import type { CompressionFinished, CompressionProgress, ImageJob, LicenseView, OutputMode, ScanComplete, ThumbnailReady, TokenUsageReport } from '@/types'
 
 const emptyLicense: LicenseView = { id: null, status: 'unlicensed', used: 0, limit: 0, tokenCount: 0, startsAt: null, expiresAt: null, scheduledPeriods: [] }
 
@@ -41,6 +42,10 @@ export function App() {
   const [activationCode, setActivationCode] = useState('')
   const [outputMode, setOutputMode] = useState<OutputMode>('new_folder')
   const [overwriteConfirmOpen, setOverwriteConfirmOpen] = useState(false)
+  const [usageOpen, setUsageOpen] = useState(false)
+  const [usageLoading, setUsageLoading] = useState(false)
+  const [usageReport, setUsageReport] = useState<TokenUsageReport | null>(null)
+  const [usageError, setUsageError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
   const licenseIdRef = useRef<string | null>(null)
   licenseIdRef.current = license.id
@@ -74,6 +79,16 @@ export function App() {
     } finally {
       setRefreshing(false)
     }
+  }, [])
+
+  const inspectUsage = useCallback(() => {
+    setUsageOpen(true)
+    setUsageLoading(true)
+    setUsageError(null)
+    void queryTokenUsage()
+      .then(setUsageReport)
+      .catch((error) => setUsageError(messageFromError(error)))
+      .finally(() => setUsageLoading(false))
   }, [])
 
   const doPreview = useCallback(async (code: string) => {
@@ -247,10 +262,11 @@ export function App() {
           {notice ? <div role="status" className="workspace-notice"><span>{notice}</span><button type="button" onClick={() => setNotice(null)}>关闭</button></div> : null}
           <FileQueue snapshot={queue} running={running} scanning={scanning} onRemove={removeQueueItem} onClear={clearQueue} onRequestThumbnails={requestVisibleThumbnails} />
         </section>
-        <LicensePanel license={license} refreshing={refreshing} onRefresh={() => void doRefresh()} onActivate={() => setActivationOpen(true)} outputMode={outputMode} outputDisabled={running} onOutputModeChange={setOutputMode} />
+        <LicensePanel license={license} refreshing={refreshing} onRefresh={() => void doRefresh()} onInspectUsage={inspectUsage} usageDisabled={running || usageLoading} onActivate={() => setActivationOpen(true)} outputMode={outputMode} outputDisabled={running} onOutputModeChange={setOutputMode} />
       </div>
       <ActivationDialog open={activationOpen} initialCode={activationCode} onOpenChange={setActivationOpen} onRedeem={doRedeem} />
       <OverwriteConfirmDialog open={overwriteConfirmOpen} imageCount={queuedIds.length} onOpenChange={setOverwriteConfirmOpen} onConfirm={() => void runCompression()} />
+      <TokenUsageDialog open={usageOpen} loading={usageLoading} report={usageReport} error={usageError} onOpenChange={setUsageOpen} onRefresh={inspectUsage} />
     </main>
   )
 }

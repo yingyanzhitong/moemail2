@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { LicensePanel } from '@/components/license-panel'
 import type { LicenseView } from '@/types'
@@ -15,17 +15,21 @@ const base: LicenseView = {
 }
 
 function view(overrides: Partial<LicenseView> = {}) {
-  return render(
+  const onInspectUsage = vi.fn()
+  const result = render(
     <LicensePanel
       license={{ ...base, ...overrides }}
       refreshing={false}
       onRefresh={vi.fn()}
+      onInspectUsage={onInspectUsage}
+      usageDisabled={false}
       onActivate={vi.fn()}
       outputMode="new_folder"
       outputDisabled={false}
       onOutputModeChange={vi.fn()}
     />,
   )
+  return { ...result, onInspectUsage }
 }
 
 describe('授权面板', () => {
@@ -68,5 +72,11 @@ describe('授权面板', () => {
     expect(screen.getByRole('radio', { name: /导出到新文件夹/ })).toBeChecked()
     expect(screen.getByRole('radio', { name: /覆盖原文件/ })).not.toBeChecked()
     expect(screen.queryByText(/副本/)).not.toBeInTheDocument()
+  })
+
+  it('点击逻辑额度卡片时打开 TinyPNG 使用情况入口', () => {
+    const { onInspectUsage } = view()
+    fireEvent.click(screen.getByRole('button', { name: '查看 TinyPNG Token 使用情况' }))
+    expect(onInspectUsage).toHaveBeenCalledOnce()
   })
 })

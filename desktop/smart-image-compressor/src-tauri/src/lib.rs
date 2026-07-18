@@ -126,6 +126,7 @@ pub fn run() {
             commands::preview_activation,
             commands::redeem_activation,
             commands::refresh_license,
+            commands::query_token_usage,
             commands::pick_images,
             commands::pick_folder,
             commands::add_paths,

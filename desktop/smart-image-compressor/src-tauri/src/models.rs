@@ -120,6 +120,26 @@ pub struct CompressionFinished {
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
+pub struct TokenUsageView {
+    pub index: usize,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub used: Option<u32>,
+    pub limit: u32,
+    pub status: String,
+    pub reset_at: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub message: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TokenUsageReport {
+    pub tokens: Vec<TokenUsageView>,
+    pub checked_at: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ScanComplete {
     pub discovered: usize,
     pub skipped: usize,

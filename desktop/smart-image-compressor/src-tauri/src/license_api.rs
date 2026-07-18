@@ -397,6 +397,13 @@ impl LicenseApi {
         Ok(self.vault.read()?.keys)
     }
 
+    pub fn replace_key_states(&self, keys: Vec<KeyState>) -> Result<()> {
+        self.vault.update(|bundle| {
+            bundle.keys = keys;
+            Ok(())
+        })
+    }
+
     pub fn pending_usage_report_count(&self) -> Result<usize> {
         Ok(self.vault.read()?.pending_usage_reports.len())
     }

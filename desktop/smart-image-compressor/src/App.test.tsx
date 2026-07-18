@@ -16,6 +16,7 @@ vi.mock('@/lib/desktop-api', () => ({
   cancelCompression: vi.fn(),
   pickFolder: vi.fn(),
   pickImages: vi.fn(),
+  queryTokenUsage: vi.fn(),
   requestThumbnails: vi.fn(),
   previewActivation: previewMock,
   redeem: redeemMock,

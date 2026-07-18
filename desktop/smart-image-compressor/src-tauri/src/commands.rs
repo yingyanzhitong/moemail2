@@ -12,7 +12,7 @@ use crate::{
     compression::{self, CompressionRuntime},
     models::{
         ActivationPlanPreview, BootstrapView, CompressionStart, LicenseView, ScanComplete,
-        ThumbnailReady,
+        ThumbnailReady, TokenUsageReport,
     },
     scanner::{generate_thumbnail, scan_paths_in_batches},
     vault::CredentialVault,
@@ -116,6 +116,13 @@ pub async fn refresh_license(
     state: State<'_, AppState>,
 ) -> std::result::Result<LicenseView, String> {
     state.runtime.license_api.refresh().map_err(command_error)
+}
+
+#[tauri::command]
+pub async fn query_token_usage(
+    state: State<'_, AppState>,
+) -> std::result::Result<TokenUsageReport, String> {
+    state.runtime.token_usage().await.map_err(command_error)
 }
 
 #[tauri::command]

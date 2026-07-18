@@ -23,13 +23,15 @@ interface LicensePanelProps {
   license: LicenseView
   refreshing: boolean
   onRefresh: () => void
+  onInspectUsage: () => void
+  usageDisabled: boolean
   onActivate: () => void
   outputMode: OutputMode
   outputDisabled: boolean
   onOutputModeChange: (mode: OutputMode) => void
 }
 
-export function LicensePanel({ license, refreshing, onRefresh, onActivate, outputMode, outputDisabled, onOutputModeChange }: LicensePanelProps) {
+export function LicensePanel({ license, refreshing, onRefresh, onInspectUsage, usageDisabled, onActivate, outputMode, outputDisabled, onOutputModeChange }: LicensePanelProps) {
   const percent = license.limit > 0 ? Math.min(100, license.used / license.limit * 100) : 0
   const active = license.status === 'active'
   const expiresSoon = active && license.expiresAt !== null && new Date(license.expiresAt).getTime() - Date.now() <= 3 * 86400000
@@ -45,10 +47,11 @@ export function LicensePanel({ license, refreshing, onRefresh, onActivate, outpu
           <Button variant="ghost" size="icon" onClick={onRefresh} disabled={refreshing || license.status === 'unlicensed'} aria-label="重新校验本地授权"><RotateCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} /></Button>
         </div>
 
-        <div className="mt-5 rounded-xl bg-[#F5F5F7] p-3.5">
+        <button type="button" className="quota-card mt-5" onClick={onInspectUsage} disabled={usageDisabled} aria-label="查看 TinyPNG Token 使用情况">
           <div className="flex items-end justify-between"><div><p className="font-mono text-[28px] font-semibold leading-none tracking-tight text-[#1D1D1F]">{license.used.toLocaleString()}</p><p className="mt-1.5 text-[11px] text-[#6E6E73]">已压缩数量</p></div><p className="font-mono text-[12px] text-[#6E6E73]">/ {license.limit.toLocaleString()}</p></div>
           <Progress value={percent} className="mt-3 h-1.5" aria-label={`已使用 ${percent.toFixed(1)}%`} />
-        </div>
+          <p className="mt-2 text-left text-[10px] text-[#6E6E73]">点击查看 TinyPNG 使用情况</p>
+        </button>
 
         <dl className="inspector-details mt-3">
           <div><dt><CalendarClock className="h-3.5 w-3.5" />到期时间</dt><dd>{formatDate(license.expiresAt)}</dd></div>
