@@ -105,12 +105,13 @@ describe('桌面端授权入口', () => {
     expect(screen.getByRole('button', { name: '激活并进入工作台' })).toBeEnabled()
   })
 
-  it('启动时提示尚未回传的使用记录', async () => {
+  it('后台同步使用记录时不在界面展示服务端回传状态', async () => {
     bootstrapMock.mockResolvedValue({ license: active, reconciledReservations: 0, pendingUsageReports: 2 })
 
     render(<App />)
 
-    expect(await screen.findByText('有 2 个使用记录待联网回传，将在下次压缩时继续同步。')).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: '开始压缩' })).toBeInTheDocument()
+    expect(screen.queryByText(/回传|对账/)).not.toBeInTheDocument()
   })
 
   it('工作台保留原生导入入口，并提供两种明确的输出策略', async () => {

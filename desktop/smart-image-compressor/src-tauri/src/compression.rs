@@ -35,6 +35,7 @@ pub struct CompressionRuntime {
     pub pending_thumbnails: Arc<Mutex<HashSet<String>>>,
     pub license_api: LicenseApi,
     pub http: Client,
+    pub overwrite_manifest: crate::overwrite_manifest::OverwriteManifestStore,
     pub cancel: Arc<AtomicBool>,
     pub running: Arc<AtomicBool>,
 }
@@ -54,6 +55,7 @@ impl CompressionRuntime {
             pending_thumbnails: Arc::new(Mutex::new(HashSet::new())),
             license_api: LicenseApi::new(http.clone(), vault),
             http,
+            overwrite_manifest: crate::overwrite_manifest::OverwriteManifestStore::default(),
             cancel: Arc::new(AtomicBool::new(false)),
             running: Arc::new(AtomicBool::new(false)),
         })
@@ -225,6 +227,31 @@ async fn process_job(
             observed_at: None,
         };
     }
+    if output_mode == OutputMode::Overwrite {
+        match runtime.overwrite_manifest.was_compressed(&job.source).await {
+            Ok(true) => {
+                return FileOutcome {
+                    id: job.id,
+                    status: "skipped",
+                    compressed_size: None,
+                    savings_percent: None,
+                    error: Some("检测到本文件夹的压缩记录，已跳过重复压缩".into()),
+                    observed_at: None,
+                };
+            }
+            Ok(false) => {}
+            Err(error) => {
+                return FileOutcome {
+                    id: job.id,
+                    status: "failed",
+                    compressed_size: None,
+                    savings_percent: None,
+                    error: Some(format!("无法校验本地压缩记录：{error}")),
+                    observed_at: None,
+                };
+            }
+        }
+    }
 
     emit_progress(
         app,
@@ -281,12 +308,26 @@ async fn process_job(
                 } else {
                     (1.0 - output.compressed_size as f64 / job.original_size as f64) * 100.0
                 };
+                let record_error = if output_mode == OutputMode::Overwrite {
+                    runtime
+                        .overwrite_manifest
+                        .record_completed_overwrite(
+                            &job.source,
+                            job.original_size,
+                            output.compressed_size,
+                        )
+                        .await
+                        .err()
+                        .map(|error| format!("已覆盖原图，但无法写入重复压缩记录：{error}"))
+                } else {
+                    None
+                };
                 return FileOutcome {
                     id: job.id,
                     status: "completed",
                     compressed_size: Some(output.compressed_size),
                     savings_percent: Some(savings.max(0.0)),
-                    error: None,
+                    error: record_error,
                     observed_at: output.server_time,
                 };
             }

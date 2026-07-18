@@ -2,6 +2,7 @@ mod commands;
 mod compression;
 mod license_api;
 mod models;
+mod overwrite_manifest;
 mod scanner;
 mod tinify;
 mod vault;

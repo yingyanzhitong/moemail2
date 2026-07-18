@@ -36,4 +36,12 @@ describe('压缩队列阶段状态', () => {
     expect(screen.getByText('上传至 TinyPNG')).toBeInTheDocument()
     expect(screen.getByLabelText('compressing')).toBeInTheDocument()
   })
+
+  it('展示全部任务的总进度和已完成文件的总压缩率', () => {
+    renderQueue({ id: 'image-1', status: 'completed', stage: null, compressedSize: 1024, savingsPercent: 50 })
+    expect(screen.getByText('全部 1 张')).toBeInTheDocument()
+    expect(screen.getByText('1 / 1 张')).toBeInTheDocument()
+    expect(screen.getByText('减少 50.0%')).toBeInTheDocument()
+    expect(screen.getByText('节省 1.0 KB')).toBeInTheDocument()
+  })
 })

@@ -140,11 +140,6 @@ export function App() {
     void bootstrap()
       .then((view) => {
         setLicense(view.license)
-        if (view.pendingUsageReports > 0) {
-          setNotice(`有 ${view.pendingUsageReports} 个使用记录待联网回传，将在下次压缩时继续同步。`)
-        } else if (view.reconciledReservations > 0) {
-          setNotice(`检测到 ${view.reconciledReservations} 个中断批次，已按安全策略完成对账。`)
-        }
       })
       .catch((error) => setNotice(messageFromError(error)))
       .finally(() => setBooting(false))
@@ -194,8 +189,7 @@ export function App() {
         const summary = event.payload.summary
         if (!summary) return
         setLicense(summary.license)
-        const syncNotice = summary.pendingUsageReports > 0 ? ` ${summary.pendingUsageReports} 个使用记录待联网回传。` : ' 使用情况已回传。'
-        setNotice(`本次完成 ${summary.completed} 张，失败 ${summary.failed} 张，跳过 ${summary.skipped} 张。${syncNotice}`)
+        setNotice(`本次完成 ${summary.completed} 张，失败 ${summary.failed} 张，跳过 ${summary.skipped} 张。`)
       }),
       listen<string>('workspace-command', (event) => {
         if (event.payload === 'import-images') importImages()

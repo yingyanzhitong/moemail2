@@ -29,13 +29,13 @@ function view(overrides: Partial<LicenseView> = {}) {
 }
 
 describe('授权面板', () => {
-  it('有效授权展示 Auth Link 授予的 Token 数量和逻辑额度，不展示敏感内容', () => {
+  it('有效授权仅展示逻辑额度，不展示 Token 数量或敏感内容', () => {
     const { container } = view()
     expect(screen.getByText('授权有效')).toBeInTheDocument()
     expect(screen.getByText('3,200')).toBeInTheDocument()
     expect(screen.getByText('/ 12,345')).toBeInTheDocument()
-    expect(screen.getByText('Token 数量')).toBeInTheDocument()
-    expect(screen.getByText('24')).toBeInTheDocument()
+    expect(screen.queryByText('Token 数量')).not.toBeInTheDocument()
+    expect(screen.queryByText('24')).not.toBeInTheDocument()
     expect(container.textContent).not.toMatch(/api.?key|compression-count/i)
   })
 

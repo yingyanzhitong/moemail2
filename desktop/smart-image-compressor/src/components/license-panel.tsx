@@ -1,4 +1,4 @@
-import { CalendarClock, CircleGauge, FolderOutput, KeyRound, Replace, RotateCw, ShieldAlert } from 'lucide-react'
+import { CalendarClock, CircleGauge, FolderOutput, Replace, RotateCw, ShieldAlert } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
 import type { LicenseView, OutputMode } from '@/types'
@@ -51,7 +51,6 @@ export function LicensePanel({ license, refreshing, onRefresh, onActivate, outpu
         </div>
 
         <dl className="inspector-details mt-3">
-          <div><dt><KeyRound className="h-3.5 w-3.5" />Token 数量</dt><dd className="font-mono">{license.tokenCount.toLocaleString()}</dd></div>
           <div><dt><CalendarClock className="h-3.5 w-3.5" />到期时间</dt><dd>{formatDate(license.expiresAt)}</dd></div>
           {license.scheduledPeriods.length > 0 ? <div><dt><CircleGauge className="h-3.5 w-3.5" />续费排期</dt><dd className="text-[#26845B]">已排 {license.scheduledPeriods.length} 期</dd></div> : null}
         </dl>

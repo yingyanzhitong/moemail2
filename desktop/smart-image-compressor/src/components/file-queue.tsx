@@ -21,6 +21,39 @@ function formatBytes(bytes: number) {
   return `${(bytes / 1024 / 1024).toFixed(2)} MB`
 }
 
+function queueMetrics(snapshot: QueueSnapshot) {
+  let completed = 0
+  let failed = 0
+  let skipped = 0
+  let cancelled = 0
+  let compressing = 0
+  let completedOriginalSize = 0
+  let completedCompressedSize = 0
+
+  for (const id of snapshot.order) {
+    const item = snapshot.items.get(id)
+    if (!item) continue
+    if (item.status === 'completed') {
+      completed += 1
+      if (typeof item.compressedSize === 'number') {
+        completedOriginalSize += item.originalSize
+        completedCompressedSize += item.compressedSize
+      }
+    }
+    if (item.status === 'failed') failed += 1
+    if (item.status === 'skipped') skipped += 1
+    if (item.status === 'cancelled') cancelled += 1
+    if (item.status === 'compressing') compressing += 1
+  }
+
+  const processed = completed + failed + skipped + cancelled
+  const total = snapshot.order.length
+  const progressPercent = total === 0 ? 0 : processed / total * 100
+  const savedBytes = Math.max(0, completedOriginalSize - completedCompressedSize)
+  const savingsPercent = completedOriginalSize === 0 ? null : Math.max(0, savedBytes / completedOriginalSize * 100)
+  return { total, completed, failed, skipped, cancelled, compressing, processed, progressPercent, savedBytes, savingsPercent }
+}
+
 function StatusIcon({ item }: { item: QueueItem }) {
   if (item.status === 'compressing') return <Loader2 className="h-4 w-4 animate-spin text-[#0A63C9]" />
   if (item.status === 'completed') return <Check className="h-4 w-4 text-[#26845B]" />
@@ -90,6 +123,7 @@ export function FileQueue({ snapshot, running, scanning, onRemove, onClear, onRe
   const requestedSignatureRef = useRef('')
   const [viewport, setViewport] = useState({ scrollTop: 0, height: 420 })
   const itemCount = snapshot.order.length
+  const metrics = useMemo(() => queueMetrics(snapshot), [snapshot])
   const visibleRange = useMemo(() => {
     const start = Math.max(0, Math.floor(viewport.scrollTop / ROW_HEIGHT) - OVERSCAN)
     const end = Math.min(itemCount, Math.ceil((viewport.scrollTop + viewport.height) / ROW_HEIGHT) + OVERSCAN)
@@ -137,7 +171,7 @@ export function FileQueue({ snapshot, running, scanning, onRemove, onClear, onRe
       <header className="flex h-12 shrink-0 items-center justify-between border-b border-[#D2D2D7] px-4">
         <div className="flex items-center gap-2">
           <h2 id="queue-title" className="text-[13px] font-semibold text-[#1D1D1F]">压缩队列</h2>
-          <span className="rounded-full bg-[#ECECF0] px-2 py-0.5 font-mono text-[10px] text-[#6E6E73]">{itemCount}</span>
+          <span className="rounded-full bg-[#ECECF0] px-2 py-0.5 font-mono text-[10px] text-[#6E6E73]">全部 {itemCount.toLocaleString()} 张</span>
           {scanning ? <span className="flex items-center gap-1 text-[11px] text-[#0A63C9]"><Loader2 className="h-3 w-3 animate-spin" />正在导入</span> : null}
         </div>
         <Button variant="ghost" size="sm" onClick={onClear} disabled={running || itemCount === 0}><Trash2 className="h-3.5 w-3.5" />清空</Button>
@@ -150,6 +184,22 @@ export function FileQueue({ snapshot, running, scanning, onRemove, onClear, onRe
         </div>
       ) : (
         <>
+          <div className="queue-overview" aria-label="全局压缩进度">
+            <div className="min-w-0">
+              <div className="flex items-baseline justify-between gap-3 text-[11px] text-[#6E6E73]">
+                <p><span className="font-medium text-[#343438]">总进度</span><span className="ml-2 font-mono">{metrics.processed.toLocaleString()} / {metrics.total.toLocaleString()} 张</span></p>
+                <span className="font-mono text-[#343438]">{metrics.progressPercent.toFixed(0)}%</span>
+              </div>
+              <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-[#E5E5EA]" role="progressbar" aria-label="压缩总进度" aria-valuemin={0} aria-valuemax={metrics.total} aria-valuenow={metrics.processed}>
+                <span className="block h-full rounded-full bg-[#0A63C9] transition-[width] duration-200 motion-reduce:transition-none" style={{ width: `${metrics.progressPercent}%` }} />
+              </div>
+              <p className="mt-2 text-[10px] text-[#86868B]">已完成 {metrics.completed.toLocaleString()} 张{metrics.compressing > 0 ? `，正在处理 ${metrics.compressing} 张` : ''}{metrics.failed > 0 ? `，失败 ${metrics.failed} 张` : ''}{metrics.skipped > 0 ? `，跳过 ${metrics.skipped} 张` : ''}{metrics.cancelled > 0 ? `，已取消 ${metrics.cancelled} 张` : ''}</p>
+            </div>
+            <div className="queue-savings">
+              <p>总压缩率</p>
+              {metrics.savingsPercent === null ? <strong>等待完成</strong> : <><strong>减少 {metrics.savingsPercent.toFixed(1)}%</strong><span>节省 {formatBytes(metrics.savedBytes)}</span></>}
+            </div>
+          </div>
           <div className="queue-columns grid shrink-0 grid-cols-[38px_minmax(0,1fr)_112px_96px_34px] gap-3 border-b border-[#E5E5EA] px-4 py-2 text-[10px] font-medium uppercase tracking-[0.06em] text-[#86868B]"><span /><span>文件</span><span className="text-right">原始</span><span className="text-right">压缩后</span><span /></div>
           <div ref={scrollRef} className="min-h-0 flex-1 overflow-auto" onScroll={onScroll} role="list" aria-label="图片压缩队列">
             <div className="relative" style={{ height: itemCount * ROW_HEIGHT }}>

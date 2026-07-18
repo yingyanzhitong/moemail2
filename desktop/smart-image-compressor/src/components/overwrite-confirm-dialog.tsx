@@ -19,7 +19,7 @@ export function OverwriteConfirmDialog({ open, imageCount, onOpenChange, onConfi
           </div>
           <DialogTitle>确认覆盖 {imageCount.toLocaleString()} 张原图？</DialogTitle>
           <DialogDescription>
-            压缩成功后将原子替换源图片，无法从本软件恢复。压缩失败的文件不会被修改。
+            压缩成功后将原子替换源图片，无法从本软件恢复；失败文件不会被修改。每个来源文件夹会写入隐藏的 .smartcompress.json 记录，用文件 SHA-256 跳过后续重复压缩。
           </DialogDescription>
         </DialogHeader>
         <div className="mt-6 flex justify-end gap-2">

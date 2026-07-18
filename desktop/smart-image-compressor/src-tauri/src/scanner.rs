@@ -10,7 +10,7 @@ use image::{ImageFormat, ImageReader};
 use uuid::Uuid;
 use walkdir::WalkDir;
 
-use crate::models::ImageJobView;
+use crate::{models::ImageJobView, overwrite_manifest::MANIFEST_FILE_NAME};
 
 pub const IMPORT_BATCH_SIZE: usize = 24;
 
@@ -161,6 +161,12 @@ where
                     continue;
                 }
                 let source = entry.into_path();
+                if source
+                    .file_name()
+                    .is_some_and(|name| name == MANIFEST_FILE_NAME)
+                {
+                    continue;
+                }
                 let relative = match source.strip_prefix(&path) {
                     Ok(relative) => relative,
                     Err(_) => {
