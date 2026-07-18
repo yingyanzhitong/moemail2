@@ -1,0 +1,46 @@
+desktop/smart-image-compressor/src-tauri/Cargo.lock
+  s_5f5841f18f5bde::t_5b17b8a1849a6d 4491
+desktop/smart-image-compressor/src-tauri/src/overwrite_manifest.rs
+  s_5f5841f18f5bde::t_c2869acd7904c9 1-222
+desktop/smart-image-compressor/src-tauri/src/scanner.rs
+  s_5f5841f18f5bde::t_d8818e89a679bd 13,164-169
+desktop/smart-image-compressor/src-tauri/src/compression.rs
+  s_5f5841f18f5bde::t_3a095ee505b207 38,58,230-254,310-323,330
+desktop/smart-image-compressor/src-tauri/src/lib.rs
+  s_5f5841f18f5bde::t_ff7e93a937e25c 5
+desktop/smart-image-compressor/src/App.test.tsx
+  s_5f5841f18f5bde::t_99c466eb6ba427 108,113-114
+desktop/smart-image-compressor/src/App.tsx
+  s_5f5841f18f5bde::t_3b23bdee9aedcc 192
+desktop/smart-image-compressor/src/components/file-queue.test.tsx
+  s_5f5841f18f5bde::t_3136ca9ff42a35 39-46
+desktop/smart-image-compressor/src/components/file-queue.tsx
+  s_5f5841f18f5bde::t_761f21692c8b87 24-56,126,174,187-202
+desktop/smart-image-compressor/src/components/license-panel.test.tsx
+  s_5f5841f18f5bde::t_db4c451476c1bb 32,37-38
+desktop/smart-image-compressor/src/components/license-panel.tsx
+  s_5f5841f18f5bde::t_11eb9841b75594 1
+desktop/smart-image-compressor/src/components/overwrite-confirm-dialog.test.tsx
+  s_5f5841f18f5bde::t_d44b5f30d7115e 1-14
+desktop/smart-image-compressor/src/components/overwrite-confirm-dialog.tsx
+  s_5f5841f18f5bde::t_3d2bf7cd55f1d5 22
+desktop/smart-image-compressor/src/styles.css
+  s_5f5841f18f5bde::t_c890df782118fd 31-35,73-74
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.12",
+  "base_commit_sha": "6f0703678ab52afd05e2ce41e64c3498229b5907",
+  "prompts": {},
+  "logical_commit_id": "6f0703678ab52afd05e2ce41e64c3498229b5907",
+  "sessions": {
+    "s_5f5841f18f5bde": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f5a71-61ad-7790-a2b9-69f9f31876a2",
+        "model": "gpt-5.6-terra"
+      },
+      "human_author": "masongzhi <masongzhi@bigo.sg>"
+    }
+  }
+}
