@@ -1,0 +1,52 @@
+drizzle/0031_tinypng-worker-registration-mode.sql
+  s_b2b61e108ec868::t_8be3ce7c66b0eb 1
+drizzle/meta/0031_snapshot.json
+  s_b2b61e108ec868::t_3435e4f75a558c 1-1905
+drizzle/meta/_journal.json
+  s_b2b61e108ec868::t_5d1e5c66d5ece2 221-227
+app/api/admin/tinypng-pool/config/route.ts
+  s_b2b61e108ec868::t_c68dcb29936282 29,31,41-42,45-54,57-60,62-66,69-73
+app/api/admin/tinypng-pool/stats/route.ts
+  s_b2b61e108ec868::t_8987e985cc62f4 141
+app/components/profile/tinypng-pool-stats-card.tsx
+  s_b2b61e108ec868::t_3f9f35c855be59 33,42,165,387-428,600-601,621-640
+app/lib/schema.ts
+  s_b2b61e108ec868::t_32aa47c6355550 261
+app/lib/tinypng-pool-coordinator.ts
+  s_b2b61e108ec868::t_12c1f86ad2fcd9 18,49,243,266
+app/lib/tinypng-pool-task.ts
+  s_b2b61e108ec868::t_574cdc231b0c7c 11-14,47,265-266,289,293
+app/lib/tinypng-registration-proxy.ts
+  s_5f5841f18f5bde::t_855a5e25787957 10-11,263,268,272-277
+tests/tinypng-pool-workers.test.mjs
+  s_b2b61e108ec868::t_9b9a112c6106b5 85,90
+tests/tinypng-registration-proxy.test.mjs
+  s_b2b61e108ec868::t_8e82ed6572c6c7 16-33
+workers/tinypng-pool-registrar.ts
+  s_b2b61e108ec868::t_6b6a8e217c2814 3,18,34,60
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "869372e2f265d9b7447856aa1af45f5ee80bbaa1",
+  "prompts": {},
+  "logical_commit_id": "869372e2f265d9b7447856aa1af45f5ee80bbaa1",
+  "sessions": {
+    "s_5f5841f18f5bde": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f5a71-61ad-7790-a2b9-69f9f31876a2",
+        "model": "unknown"
+      },
+      "human_author": "masongzhi <masongzhi@bigo.sg>"
+    },
+    "s_b2b61e108ec868": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f760f-3eaa-7c12-a817-9b4403f5ca2b",
+        "model": "gpt-5.6-terra"
+      },
+      "human_author": "masongzhi <masongzhi@bigo.sg>"
+    }
+  }
+}
