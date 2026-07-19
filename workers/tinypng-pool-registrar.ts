@@ -1,5 +1,6 @@
 import { runTinyPngPoolRegistrationTask, type TinyPngTaskTriggerType } from '../app/lib/tinypng-pool-task'
 import { getTinyPngWorkerDefinition } from '../app/lib/tinypng-pool-workers'
+import type { TinyPngRegistrationMode } from '../app/lib/tinypng-registration-proxy'
 
 interface RegistrarEnv {
   DB: D1Database
@@ -14,6 +15,7 @@ interface RegistrarRequestPayload {
   triggerType?: TinyPngTaskTriggerType
   scheduleSlot?: string
   emailDomain?: string
+  registrationMode?: TinyPngRegistrationMode
 }
 
 export default {
@@ -29,6 +31,7 @@ export default {
       || !payload.scheduleSlot
       || !payload.emailDomain
       || !['scheduled', 'manual'].includes(payload.triggerType || '')
+      || !['proxy', 'direct'].includes(payload.registrationMode || 'proxy')
     ) {
       return Response.json({ error: '区域注册任务参数不完整' }, { status: 400 })
     }
@@ -54,6 +57,7 @@ export default {
         || null,
       taskRunId: `${payload.cycleId}:${worker.id}`,
       proxyToken: env.TINYPNG_PROXY_TOKEN,
+      registrationMode: payload.registrationMode ?? 'proxy',
     })
 
     return Response.json({ result })

@@ -82,10 +82,12 @@ test('D1 迁移创建并初始化 Worker 节点', () => {
   )`)
   db.exec(readFileSync(new URL('../drizzle/0029_tinypng-worker-cluster.sql', import.meta.url), 'utf8'))
   db.exec(readFileSync(new URL('../drizzle/0030_tinypng-worker-email-domains.sql', import.meta.url), 'utf8'))
+  db.exec(readFileSync(new URL('../drizzle/0031_tinypng-worker-registration-mode.sql', import.meta.url), 'utf8'))
 
   assert.equal(db.prepare('SELECT COUNT(*) count FROM tinypng_worker_nodes').get().count, 4)
   assert.equal(db.prepare('SELECT COUNT(*) count FROM tinypng_worker_nodes WHERE maintenance_owner = 1').get().count, 1)
   assert.equal(db.prepare("SELECT COUNT(*) count FROM pragma_table_info('tinypng_worker_nodes') WHERE name = 'email_domain'").get().count, 1)
+  assert.equal(db.prepare("SELECT registration_mode FROM tinypng_worker_nodes WHERE id = 'registrar-apac'").get().registration_mode, 'proxy')
   assert.equal(db.prepare("SELECT COUNT(*) count FROM pragma_table_info('tinypng_task_runs') WHERE name IN ('worker_id', 'cycle_id', 'placement')").get().count, 3)
 })
 

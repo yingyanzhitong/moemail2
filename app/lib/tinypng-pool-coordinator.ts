@@ -15,6 +15,7 @@ import {
   type TinyPngWorkerDefinition,
 } from './tinypng-pool-workers'
 import { resolveTinyPngWorkerEmailDomain } from './tinypng-pool-domain'
+import type { TinyPngRegistrationMode } from './tinypng-registration-proxy'
 
 export interface TinyPngPoolCoordinatorEnv extends TinyPngRegistrarBindingEnv {
   DB: D1Database
@@ -45,6 +46,7 @@ interface RegistrarRequestPayload {
   triggerType: TinyPngTaskTriggerType
   scheduleSlot: string
   emailDomain: string
+  registrationMode: TinyPngRegistrationMode
 }
 
 function getCycleId(triggerType: TinyPngTaskTriggerType, scheduledAt: Date): string {
@@ -238,6 +240,7 @@ export async function runTinyPngPoolCoordinator(
   const enabledNodes = await db.select({
     id: tinypngWorkerNodes.id,
     emailDomain: tinypngWorkerNodes.emailDomain,
+    registrationMode: tinypngWorkerNodes.registrationMode,
   })
     .from(tinypngWorkerNodes)
     .where(and(
@@ -260,6 +263,7 @@ export async function runTinyPngPoolCoordinator(
         enabledNodeMap.get(worker.id)?.emailDomain,
         options.emailDomain,
       ),
+      registrationMode: enabledNodeMap.get(worker.id)?.registrationMode ?? 'proxy',
     })),
   )
 

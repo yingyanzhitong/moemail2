@@ -7,6 +7,8 @@ export const TINYPNG_PROXY_TIMEOUT_MS = 10_000
 const encoder = new TextEncoder()
 const decoder = new TextDecoder()
 
+export type TinyPngRegistrationMode = 'proxy' | 'direct'
+
 type ProxySocket = {
   readable: ReadableStream<Uint8Array>
   writable: WritableStream<Uint8Array>
@@ -258,15 +260,21 @@ export async function requestTinyPngRegistrationWithProxyFallback(
 }
 
 /**
- * 优先使用固定 HTTP 中转向 TinyPNG 提交注册请求；中转连接或响应超过 10 秒时自动改为直连。
+ * 按配置通过固定 HTTP 中转或直连 TinyPNG 提交注册请求；中转连接或响应超过 10 秒时自动改为直连。
  */
 export async function requestTinyPngRegistration(
   email: string,
   proxyToken: string | undefined,
+  registrationMode: TinyPngRegistrationMode = 'proxy',
   onProxyFallback?: (error: Error) => void | Promise<void>,
 ): Promise<Response> {
-  if (!proxyToken) throw new Error('未配置 TinyPNG 注册代理令牌')
   if (!email || /[\r\n]/.test(email)) throw new Error('TinyPNG 注册邮箱格式无效')
+
+  if (registrationMode === 'direct') {
+    return requestTinyPngRegistrationDirect(email)
+  }
+
+  if (!proxyToken) throw new Error('未配置 TinyPNG 注册代理令牌')
 
   return requestTinyPngRegistrationWithProxyFallback(
     () => requestTinyPngRegistrationViaProxy(email, proxyToken),

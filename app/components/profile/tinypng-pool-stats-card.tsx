@@ -30,6 +30,7 @@ import {
 
 type TinyPngTaskRunStatus = 'running' | 'success' | 'partial_failure' | 'skipped' | 'failed'
 type TinyPngWorkerStatus = 'idle' | TinyPngTaskRunStatus
+type TinyPngRegistrationMode = 'proxy' | 'direct'
 
 interface TinyPngWorkerState {
   id: string
@@ -38,6 +39,7 @@ interface TinyPngWorkerState {
   configuredRegion: string | null
   actualPlacement: string | null
   emailDomain: string | null
+  registrationMode: TinyPngRegistrationMode
   enabled: boolean
   maintenanceOwner: boolean
   status: TinyPngWorkerStatus
@@ -160,6 +162,7 @@ export function TinyPngPoolStatsCard() {
   const [loading, setLoading] = useState(true)
   const [running, setRunning] = useState(false)
   const [savingWorkerEmailDomainId, setSavingWorkerEmailDomainId] = useState<string | null>(null)
+  const [savingWorkerRegistrationModeId, setSavingWorkerRegistrationModeId] = useState<string | null>(null)
   const [cronExpression, setCronExpression] = useState("0 * * * *")
   const [savingCronExpression, setSavingCronExpression] = useState(false)
   const [generateLoading, setGenerateLoading] = useState(false)
@@ -381,6 +384,48 @@ export function TinyPngPoolStatsCard() {
     }
   }
 
+  const handleWorkerRegistrationModeChange = async (
+    worker: TinyPngWorkerState,
+    registrationMode: TinyPngRegistrationMode,
+  ) => {
+    const previousStats = stats
+    setSavingWorkerRegistrationModeId(worker.id)
+    setStats((currentStats) => currentStats ? {
+      ...currentStats,
+      workers: currentStats.workers.map((currentWorker) => currentWorker.id === worker.id
+        ? { ...currentWorker, registrationMode }
+        : currentWorker),
+    } : currentStats)
+
+    try {
+      const res = await fetch("/api/admin/tinypng-pool/config", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ workerId: worker.id, registrationMode }),
+      })
+      const data = await res.json() as { workerId?: string; error?: string }
+      if (!res.ok || data.workerId !== worker.id) {
+        throw new Error(data.error || "保存注册请求方式失败")
+      }
+
+      toast({
+        title: `${worker.name} 注册请求方式已更新`,
+        description: registrationMode === 'direct'
+          ? '后续注册将直连 TinyPNG 接口'
+          : '后续注册将优先通过中转，异常时自动直连',
+      })
+    } catch (error) {
+      setStats(previousStats)
+      toast({
+        title: "保存注册请求方式失败",
+        description: error instanceof Error ? error.message : "请稍后重试",
+        variant: "destructive",
+      })
+    } finally {
+      setSavingWorkerRegistrationModeId(null)
+    }
+  }
+
   const handleSaveCronExpression = async () => {
     const previousCronExpression = stats?.cronExpression ?? "0 * * * *"
     setSavingCronExpression(true)
@@ -552,7 +597,8 @@ export function TinyPngPoolStatsCard() {
                     ) : null}
                   </div>
                   {worker.role === 'registrar' ? (
-                    <div className="mt-3">
+                    <div className="mt-3 space-y-3">
+                      <div>
                       <p className="mb-1 text-[10px] text-muted-foreground">注册邮箱域名</p>
                       <Select
                         value={worker.emailDomain || DEFAULT_EMAIL_DOMAIN_VALUE}
@@ -572,6 +618,26 @@ export function TinyPngPoolStatsCard() {
                           ))}
                         </SelectContent>
                       </Select>
+                      </div>
+                      <div>
+                        <p className="mb-1 text-[10px] text-muted-foreground">注册请求方式</p>
+                        <Select
+                          value={worker.registrationMode}
+                          onValueChange={(value) => handleWorkerRegistrationModeChange(worker, value as TinyPngRegistrationMode)}
+                          disabled={savingWorkerRegistrationModeId === worker.id}
+                        >
+                          <SelectTrigger
+                            className="h-8 w-full px-2 text-xs"
+                            aria-label={`${worker.name}注册请求方式`}
+                          >
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="proxy">中转优先（异常直连）</SelectItem>
+                            <SelectItem value="direct">直连 TinyPNG</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
                     </div>
                   ) : null}
                   <div className="mt-3 space-y-1.5 text-xs">

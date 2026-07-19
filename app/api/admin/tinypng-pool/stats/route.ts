@@ -138,6 +138,7 @@ export async function GET() {
         configuredRegion: worker.configuredRegion,
         actualPlacement: worker.actualPlacement,
         emailDomain: worker.emailDomain,
+        registrationMode: worker.registrationMode,
         enabled: worker.enabled,
         maintenanceOwner: worker.maintenanceOwner,
         status: worker.lastStatus,

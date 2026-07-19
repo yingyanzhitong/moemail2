@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.14.33] - 2026-07-19
+
+### Features
+
+- **区域注册请求方式**：亚太、欧洲和美洲注册节点可分别选择“中转优先（异常直连）”或“直连 TinyPNG”；选择将持久化并随任务派发至对应 Worker。
+
+### Tests
+
+- **注册方式回归**：覆盖无中转令牌的直连路径、Worker 配置迁移默认值，并完成 TinyPNG Pool 测试、TypeScript 检查和生产构建。
+
 ## [1.14.32] - 2026-07-18
 
 ### Features

@@ -8,7 +8,10 @@ import {
 import { calculateTinyPngRegistrationSuccessRate } from './tinypng-pool-success-rate'
 import type { TinyPngWorkerDefinition } from './tinypng-pool-workers'
 import { detectTinyPngEgressIp, formatTinyPngEgressIpLog } from './tinypng-pool-egress-ip'
-import { requestTinyPngRegistration } from './tinypng-registration-proxy'
+import {
+  requestTinyPngRegistration,
+  type TinyPngRegistrationMode,
+} from './tinypng-registration-proxy'
 
 export const TINYPNG_POOL_LIMIT = 100000
 export const TINYPNG_REGISTRATION_BATCH_SIZE = 1
@@ -41,6 +44,7 @@ export interface TinyPngPoolTaskOptions {
   placement?: string | null
   taskRunId?: string
   proxyToken?: string
+  registrationMode?: TinyPngRegistrationMode
 }
 
 interface ExecuteTaskOptions extends TinyPngPoolTaskOptions {
@@ -258,6 +262,8 @@ async function executeTinyPngPoolTask(
     } else {
       const domain = emailDomain || 'tinypng-token.site'
       const batchSize = Math.min(options.batchSize, TINYPNG_POOL_LIMIT - poolSize)
+      const registrationMode = options.registrationMode ?? 'proxy'
+      const registrationModeLabel = registrationMode === 'direct' ? '直连 TinyPNG' : '通过中转'
 
       for (let i = 0; i < batchSize; i++) {
         const randomId = crypto.randomUUID().split('-')[0]
@@ -280,10 +286,11 @@ async function executeTinyPngPoolTask(
         await recordLog(`账号 ${i + 1}/${batchSize}：临时邮箱创建成功\n邮箱：${emailAddress}\n步骤 1/6 完成。`)
 
         try {
-          await recordLog(`账号 ${i + 1}/${batchSize}：开始向 TinyPNG 提交注册请求\n步骤 2/6 执行中。`)
+          await recordLog(`账号 ${i + 1}/${batchSize}：${registrationModeLabel}提交 TinyPNG 注册请求\n步骤 2/6 执行中。`)
           const response = await requestTinyPngRegistration(
             emailAddress,
             options.proxyToken,
+            registrationMode,
             async (proxyError) => {
               await recordLog(
                 `账号 ${i + 1}/${batchSize}：TinyPNG 注册中转服务失败，已切换直连\n邮箱：${emailAddress}\n${proxyError.message}\n步骤 2/6 继续执行。`,

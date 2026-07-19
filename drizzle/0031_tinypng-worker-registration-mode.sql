@@ -1,0 +1,1 @@
+ALTER TABLE `tinypng_worker_nodes` ADD `registration_mode` text DEFAULT 'proxy' NOT NULL;
