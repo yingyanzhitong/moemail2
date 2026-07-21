@@ -1,0 +1,58 @@
+desktop/smart-image-compressor/pnpm-lock.yaml
+  s_5f5841f18f5bde::t_2aa9f09e8bb1d0 20-25,789-794,1968-1975
+desktop/smart-image-compressor/src-tauri/Cargo.lock
+  s_5f5841f18f5bde::t_9563716874838c 109-117,1018-1028,2521-2550,2755,3178-3189,3260-3265,3291-3304,3960,3966-3968,3973,4112-4123,4134-4154,4156-4161,4202-4210,4599-4614,4642,4662,4665,4942,5009,5185-5194,5229-5261,5274,5297,6179-6187,6800,7056-7067
+.github/workflows/desktop-release.yml
+  s_5f5841f18f5bde::t_d8ae246e85bc12 21,23-26,30,32-35,41-43,76,78-80,89-90,94,97-100,102,107-134,144-146
+CHANGELOG.md
+  s_5f5841f18f5bde::t_4ce9a0b62c592a 5-19
+desktop/smart-image-compressor/README.md
+  s_5f5841f18f5bde::t_9e509854194fda 59-61
+desktop/smart-image-compressor/package.json
+  s_5f5841f18f5bde::t_88a2fc8a0f5e4b 3,18-19,29
+desktop/smart-image-compressor/scripts/prepare-release-assets.mjs
+  s_5f5841f18f5bde::t_2076e04b09482e 1-116
+desktop/smart-image-compressor/scripts/sync-gitee-release.mjs
+  s_5f5841f18f5bde::t_8b8817da963d7f 4,16,21,28,69,71-72,74,108-109,112,117-119,122,128-129,147-186,255-258
+desktop/smart-image-compressor/src-tauri/Cargo.toml
+  s_5f5841f18f5bde::t_e24fc029de6918 3,32,35
+desktop/smart-image-compressor/src-tauri/capabilities/default.json
+  s_5f5841f18f5bde::t_6378660f3e2384 10-12
+desktop/smart-image-compressor/src-tauri/gen/schemas/acl-manifests.json
+  s_5f5841f18f5bde::t_7ea43766798001 1
+desktop/smart-image-compressor/src-tauri/gen/schemas/capabilities.json
+  s_5f5841f18f5bde::t_7185d1b6f362b3 1
+desktop/smart-image-compressor/src-tauri/gen/schemas/desktop-schema.json
+  s_5f5841f18f5bde::t_cb5124788e7bfe 2316-2345,2482-2535
+desktop/smart-image-compressor/src-tauri/gen/schemas/macOS-schema.json
+  s_5f5841f18f5bde::t_84e9c32be822aa 2316-2345,2482-2535
+desktop/smart-image-compressor/src-tauri/src/lib.rs
+  s_5f5841f18f5bde::t_b72f1628bb5fa5 54-55,107-110
+desktop/smart-image-compressor/src-tauri/tauri.conf.json
+  s_5f5841f18f5bde::t_52f20f47fb4523 4,34,44-45,57-65
+desktop/smart-image-compressor/src/App.tsx
+  s_5f5841f18f5bde::t_e12529469a4d43 13,272
+desktop/smart-image-compressor/src/components/update-button.test.tsx
+  s_5f5841f18f5bde::t_18451b87a467b0 1-41
+desktop/smart-image-compressor/src/components/update-button.tsx
+  s_5f5841f18f5bde::t_75dea01129e9df 1-240
+package.json
+  s_5f5841f18f5bde::t_87c93e549603fc 3
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "5065f22d6880cd7362100ea74a923ef5ad2e5d0d",
+  "prompts": {},
+  "logical_commit_id": "5065f22d6880cd7362100ea74a923ef5ad2e5d0d",
+  "sessions": {
+    "s_5f5841f18f5bde": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f5a71-61ad-7790-a2b9-69f9f31876a2",
+        "model": "gpt-5.6-terra"
+      },
+      "human_author": "masongzhi <masongzhi@bigo.sg>"
+    }
+  }
+}
