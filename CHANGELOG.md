@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.14.34] - 2026-07-21
+
+### Features
+
+- **Auth Link 创建入口**：TinyPNG Pool 详情页的桌面端授权区新增“创建 Auth Link”按钮，可直接配置 Token 数量、压缩额度和有效天数并复制链接。
+- **停止授权回收 Token**：停止桌面端授权后，预留和已分配的 Token 会解除绑定并恢复为 Pool 可用状态；历史已停止授权的残留绑定会在后台清理时自动释放。
+
+### Tests
+
+- **桌面授权回归**：17 项桌面授权测试及 TypeScript 检查通过，覆盖已激活授权与历史已停止授权的 Token 回收。
+
 ## [1.14.33] - 2026-07-19
 
 ### Features

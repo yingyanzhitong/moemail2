@@ -50,12 +50,22 @@ function stopLicense(db, licenseId) {
 
   db.exec('BEGIN IMMEDIATE')
   try {
-    if (license.status === 'pending') {
-      db.prepare("UPDATE tinypng_key_pool SET status = 'active' WHERE status = 'reserved' AND id IN (SELECT pool_key_id FROM desktop_license_keys WHERE license_id = ?)").run(licenseId)
-      db.prepare('DELETE FROM desktop_license_keys WHERE license_id = ?').run(licenseId)
-    }
+    db.prepare("UPDATE tinypng_key_pool SET status = 'active' WHERE status IN ('reserved', 'assigned') AND id IN (SELECT pool_key_id FROM desktop_license_keys WHERE license_id = ?)").run(licenseId)
+    db.prepare('DELETE FROM desktop_license_keys WHERE license_id = ?').run(licenseId)
     db.prepare("UPDATE desktop_activation_grants SET status = 'expired' WHERE license_id = ? AND status = 'issued'").run(licenseId)
     db.prepare("UPDATE desktop_licenses SET status = 'revoked', access_token_hash = NULL WHERE id = ?").run(licenseId)
+    db.exec('COMMIT')
+  } catch (error) {
+    db.exec('ROLLBACK')
+    throw error
+  }
+}
+
+function cleanupStoppedLicenseKeys(db) {
+  db.exec('BEGIN IMMEDIATE')
+  try {
+    db.prepare("UPDATE tinypng_key_pool SET status = 'active' WHERE status IN ('reserved', 'assigned') AND id IN (SELECT pool_key_id FROM desktop_license_keys WHERE license_id IN (SELECT id FROM desktop_licenses WHERE status = 'revoked'))").run()
+    db.prepare("DELETE FROM desktop_license_keys WHERE license_id IN (SELECT id FROM desktop_licenses WHERE status = 'revoked')").run()
     db.exec('COMMIT')
   } catch (error) {
     db.exec('ROLLBACK')
@@ -165,7 +175,7 @@ test('单次超过 20 张的客户端用量回传按执行标识幂等累计', (
   assert.equal(db.prepare("SELECT COUNT(*) count FROM desktop_usage_reservations WHERE id = 'usage-report'").get().count, 1)
 })
 
-test('停止已激活授权会清除访问令牌，但已下发 Token 永不回池', () => {
+test('停止已激活授权会清除访问令牌并将 Token 释放回 Pool', () => {
   const db = database()
   seedKeys(db, 40)
   issueNewGrant(db, 'license-a')
@@ -173,8 +183,8 @@ test('停止已激活授权会清除访问令牌，但已下发 Token 永不回�
   db.prepare("UPDATE tinypng_key_pool SET status = 'assigned' WHERE status = 'reserved'").run()
   stopLicense(db, 'license-a')
   assert.equal(db.prepare("SELECT access_token_hash token FROM desktop_licenses WHERE id = 'license-a'").get().token, null)
-  assert.equal(db.prepare("SELECT COUNT(*) count FROM tinypng_key_pool WHERE status = 'assigned'").get().count, 40)
-  assert.equal(db.prepare("SELECT COUNT(*) count FROM desktop_license_keys WHERE license_id = 'license-a'").get().count, 40)
+  assert.equal(db.prepare("SELECT COUNT(*) count FROM tinypng_key_pool WHERE status = 'active'").get().count, 40)
+  assert.equal(db.prepare("SELECT COUNT(*) count FROM desktop_license_keys WHERE license_id = 'license-a'").get().count, 0)
 })
 
 test('停止未兑换授权会使 Auth Link 失效并释放预留 Token', () => {
@@ -187,4 +197,16 @@ test('停止未兑换授权会使 Auth Link 失效并释放预留 Token', () => 
   assert.equal(db.prepare("SELECT status FROM desktop_activation_grants WHERE license_id = 'license-pending'").get().status, 'expired')
   assert.equal(db.prepare("SELECT COUNT(*) count FROM desktop_license_keys WHERE license_id = 'license-pending'").get().count, 0)
   assert.equal(db.prepare("SELECT COUNT(*) count FROM tinypng_key_pool WHERE status = 'active'").get().count, 12)
+})
+
+test('历史已停止授权会在后台清理时释放遗留 Token', () => {
+  const db = database()
+  seedKeys(db, 12)
+  issueNewGrant(db, 'license-revoked', 12)
+  db.prepare("UPDATE desktop_licenses SET status = 'revoked' WHERE id = 'license-revoked'").run()
+
+  cleanupStoppedLicenseKeys(db)
+
+  assert.equal(db.prepare("SELECT COUNT(*) count FROM tinypng_key_pool WHERE status = 'active'").get().count, 12)
+  assert.equal(db.prepare("SELECT COUNT(*) count FROM desktop_license_keys WHERE license_id = 'license-revoked'").get().count, 0)
 })

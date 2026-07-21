@@ -87,6 +87,13 @@ function normalizeGrantPlan(input: Partial<DesktopGrantPlan> = {}): DesktopGrant
 export async function cleanupExpiredDesktopState(database: D1Database): Promise<void> {
   const db = getDb(database)
   const now = new Date()
+  const releasedAt = Date.now()
+  await database.batch([
+    database.prepare(
+      "UPDATE tinypng_key_pool SET status = 'active', updated_at = ? WHERE status IN ('reserved', 'assigned') AND id IN (SELECT pool_key_id FROM desktop_license_keys WHERE license_id IN (SELECT id FROM desktop_licenses WHERE status = 'revoked'))",
+    ).bind(releasedAt),
+    database.prepare("DELETE FROM desktop_license_keys WHERE license_id IN (SELECT id FROM desktop_licenses WHERE status = 'revoked')"),
+  ])
   const expiredGrants = await db.select().from(desktopActivationGrants).where(and(
     eq(desktopActivationGrants.status, 'issued'),
     lte(desktopActivationGrants.expiresAt, now),
@@ -833,7 +840,7 @@ export async function listDesktopLicenseKeys(database: D1Database, licenseId: st
 
 export async function revokeDesktopLicense(database: D1Database, licenseId: string): Promise<void> {
   const db = getDb(database)
-  const license = await db.select({ id: desktopLicenses.id, status: desktopLicenses.status })
+  const license = await db.select({ id: desktopLicenses.id })
     .from(desktopLicenses)
     .where(eq(desktopLicenses.id, licenseId))
     .get()
@@ -841,16 +848,12 @@ export async function revokeDesktopLicense(database: D1Database, licenseId: stri
 
   const now = Date.now()
   const statements = [
+    database.prepare(
+      "UPDATE tinypng_key_pool SET status = 'active', updated_at = ? WHERE status IN ('reserved', 'assigned') AND id IN (SELECT pool_key_id FROM desktop_license_keys WHERE license_id = ?)",
+    ).bind(now, licenseId),
+    database.prepare('DELETE FROM desktop_license_keys WHERE license_id = ?').bind(licenseId),
     database.prepare("UPDATE desktop_activation_grants SET status = 'expired', code_ciphertext = NULL WHERE license_id = ? AND status = 'issued'").bind(licenseId),
     database.prepare("UPDATE desktop_licenses SET status = 'revoked', access_token_hash = NULL, updated_at = ? WHERE id = ?").bind(now, licenseId),
   ]
-  if (license.status === 'pending') {
-    statements.unshift(
-      database.prepare(
-        "UPDATE tinypng_key_pool SET status = 'active', updated_at = ? WHERE status = 'reserved' AND id IN (SELECT pool_key_id FROM desktop_license_keys WHERE license_id = ?)",
-      ).bind(now, licenseId),
-      database.prepare('DELETE FROM desktop_license_keys WHERE license_id = ?').bind(licenseId),
-    )
-  }
   await database.batch(statements)
 }
