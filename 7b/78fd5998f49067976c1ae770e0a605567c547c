@@ -1,0 +1,42 @@
+CHANGELOG.md
+  s_c15e5e6a50bd30::t_48225f45ff9c33 5-18
+desktop/smart-image-compressor/package.json
+  s_c15e5e6a50bd30::t_8b00e881845b12 3
+desktop/smart-image-compressor/src-tauri/Cargo.toml
+  s_c15e5e6a50bd30::t_150bef59f9f3f8 3
+desktop/smart-image-compressor/src-tauri/tauri.conf.json
+  s_c15e5e6a50bd30::t_d7a6a853314aba 4
+desktop/smart-image-compressor/src/App.tsx
+  s_5f5841f18f5bde::t_d79a46b44304d1 272
+package.json
+  s_c15e5e6a50bd30::t_3b55aa0f968498 3
+desktop/smart-image-compressor/scripts/sync-gitee-release.mjs
+  s_5f5841f18f5bde::t_79cf5d878c7c5d 4,11,26,49-59,84,123-132,143-172,227,240-267
+desktop/smart-image-compressor/src-tauri/Cargo.lock
+  s_5f5841f18f5bde::t_94ab3f52069230 4642
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "7b78fd5998f49067976c1ae770e0a605567c547c",
+  "prompts": {},
+  "logical_commit_id": "7b78fd5998f49067976c1ae770e0a605567c547c",
+  "sessions": {
+    "s_5f5841f18f5bde": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f5a71-61ad-7790-a2b9-69f9f31876a2",
+        "model": "gpt-5.6-terra"
+      },
+      "human_author": "masongzhi <masongzhi@bigo.sg>"
+    },
+    "s_c15e5e6a50bd30": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f7514-cc4b-7461-a78c-3c999e5b9185",
+        "model": "gpt-5.6-terra"
+      },
+      "human_author": "masongzhi <masongzhi@bigo.sg>"
+    }
+  }
+}
