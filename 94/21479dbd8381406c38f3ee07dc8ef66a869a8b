@@ -1,0 +1,38 @@
+desktop/smart-image-compressor/scripts/sync-gitee-release.mjs
+  s_4a2d2849ff8586::t_8d839384ebd103 148-149,163-167,170-201
+CHANGELOG.md
+  s_5f5841f18f5bde::t_e76fe65c947421 5-10
+desktop/smart-image-compressor/package.json
+  s_5f5841f18f5bde::t_1295e5bd204ce1 3
+desktop/smart-image-compressor/src-tauri/Cargo.toml
+  s_5f5841f18f5bde::t_325872dbb02969 3
+desktop/smart-image-compressor/src-tauri/tauri.conf.json
+  s_5f5841f18f5bde::t_3867e2a9a860b2 4
+package.json
+  s_5f5841f18f5bde::t_055d88e18186c2 3
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "9421479dbd8381406c38f3ee07dc8ef66a869a8b",
+  "prompts": {},
+  "logical_commit_id": "9421479dbd8381406c38f3ee07dc8ef66a869a8b",
+  "sessions": {
+    "s_4a2d2849ff8586": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f5fdd-4dbd-76a2-81a4-f2f05bb3c316",
+        "model": "gpt-5.6-terra"
+      },
+      "human_author": "masongzhi <masongzhi@bigo.sg>"
+    },
+    "s_5f5841f18f5bde": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f5a71-61ad-7790-a2b9-69f9f31876a2",
+        "model": "unknown"
+      },
+      "human_author": "masongzhi <masongzhi@bigo.sg>"
+    }
+  }
+}
