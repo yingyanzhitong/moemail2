@@ -1,0 +1,24 @@
+app/components/profile/desktop-license-admin.tsx
+  s_fa5802dd788675::t_9657fa53ae56ea 77-80,141-166,168,180,255-264,347-379
+app/lib/desktop-license-service.ts
+  s_fa5802dd788675::t_32198d1f54fa73 90-96,843,851-854
+tests/desktop-license-sql.test.mjs
+  s_fa5802dd788675::t_f7040121dd0be9 53-54,64-75,178,186-187,199-209,211
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "1394247f0baae00d44a034e83b75ccddb9ca074d",
+  "prompts": {},
+  "logical_commit_id": "1394247f0baae00d44a034e83b75ccddb9ca074d",
+  "sessions": {
+    "s_fa5802dd788675": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f82a4-f052-7851-8f9f-da7687ff5fed",
+        "model": "unknown"
+      },
+      "human_author": "masongzhi <masongzhi@bigo.sg>"
+    }
+  }
+}
