@@ -1,0 +1,90 @@
+app/lib/desktop-license-service.ts
+  s_5f5841f18f5bde::t_a7294fbb080b43 410,421-433
+desktop/smart-image-compressor/DESIGN.md
+  s_5f5841f18f5bde::t_e47bed41bd83ff 2
+desktop/smart-image-compressor/index.html
+  s_5f5841f18f5bde::t_2f85498819f232 8
+desktop/smart-image-compressor/src-tauri/Cargo.toml
+  s_5f5841f18f5bde::t_9b50dd27bced98 4
+desktop/smart-image-compressor/src-tauri/src/commands.rs
+  s_5f5841f18f5bde::t_e322b617126e3e 3,16,22-24,120-132,135-139,142,145,148-152,204-205,299-324
+desktop/smart-image-compressor/src-tauri/src/compression.rs
+  s_5f5841f18f5bde::t_b44d1d6070da6d 2,22,29-31,100-111,113-132,135-136,144-145,148,150-159,161-162,164-169,172-175,178-179,181-184,199-200,208,347-356,358-368,426-427,429,431-436,528-529,533-547,549-550,559-560,589-590,595,639,641
+desktop/smart-image-compressor/src-tauri/src/lib.rs
+  s_5f5841f18f5bde::t_234b3a12fc15ce 129-130,137,142
+desktop/smart-image-compressor/src-tauri/src/license_api.rs
+  s_5f5841f18f5bde::t_a3b93179e1df9e 1-5,16-17,23-28,44-52,55-61,66-95,98-103,105-107,176-246,254,263-266,268-270,273,280,289-299,302-318,336-337,372-376,378,405,409-430,432-450,476-477,480,483-485,487-490,492-526,528-708,714,722-728,733,737-738,741,744,747,754-755,759-776,779,781-788,794-802,810-816,819-823,836,844,852-865,879-888,900-901,903,905,907-908,913,919,922-928,931-934,938,940-942,944-959,962-965,969,971-994,998,1000-1024
+desktop/smart-image-compressor/src-tauri/src/models.rs
+  s_5f5841f18f5bde::t_c497e12fe59060 14-28,39-40,56,139,143,154,198-210,226-227
+desktop/smart-image-compressor/src-tauri/src/overwrite_manifest.rs
+  s_5f5841f18f5bde::t_284f6b7dbef9c8 18,113,124-125,168,176,187,198-220
+desktop/smart-image-compressor/src-tauri/src/tinify.rs
+  s_5f5841f18f5bde::t_79390082b7883c 4-6,36,45,57,90,103,108,171
+desktop/smart-image-compressor/src-tauri/tauri.conf.json
+  s_5f5841f18f5bde::t_76781272315232 3,16
+desktop/smart-image-compressor/src/App.test.tsx
+  s_5f5841f18f5bde::t_b2c3f36296eb4b 38,119,124-128
+desktop/smart-image-compressor/src/App.tsx
+  s_5f5841f18f5bde::t_35814a4d78ec06 1,5-6,14,16,18-22,43,85-100,117,163-166,199-202,271,275,277,279,283
+desktop/smart-image-compressor/src/assets.d.ts
+  s_5f5841f18f5bde::t_fb6d83f5552edc 1-12
+desktop/smart-image-compressor/src/components/activation-screen.tsx
+  s_5f5841f18f5bde::t_83df9a51c33615 2-3,83
+desktop/smart-image-compressor/src/components/drop-zone.tsx
+  s_5f5841f18f5bde::t_23db59b5f45a32 1-2,9-10,13-14,17-26,39-46
+desktop/smart-image-compressor/src/components/file-queue.test.tsx
+  s_5f5841f18f5bde::t_5e275a6272aab9 1,23-24,41-42,47-58
+desktop/smart-image-compressor/src/components/file-queue.tsx
+  s_5f5841f18f5bde::t_b00eee2bbf0b72 2,5,115,118,122,129,180-183,210
+desktop/smart-image-compressor/src/components/license-panel.test.tsx
+  s_5f5841f18f5bde::t_dbd26c3ab7ea71 15-23,28-40,43,46,49-50,57,63,73-74,79,86,91,105-167
+desktop/smart-image-compressor/src/components/license-panel.tsx
+  s_5f5841f18f5bde::t_23b9c27286283a 1,4,7,11,14,17,22-74,79-80,82-83,90-97,99-107,109-125,134-147,149-151,153
+desktop/smart-image-compressor/src/components/token-usage-debug.css
+  s_5f5841f18f5bde::t_7eee2423be373f 1-15
+desktop/smart-image-compressor/src/components/token-usage-debug.tsx
+  s_5f5841f18f5bde::t_17ab101d51d090 1-44
+desktop/smart-image-compressor/src/components/token-usage-dialog.test.tsx
+  s_c15e5e6a50bd30::t_da29845b2f3a68 17-18,25
+desktop/smart-image-compressor/src/lib/debug-token-usage-api.ts
+  s_5f5841f18f5bde::t_bd26b6d462dfcc 1-15
+desktop/smart-image-compressor/src/lib/desktop-api.ts
+  s_5f5841f18f5bde::t_767e23354aa342 2,13-21,52-53,76-80
+desktop/smart-image-compressor/src/lib/queue-store.test.ts
+  s_5f5841f18f5bde::t_0632f9bc66e7dd 33-43
+desktop/smart-image-compressor/src/styles.css
+  s_5f5841f18f5bde::t_4b1211de53a569 20,23,25,27-30,46,62-74
+desktop/smart-image-compressor/src/components/activation-dialog.tsx
+  s_5f5841f18f5bde::t_afa7410665e4e0 49-50
+desktop/smart-image-compressor/src/components/token-usage-dialog.tsx
+  s_5f5841f18f5bde::t_07f1a2b1a034b7 26,64
+desktop/smart-image-compressor/src/components/ui/button.tsx
+  s_5f5841f18f5bde::t_5d451a42cbf988 6
+desktop/smart-image-compressor/src/types.ts
+  s_5f5841f18f5bde::t_25f1c201dae271 6-16,26,97
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "69f6e31b4511a8d98600c8a03e749ca2d25b404f",
+  "prompts": {},
+  "logical_commit_id": "69f6e31b4511a8d98600c8a03e749ca2d25b404f",
+  "sessions": {
+    "s_5f5841f18f5bde": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f5a71-61ad-7790-a2b9-69f9f31876a2",
+        "model": "gpt-5.6-terra"
+      },
+      "human_author": "masongzhi <masongzhi@bigo.sg>"
+    },
+    "s_c15e5e6a50bd30": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f7514-cc4b-7461-a78c-3c999e5b9185",
+        "model": "gpt-5.6-terra"
+      },
+      "human_author": "masongzhi <masongzhi@bigo.sg>"
+    }
+  }
+}
