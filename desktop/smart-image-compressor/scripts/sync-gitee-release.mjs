@@ -1,13 +1,14 @@
 #!/usr/bin/env node
 
 import { execFile } from 'node:child_process'
-import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises'
+import { cp, mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { promisify } from 'node:util'
 
 const execFileAsync = promisify(execFile)
 const apiBase = 'https://gitee.com/api/v5'
+const assetUrlOverrides = new Map()
 const config = {
   token: requiredEnv('GITEE_ACCESS_TOKEN'),
   owner: requiredEnv('GITEE_OWNER'),
@@ -22,6 +23,7 @@ const config = {
 }
 
 const repository = await ensureRepository()
+await ensurePublicRepository(repository)
 await ensureBranch(repository.default_branch || config.branch)
 const releaseId = await ensureRelease()
 await syncAssets(releaseId)
@@ -42,6 +44,17 @@ async function ensureRepository() {
     has_wiki: 'false',
   })
   return giteeJson('/user/repos', { method: 'POST', body })
+}
+
+async function ensurePublicRepository(repository) {
+  if (repository.private === false || repository.public === true) return
+
+  const body = new URLSearchParams({ name: config.repo, private: 'false' })
+  const updated = await giteeJson(`/repos/${config.owner}/${config.repo}`, { method: 'PATCH', body })
+  if (updated.private !== false && updated.public !== true) {
+    throw new Error(`无法将 Gitee 镜像仓库设为公开：${config.owner}/${config.repo}`)
+  }
+  console.log(`已将 Gitee 镜像仓库设为公开：${config.owner}/${config.repo}`)
 }
 
 async function getRepository() {
@@ -68,7 +81,7 @@ async function ensureBranch(defaultBranch) {
     await runGit(['init', '--initial-branch', config.branch], workdir)
     await mkdir(path.join(workdir, 'release'), { recursive: true })
     await writeFile(path.join(workdir, 'README.md'), '# TinyPNG 压缩助手发布镜像\n\n此仓库由 GitHub Actions 自动同步桌面端预发布安装包。\n')
-    await writeFile(path.join(workdir, 'release', 'latest.json'), await readFile(config.latestJsonPath, 'utf8'))
+    await writeFile(path.join(workdir, 'release', 'latest.json'), await latestManifestContent())
     await runGit(['add', 'README.md', 'release/latest.json'], workdir)
     await runGit(['-c', 'user.name=tinypng-release-bot', '-c', 'user.email=actions@github.com', 'commit', '-m', 'chore: initialize release mirror'], workdir)
     await runGit(['remote', 'add', 'origin', authenticatedRemoteUrl(config.gitUsername)], workdir)
@@ -107,6 +120,16 @@ async function getReleaseByTag() {
 async function syncAssets(releaseId) {
   const files = await findReleaseFiles(config.assetDir)
   if (files.length === 0) throw new Error('未找到待同步的 Release 资产')
+
+  try {
+    await syncReleaseAssets(releaseId, files)
+  } catch (error) {
+    console.warn(`Gitee Release 附件上传失败，改为同步到公开仓库文件：${error.message}`)
+    await syncRepositoryAssets(files)
+  }
+}
+
+async function syncReleaseAssets(releaseId, files) {
   const existing = await listAssets(releaseId)
   for (const file of files) {
     const name = path.basename(file)
@@ -117,6 +140,36 @@ async function syncAssets(releaseId) {
   const uploaded = new Set((await listAssets(releaseId)).map((asset) => asset.name))
   const missing = files.map((file) => path.basename(file)).filter((name) => !uploaded.has(name))
   if (missing.length > 0) throw new Error(`Gitee Release 缺少资产：${missing.join(', ')}`)
+}
+
+async function syncRepositoryAssets(files) {
+  let workdir = await mkdtemp(path.join(tmpdir(), 'tinypng-gitee-release-'))
+  try {
+    try {
+      await cloneRepository(workdir, config.gitUsername)
+    } catch {
+      await rm(workdir, { recursive: true, force: true })
+      workdir = await mkdtemp(path.join(tmpdir(), 'tinypng-gitee-release-'))
+      await cloneRepository(workdir, 'oauth2')
+    }
+
+    const destination = path.join(workdir, 'release', 'assets', config.tag)
+    await mkdir(destination, { recursive: true })
+    for (const file of files) {
+      const name = path.basename(file)
+      await cp(file, path.join(destination, name))
+      assetUrlOverrides.set(name, repositoryAssetUrl(name))
+    }
+
+    const { stdout } = await execFileAsync('git', ['status', '--porcelain', '--', path.join('release', 'assets', config.tag)], { cwd: workdir })
+    if (!stdout.trim()) return
+    await runGit(['add', path.join('release', 'assets', config.tag)], workdir)
+    await runGit(['-c', 'user.name=tinypng-release-bot', '-c', 'user.email=actions@github.com', 'commit', '-m', `chore: mirror release assets for ${config.tag}`], workdir)
+    await runGit(['push', 'origin', `HEAD:${config.branch}`], workdir)
+    console.log(`已将 ${files.length} 个发布资产同步到 Gitee 公开仓库文件。`)
+  } finally {
+    await rm(workdir, { recursive: true, force: true })
+  }
 }
 
 async function findReleaseFiles(directory) {
@@ -171,7 +224,7 @@ async function upsertLatestJson() {
       await cloneRepository(workdir, 'oauth2')
     }
     await mkdir(path.join(workdir, 'release'), { recursive: true })
-    await writeFile(path.join(workdir, 'release', 'latest.json'), await readFile(config.latestJsonPath, 'utf8'))
+    await writeFile(path.join(workdir, 'release', 'latest.json'), await latestManifestContent())
     const { stdout } = await execFileAsync('git', ['status', '--porcelain', '--', 'release/latest.json'], { cwd: workdir })
     if (!stdout.trim()) return
     await runGit(['add', 'release/latest.json'], workdir)
@@ -184,6 +237,34 @@ async function upsertLatestJson() {
 
 async function cloneRepository(workdir, username) {
   await runGit(['clone', '--depth', '1', '--branch', config.branch, authenticatedRemoteUrl(username), workdir], process.cwd())
+}
+
+async function latestManifestContent() {
+  const source = await readFile(config.latestJsonPath, 'utf8')
+  if (assetUrlOverrides.size === 0) return source
+
+  const manifest = JSON.parse(source)
+  for (const section of [manifest.installers, manifest.platforms]) {
+    if (!section || typeof section !== 'object') continue
+    for (const item of Object.values(section)) {
+      if (!item || typeof item.url !== 'string') continue
+      const assetUrl = assetUrlOverrides.get(assetNameFromUrl(item.url))
+      if (assetUrl) item.url = assetUrl
+    }
+  }
+  return `${JSON.stringify(manifest, null, 2)}\n`
+}
+
+function assetNameFromUrl(url) {
+  try {
+    return decodeURIComponent(new URL(url).pathname.split('/').pop() || '')
+  } catch {
+    return ''
+  }
+}
+
+function repositoryAssetUrl(name) {
+  return `https://gitee.com/${config.owner}/${config.repo}/raw/${encodeURIComponent(config.branch)}/release/assets/${encodeURIComponent(config.tag)}/${encodeURIComponent(name)}`
 }
 
 async function giteeJson(pathname, init = {}) {

@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.14.39] - 2026-07-21
+
+### Changed
+
+- **更新入口对齐**：更新按钮保持在“TinyPNG 压缩助手”名称右侧，并相对标题与副标题整组垂直居中。
+
+### Fixed
+
+- **Gitee 发布镜像**：确保自动创建或复用的镜像仓库始终为公开仓库，`release/latest.json` 与安装包可被桌面端直接访问；若 GitHub Runner 向 Gitee Release 上传大文件被中断，则自动回退为同步到公开仓库文件，并将更新清单指向该可下载地址。
+
+### Tests
+
+- **桌面端回归**：前端 32 项测试、生产构建、发布脚本语法和下载地址连通性校验通过。
+
 ## [1.14.38] - 2026-07-21
 
 ### Features

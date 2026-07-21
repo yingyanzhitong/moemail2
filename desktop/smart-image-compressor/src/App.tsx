@@ -269,7 +269,7 @@ export function App() {
   return (
     <main className="app-window">
       <header className="workspace-toolbar">
-        <div className="flex min-w-0 items-center gap-2.5"><UpdateButton /><span className="h-5 w-px bg-[#D2D2D7]" aria-hidden="true" /><img src={appIcon} alt="" className="h-8 w-8 shrink-0 rounded-[8px]" /><div className="min-w-0"><h1 className="truncate text-[13px] font-semibold text-[#1D1D1F]">TinyPNG 压缩助手</h1><p className="text-[10px] text-[#86868B]">TinyPNG 图片压缩工作台</p></div></div>
+        <div className="flex min-w-0 items-center gap-2.5"><img src={appIcon} alt="" className="h-8 w-8 shrink-0 rounded-[8px]" /><div className="min-w-0"><h1 className="truncate text-[13px] font-semibold text-[#1D1D1F]">TinyPNG 压缩助手</h1><p className="text-[10px] text-[#86868B]">TinyPNG 图片压缩工作台</p></div><span className="shrink-0"><UpdateButton /></span></div>
       </header>
       <div className="workspace-layout">
         <section className="workspace-main">
