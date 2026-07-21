@@ -56,7 +56,7 @@ export function UpdateButton() {
     if (!isTauri() || checkingRef.current || installingRef.current || pendingUpdateRef.current) return
     checkingRef.current = true
     setStatus('checking')
-    setMessage('正在检查更新。')
+    setMessage('')
     setProgress({ downloadedBytes: 0, totalBytes: null })
 
     try {
@@ -64,15 +64,15 @@ export function UpdateButton() {
       setPendingUpdate(latest)
       if (latest) {
         setStatus('available')
-        setMessage(`发现新版本 ${latest.version}。`)
+        setMessage(`发现新版本 ${latest.version}`)
       } else {
         setStatus('notAvailable')
-        setMessage('当前已是最新版本。')
+        setMessage('')
       }
-    } catch (error) {
+    } catch {
       setPendingUpdate(null)
-      setStatus('error')
-      setMessage(formatUpdateError(error))
+      setStatus('idle')
+      setMessage('')
     } finally {
       checkingRef.current = false
     }
@@ -115,27 +115,30 @@ export function UpdateButton() {
 
   function openUpdateDialog() {
     setDialogOpen(true)
-    if (!pendingUpdateRef.current && !checkingRef.current && !installingRef.current) void checkForUpdates()
   }
 
   const isInstalling = status === 'downloading' || status === 'installing'
   const progressPercent = getProgressPercent(progress)
   const latestVersion = pendingUpdate?.version ?? '-'
   const notes = pendingUpdate?.body?.trim()
+  const label = buttonLabel(status, pendingUpdate, progress)
+  const visibleLabel = status === 'available' ? '更新' : label
+
+  if (!pendingUpdate && !['downloading', 'installing', 'installed', 'error'].includes(status)) return null
 
   return (
     <>
       <Button
-        aria-label={buttonLabel(status)}
-        className={status === 'available' ? 'bg-[#2956D8] text-white hover:bg-[#2148B7]' : ''}
+        aria-label={label}
+        className={status === 'error' ? 'h-6 max-w-[7rem] rounded-[6px] border border-[#C53D47] bg-[#C53D47] px-2.5 text-[11px] font-semibold leading-none text-white shadow-none hover:bg-[#AA333C]' : 'h-6 max-w-[7rem] rounded-[6px] border border-[#2956D8] bg-[#2956D8] px-2.5 text-[11px] font-semibold leading-none text-white shadow-none hover:bg-[#2148B7]'}
         onClick={openUpdateDialog}
         size="sm"
-        title={message || '检查更新'}
+        title={message || `发现 ${pendingUpdate?.version ?? '新版本'}，打开更新详情`}
         type="button"
-        variant={status === 'available' ? 'default' : 'ghost'}
+        variant={status === 'error' ? 'danger' : 'default'}
       >
         <UpdateIcon status={status} />
-        <span>{buttonLabel(status)}</span>
+        <span className="min-w-0 truncate">{visibleLabel}</span>
       </Button>
 
       <Dialog
@@ -145,9 +148,12 @@ export function UpdateButton() {
           setDialogOpen(open)
         }}
       >
-        <DialogContent className="max-w-[460px]">
+        <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>应用更新</DialogTitle>
+            <div className="flex min-w-0 items-center gap-2">
+              <DialogTitle className="min-w-0 truncate">应用更新</DialogTitle>
+              <UpdateBadge status={status} />
+            </div>
             <DialogDescription>更新包来自 Gitee Release，并由 Tauri 签名校验后安装。</DialogDescription>
           </DialogHeader>
 
@@ -177,6 +183,8 @@ export function UpdateButton() {
 
             {message ? <p className={status === 'error' ? 'rounded-[8px] border border-[#F1C5C7] bg-[#FFF5F5] px-3 py-2 text-xs leading-5 text-[#B4232B]' : 'rounded-[8px] border border-[#D6DDE8] bg-white px-3 py-2 text-xs leading-5 text-[#667085]'}>{message}</p> : null}
 
+            <p className="rounded-[8px] border border-[#D6DDE8] bg-[#F7F9FC] px-3 py-2 text-[11px] leading-5 text-[#667085]">更新清单：<span className="font-mono">Gitee release/latest.json</span></p>
+
             <div className="flex justify-end gap-2 pt-1">
               <Button disabled={isInstalling} onClick={() => setDialogOpen(false)} type="button" variant="outline">关闭</Button>
               <Button disabled={isInstalling || status === 'checking' || status === 'installed'} onClick={() => void (pendingUpdate ? installUpdate() : checkForUpdates())} type="button">
@@ -202,14 +210,38 @@ function UpdateIcon({ status }: { status: UpdateStatus }) {
   return <RefreshCw className="h-3.5 w-3.5" />
 }
 
-function buttonLabel(status: UpdateStatus) {
+function UpdateBadge({ status }: { status: UpdateStatus }) {
+  const variant = status === 'available' || status === 'downloading' || status === 'installing'
+    ? 'border-[#BFD0FF] bg-[#EDF2FF] text-[#2956D8]'
+    : status === 'notAvailable' || status === 'installed'
+      ? 'border-[#B8E0D6] bg-[#EFFAF6] text-[#15806A]'
+      : status === 'error'
+        ? 'border-[#F1C5C7] bg-[#FFF5F5] text-[#B4232B]'
+        : 'border-[#D6DDE8] bg-[#F7F9FC] text-[#667085]'
+  return <span className={`shrink-0 rounded-full border px-2 py-0.5 text-[11px] font-medium ${variant}`}>{badgeLabel(status)}</span>
+}
+
+function buttonLabel(status: UpdateStatus, update: Update | null, progress: UpdateProgress) {
+  const progressPercent = getProgressPercent(progress)
   if (status === 'checking') return '检查中'
-  if (status === 'available') return '更新'
-  if (status === 'downloading') return '下载中'
+  if (status === 'available') return `新版本 ${update?.version ?? ''}`.trim()
+  if (status === 'downloading') return progressPercent === null ? '下载中' : `下载 ${progressPercent}%`
   if (status === 'installing') return '安装中'
   if (status === 'installed') return '重启中'
+  if (status === 'notAvailable') return '已是最新'
   if (status === 'error') return '更新失败'
   return '检查更新'
+}
+
+function badgeLabel(status: UpdateStatus) {
+  if (status === 'available') return '有新版本'
+  if (status === 'checking') return '检查中'
+  if (status === 'downloading') return '下载中'
+  if (status === 'installing') return '安装中'
+  if (status === 'installed') return '已安装'
+  if (status === 'notAvailable') return '最新'
+  if (status === 'error') return '失败'
+  return '待检查'
 }
 
 function primaryActionLabel(status: UpdateStatus, update: Update | null) {

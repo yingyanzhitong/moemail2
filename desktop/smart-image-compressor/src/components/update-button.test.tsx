@@ -13,18 +13,14 @@ vi.mock('@tauri-apps/plugin-process', () => ({ relaunch: vi.fn() }))
 vi.mock('@tauri-apps/plugin-updater', () => ({ check: checkMock }))
 
 describe('更新入口', () => {
-  it('启动后检查更新，并在工具栏保留手动检查入口', async () => {
+  it('启动后检查更新，已是最新时不占用工具栏位置', async () => {
     versionMock.mockResolvedValue('0.2.5')
     checkMock.mockResolvedValue(null)
 
     render(<UpdateButton />)
 
     await waitFor(() => expect(checkMock).toHaveBeenCalledWith({ timeout: 30_000 }))
-    const button = await screen.findByRole('button', { name: '检查更新' })
-    fireEvent.click(button)
-
-    expect(await screen.findByRole('heading', { name: '应用更新' })).toBeInTheDocument()
-    expect(await screen.findByText('当前已是最新版本。')).toBeInTheDocument()
+    expect(screen.queryByRole('button')).not.toBeInTheDocument()
   })
 
   it('发现新版本后显示更新操作', async () => {
@@ -33,9 +29,10 @@ describe('更新入口', () => {
 
     render(<UpdateButton />)
 
-    expect(await screen.findByRole('button', { name: '更新' })).toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: '更新' }))
-    expect(await screen.findByText('发现新版本 0.2.5。')).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: '新版本 0.2.5' })).toHaveTextContent('更新')
+    fireEvent.click(screen.getByRole('button', { name: '新版本 0.2.5' }))
+    expect(await screen.findByText('发现新版本 0.2.5')).toBeInTheDocument()
+    expect(screen.getByText('有新版本')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: '立即更新' })).toBeInTheDocument()
   })
 })
