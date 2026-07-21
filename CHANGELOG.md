@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.14.36] - 2026-07-21
+
+### Fixed
+
+- **桌面构建触发**：桌面端版本升级至 `0.2.3`，使用 `desktop-v0.2.3` 标签触发 macOS Apple Silicon、macOS Intel 与 Windows x64 的 Tauri 测试版构建，并在完成后同步 Gitee 安装包镜像。
+
 ## [1.14.35] - 2026-07-21
 
 ### Features
