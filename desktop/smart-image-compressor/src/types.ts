@@ -3,6 +3,17 @@ export type FileStatus = 'queued' | 'compressing' | 'completed' | 'failed' | 'sk
 export type CompressionStage = 'preparing' | 'reading' | 'uploading' | 'downloading' | 'writing'
 export type OutputMode = 'new_folder' | 'overwrite'
 
+export interface LicensePackage {
+  id: string
+  status: LicenseStatus
+  used: number
+  limit: number
+  startsAt: string | null
+  expiresAt: string | null
+  scheduledPeriods: Array<{ startsAt: string; expiresAt: string; limit: number }>
+  message?: string
+}
+
 export interface LicenseView {
   id: string | null
   status: LicenseStatus
@@ -12,6 +23,7 @@ export interface LicenseView {
   startsAt: string | null
   expiresAt: string | null
   scheduledPeriods: Array<{ startsAt: string; expiresAt: string; limit: number }>
+  packages: LicensePackage[]
   message?: string
 }
 
@@ -82,6 +94,7 @@ export interface CompressionFinished {
 export type TokenUsageStatus = 'active' | 'exhausted' | 'invalid' | 'unavailable'
 
 export interface TokenUsage {
+  packageIndex: number
   index: number
   used?: number
   limit: number

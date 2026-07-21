@@ -1,5 +1,5 @@
 ---
-name: 智能压缩工具
+name: TinyPNG 压缩助手
 description: macOS 优先的本地图片压缩工具，以原生工具栏、队列工作区和检查器组织高频批处理任务。
 version: 2.0.0
 tokens:

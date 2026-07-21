@@ -15,7 +15,7 @@ use tokio::{
 };
 use uuid::Uuid;
 
-/// 覆盖模式只在图片所在文件夹保存本地记录；点号前缀使其在 macOS 中默认隐藏。
+/// 每个成功压缩文件所在的文件夹都会保存本地记录；点号前缀使其在 macOS 中默认隐藏。
 pub const MANIFEST_FILE_NAME: &str = ".smartcompress.json";
 
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
@@ -110,7 +110,7 @@ impl OverwriteManifestStore {
         Ok(manifest)
     }
 
-    /// 仅当文件夹已有成功记录时才读取图片计算 SHA-256，首次覆盖不会额外遍历原图。
+    /// 仅当文件夹已有成功记录时才读取图片计算 SHA-256，首次导入不会额外遍历图片。
     pub async fn was_compressed(&self, source: &Path) -> Result<bool> {
         let folder = parent_folder(source)?;
         let manifest = self.cached_manifest(&folder).await?;
@@ -121,8 +121,8 @@ impl OverwriteManifestStore {
         Ok(manifest.entries.contains_key(&hash))
     }
 
-    /// 文件已原子覆盖成功后记录压缩结果的 SHA-256；下次导入同一文件夹时可避免重复压缩。
-    pub async fn record_completed_overwrite(
+    /// 文件成功写入后记录最终压缩结果的 SHA-256；下次导入同一文件夹时可避免重复压缩。
+    pub async fn record_completed(
         &self,
         source: &Path,
         original_size: u64,
@@ -165,7 +165,7 @@ mod tests {
     use super::*;
 
     #[tokio::test]
-    async fn records_result_hash_and_skips_the_same_overwritten_file() {
+    async fn records_result_hash_and_skips_the_same_compressed_file() {
         let directory = tempdir().unwrap();
         let image = directory.path().join("photo.png");
         fs::write(&image, b"original-image").await.unwrap();
@@ -173,10 +173,7 @@ mod tests {
 
         assert!(!store.was_compressed(&image).await.unwrap());
         fs::write(&image, b"compressed-image").await.unwrap();
-        store
-            .record_completed_overwrite(&image, 14, 9)
-            .await
-            .unwrap();
+        store.record_completed(&image, 14, 9).await.unwrap();
 
         assert!(directory.path().join(MANIFEST_FILE_NAME).is_file());
         assert!(OverwriteManifestStore::default()
@@ -187,10 +184,7 @@ mod tests {
         fs::write(&image, b"another-compressed-image")
             .await
             .unwrap();
-        store
-            .record_completed_overwrite(&image, 18, 12)
-            .await
-            .unwrap();
+        store.record_completed(&image, 18, 12).await.unwrap();
         let manifest = fs::read_to_string(directory.path().join(MANIFEST_FILE_NAME))
             .await
             .unwrap();
@@ -201,6 +195,29 @@ mod tests {
                 .len()
                 >= 2
         );
+    }
+
+    #[tokio::test]
+    async fn skips_a_file_reimported_from_a_new_output_folder() {
+        let directory = tempdir().unwrap();
+        let original_folder = directory.path().join("原图");
+        let output_folder = directory.path().join("原图-压缩结果");
+        fs::create_dir_all(&original_folder).await.unwrap();
+        fs::create_dir_all(&output_folder).await.unwrap();
+        let original = original_folder.join("photo.png");
+        let compressed = output_folder.join("photo.png");
+        fs::write(&original, b"original-image").await.unwrap();
+        fs::write(&compressed, b"compressed-image").await.unwrap();
+
+        let store = OverwriteManifestStore::default();
+        assert!(!store.was_compressed(&original).await.unwrap());
+        store.record_completed(&compressed, 14, 9).await.unwrap();
+
+        assert!(output_folder.join(MANIFEST_FILE_NAME).is_file());
+        assert!(OverwriteManifestStore::default()
+            .was_compressed(&compressed)
+            .await
+            .unwrap());
     }
 
     #[tokio::test]

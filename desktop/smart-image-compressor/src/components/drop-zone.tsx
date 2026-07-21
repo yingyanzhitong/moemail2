@@ -1,15 +1,29 @@
-import { FolderOpen, ImagePlus, ScanLine } from 'lucide-react'
+import { ChevronDown, FolderOpen, ImagePlus, Pause, Play, ScanLine } from 'lucide-react'
+import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 
 interface DropZoneProps {
   active: boolean
   disabled: boolean
   scanning: boolean
+  canStart: boolean
+  running: boolean
   onPickImages: () => void
   onPickFolder: () => void
+  onStart: () => void
+  onCancel: () => void
 }
 
-export function DropZone({ active, disabled, scanning, onPickImages, onPickFolder }: DropZoneProps) {
+export function DropZone({ active, disabled, scanning, canStart, running, onPickImages, onPickFolder, onStart, onCancel }: DropZoneProps) {
+  const [importMenuOpen, setImportMenuOpen] = useState(false)
+  const pickImages = () => {
+    setImportMenuOpen(false)
+    onPickImages()
+  }
+  const pickFolder = () => {
+    setImportMenuOpen(false)
+    onPickFolder()
+  }
   return (
     <section className={`import-strip ${active ? 'import-strip-active' : ''}`} aria-label="导入图片">
       <div className="flex min-w-0 items-center gap-3">
@@ -22,8 +36,14 @@ export function DropZone({ active, disabled, scanning, onPickImages, onPickFolde
         </div>
       </div>
       <div className="flex shrink-0 items-center gap-2">
-        <Button variant="outline" size="sm" onClick={onPickImages} disabled={disabled}><ImagePlus className="h-3.5 w-3.5" />导入图片</Button>
-        <Button variant="outline" size="sm" onClick={onPickFolder} disabled={disabled}><FolderOpen className="h-3.5 w-3.5" />导入文件夹</Button>
+        <div className="import-menu">
+          <Button variant="outline" size="sm" onClick={() => setImportMenuOpen((open) => !open)} disabled={disabled} aria-haspopup="menu" aria-expanded={importMenuOpen}><ImagePlus className="h-3.5 w-3.5" />导入图片<ChevronDown className="h-3.5 w-3.5" /></Button>
+          {importMenuOpen ? <div className="import-menu-popover" role="menu" aria-label="导入方式">
+            <button type="button" role="menuitem" onClick={pickImages}><ImagePlus className="h-3.5 w-3.5" />选择图片</button>
+            <button type="button" role="menuitem" onClick={pickFolder}><FolderOpen className="h-3.5 w-3.5" />选择文件夹</button>
+          </div> : null}
+        </div>
+        {running ? <Button variant="danger" size="sm" onClick={onCancel}><Pause className="h-3.5 w-3.5" />取消</Button> : <Button size="sm" onClick={onStart} disabled={!canStart} title={scanning ? '正在扫描导入内容' : canStart ? undefined : '请先导入图片并保持授权有效'}><Play className="h-3.5 w-3.5 fill-current" />开始压缩</Button>}
       </div>
     </section>
   )

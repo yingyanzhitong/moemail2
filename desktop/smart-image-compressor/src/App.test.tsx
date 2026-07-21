@@ -35,6 +35,7 @@ const unlicensed: LicenseView = {
   startsAt: null,
   expiresAt: null,
   scheduledPeriods: [],
+  packages: [],
 }
 
 const active: LicenseView = {
@@ -115,12 +116,16 @@ describe('桌面端授权入口', () => {
     expect(screen.queryByText(/回传|对账/)).not.toBeInTheDocument()
   })
 
-  it('工作台保留原生导入入口，并提供两种明确的输出策略', async () => {
+  it('工作台通过一个导入入口选择图片或文件夹，并在导入区域开始压缩', async () => {
     bootstrapMock.mockResolvedValue({ license: active, reconciledReservations: 0, pendingUsageReports: 0 })
 
     render(<App />)
     expect(await screen.findByRole('button', { name: '导入图片' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: '导入文件夹' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: '导入文件夹' })).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: '导入图片' }))
+    expect(screen.getByRole('menuitem', { name: '选择图片' })).toBeInTheDocument()
+    expect(screen.getByRole('menuitem', { name: '选择文件夹' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '开始压缩' })).toBeInTheDocument()
     expect(screen.getByRole('radio', { name: /导出到新文件夹/ })).toBeChecked()
     expect(screen.getByRole('radio', { name: /覆盖原文件/ })).not.toBeChecked()
   })

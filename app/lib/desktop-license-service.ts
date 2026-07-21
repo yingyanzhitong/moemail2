@@ -407,6 +407,7 @@ export async function redeemDesktopGrant(
 export async function authenticateDesktopLicense(request: Request, database: D1Database) {
   const authorization = request.headers.get('authorization')
   const deviceId = request.headers.get('x-device-id')
+  const requestedLicenseId = request.headers.get('x-license-id')
   if (!authorization?.startsWith('Bearer ') || !deviceId) {
     throw new DesktopLicenseError('缺少桌面端凭证', 401, 'UNAUTHORIZED')
   }
@@ -417,7 +418,19 @@ export async function authenticateDesktopLicense(request: Request, database: D1D
     eq(desktopLicenses.accessTokenHash, tokenHash),
     eq(desktopLicenses.deviceId, deviceId),
   )).get()
-  if (!license) throw new DesktopLicenseError('桌面端凭证无效', 401, 'UNAUTHORIZED')
+  if (!license) {
+    // 停止套餐会清除 access_token_hash。状态核验可携带套餐 ID，使已绑定的原设备
+    // 得到明确的撤销结果，客户端据此删除本地 TinyPNG Token；不会返回任何套餐内容。
+    if (requestedLicenseId) {
+      const revoked = await db.select({ id: desktopLicenses.id }).from(desktopLicenses).where(and(
+        eq(desktopLicenses.id, requestedLicenseId),
+        eq(desktopLicenses.deviceId, deviceId),
+        eq(desktopLicenses.status, 'revoked'),
+      )).get()
+      if (revoked) throw new DesktopLicenseError('授权已撤销', 403, 'LICENSE_REVOKED')
+    }
+    throw new DesktopLicenseError('桌面端凭证无效', 401, 'UNAUTHORIZED')
+  }
   if (license.status === 'revoked') throw new DesktopLicenseError('授权已撤销', 403, 'LICENSE_REVOKED')
   if (license.status !== 'active') throw new DesktopLicenseError('授权尚未激活', 403, 'LICENSE_NOT_ACTIVE')
   return license

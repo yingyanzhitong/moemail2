@@ -1,7 +1,9 @@
 use std::{path::Path, time::Duration};
 
 use base64::{engine::general_purpose::STANDARD, Engine};
-use chrono::{DateTime, Datelike, TimeZone, Utc};
+use chrono::{DateTime, Utc};
+#[cfg(any(debug_assertions, test))]
+use chrono::{Datelike, TimeZone};
 use futures::StreamExt;
 use reqwest::{header::DATE, Body, Client, Response, StatusCode};
 use tempfile::{NamedTempFile, TempPath};
@@ -31,6 +33,7 @@ pub struct TinifyOutput {
     pub server_time: Option<DateTime<Utc>>,
 }
 
+#[cfg(any(debug_assertions, test))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum UsageStatus {
     Active,
@@ -39,6 +42,7 @@ pub enum UsageStatus {
     Unavailable,
 }
 
+#[cfg(any(debug_assertions, test))]
 impl UsageStatus {
     pub fn as_str(self) -> &'static str {
         match self {
@@ -50,6 +54,7 @@ impl UsageStatus {
     }
 }
 
+#[cfg(any(debug_assertions, test))]
 #[derive(Debug, Clone)]
 pub struct UsageSnapshot {
     pub count: Option<u32>,
@@ -82,6 +87,7 @@ fn authorization(api_key: &str) -> String {
     format!("Basic {}", STANDARD.encode(format!("api:{api_key}")))
 }
 
+#[cfg(any(debug_assertions, test))]
 fn next_month_reset(observed_at: DateTime<Utc>) -> DateTime<Utc> {
     let (year, month) = if observed_at.month() == 12 {
         (observed_at.year() + 1, 1)
@@ -94,10 +100,12 @@ fn next_month_reset(observed_at: DateTime<Utc>) -> DateTime<Utc> {
 }
 
 /// TinyPNG 官方客户端以空 POST /shrink 校验 Key；400 Input missing 是有效校验响应，不会上传图片或计费。
+#[cfg(any(debug_assertions, test))]
 pub async fn query_usage(client: &Client, api_key: &str) -> UsageSnapshot {
     query_usage_with_endpoint(client, api_key, SHRINK_URL).await
 }
 
+#[cfg(any(debug_assertions, test))]
 async fn query_usage_with_endpoint(
     client: &Client,
     api_key: &str,
@@ -160,6 +168,7 @@ async fn query_usage_with_endpoint(
     }
 }
 
+#[cfg(any(debug_assertions, test))]
 pub fn monthly_reset_at(observed_at: DateTime<Utc>) -> DateTime<Utc> {
     next_month_reset(observed_at)
 }

@@ -1,8 +1,8 @@
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { AlertCircle, Check, FileImage, Loader2, MinusCircle, Trash2, X } from 'lucide-react'
+import { AlertCircle, Check, FileImage, FolderOutput, Loader2, MinusCircle, Trash2, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import type { QueueSnapshot } from '@/lib/queue-store'
-import type { CompressionStage, QueueItem } from '@/types'
+import type { CompressionStage, OutputMode, QueueItem } from '@/types'
 
 const ROW_HEIGHT = 92
 const OVERSCAN = 5
@@ -112,18 +112,21 @@ interface FileQueueProps {
   snapshot: QueueSnapshot
   running: boolean
   scanning: boolean
+  outputMode: OutputMode
   onRemove: (id: string) => void
   onClear: () => void
+  onOpenResults: (ids: string[]) => void
   onRequestThumbnails: (ids: string[]) => void
 }
 
-export function FileQueue({ snapshot, running, scanning, onRemove, onClear, onRequestThumbnails }: FileQueueProps) {
+export function FileQueue({ snapshot, running, scanning, outputMode, onRemove, onClear, onOpenResults, onRequestThumbnails }: FileQueueProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const frameRef = useRef<number | null>(null)
   const requestedSignatureRef = useRef('')
   const [viewport, setViewport] = useState({ scrollTop: 0, height: 420 })
   const itemCount = snapshot.order.length
   const metrics = useMemo(() => queueMetrics(snapshot), [snapshot])
+  const completedIds = useMemo(() => snapshot.order.filter((id) => snapshot.items.get(id)?.status === 'completed'), [snapshot])
   const visibleRange = useMemo(() => {
     const start = Math.max(0, Math.floor(viewport.scrollTop / ROW_HEIGHT) - OVERSCAN)
     const end = Math.min(itemCount, Math.ceil((viewport.scrollTop + viewport.height) / ROW_HEIGHT) + OVERSCAN)
@@ -174,7 +177,10 @@ export function FileQueue({ snapshot, running, scanning, onRemove, onClear, onRe
           <span className="rounded-full bg-[#ECECF0] px-2 py-0.5 font-mono text-[10px] text-[#6E6E73]">全部 {itemCount.toLocaleString()} 张</span>
           {scanning ? <span className="flex items-center gap-1 text-[11px] text-[#0A63C9]"><Loader2 className="h-3 w-3 animate-spin" />正在导入</span> : null}
         </div>
-        <Button variant="ghost" size="sm" onClick={onClear} disabled={running || itemCount === 0}><Trash2 className="h-3.5 w-3.5" />清空</Button>
+        <div className="flex items-center gap-1.5">
+          {outputMode === 'new_folder' && completedIds.length > 0 ? <Button variant="outline" size="sm" onClick={() => onOpenResults(completedIds)} title="在系统文件管理器中打开压缩结果"><FolderOutput className="h-3.5 w-3.5" />查看结果</Button> : null}
+          <Button variant="ghost" size="sm" onClick={onClear} disabled={running || itemCount === 0}><Trash2 className="h-3.5 w-3.5" />清空</Button>
+        </div>
       </header>
       {itemCount === 0 ? (
         <div className="flex flex-1 flex-col items-center justify-center text-center text-[#86868B]">
@@ -201,7 +207,7 @@ export function FileQueue({ snapshot, running, scanning, onRemove, onClear, onRe
             </div>
           </div>
           <div className="queue-columns grid shrink-0 grid-cols-[38px_minmax(0,1fr)_112px_96px_34px] gap-3 border-b border-[#E5E5EA] px-4 py-2 text-[10px] font-medium uppercase tracking-[0.06em] text-[#86868B]"><span /><span>文件</span><span className="text-right">原始</span><span className="text-right">压缩后</span><span /></div>
-          <div ref={scrollRef} className="min-h-0 flex-1 overflow-auto" onScroll={onScroll} role="list" aria-label="图片压缩队列">
+          <div ref={scrollRef} className="queue-scroll min-h-0 flex-1 overflow-y-auto overscroll-contain" onScroll={onScroll} role="list" aria-label="图片压缩队列">
             <div className="relative" style={{ height: itemCount * ROW_HEIGHT }}>
               <div className="absolute inset-x-0" style={{ transform: `translateY(${visibleRange.start * ROW_HEIGHT}px)` }}>
                 {visibleIds.map((id, offset) => {

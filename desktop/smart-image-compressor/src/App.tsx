@@ -1,21 +1,25 @@
-import { startTransition, useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
+import { lazy, startTransition, Suspense, useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { isTauri } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
 import { getCurrentWebviewWindow } from '@tauri-apps/api/webviewWindow'
-import { Aperture, Loader2, Pause, Play } from 'lucide-react'
+import { Loader2 } from 'lucide-react'
+import appIcon from '@/assets/tinypng-compressor-icon.png'
 import { ActivationDialog } from '@/components/activation-dialog'
 import { ActivationScreen } from '@/components/activation-screen'
 import { DropZone } from '@/components/drop-zone'
 import { FileQueue } from '@/components/file-queue'
 import { LicensePanel } from '@/components/license-panel'
 import { OverwriteConfirmDialog } from '@/components/overwrite-confirm-dialog'
-import { TokenUsageDialog } from '@/components/token-usage-dialog'
 import { Button } from '@/components/ui/button'
-import { addDroppedPaths, bootstrap, cancelCompression, pickFolder, pickImages, previewActivation, queryTokenUsage, redeem, refreshLicense, removeJobs, requestThumbnails, startCompression, takeActivationCode } from '@/lib/desktop-api'
+import { addDroppedPaths, bootstrap, cancelCompression, deleteLicensePackage, openResultFolders, pickFolder, pickImages, previewActivation, redeem, refreshLicense, removeJobs, requestThumbnails, startCompression, takeActivationCode } from '@/lib/desktop-api'
 import { QueueStore } from '@/lib/queue-store'
-import type { CompressionFinished, CompressionProgress, ImageJob, LicenseView, OutputMode, ScanComplete, ThumbnailReady, TokenUsageReport } from '@/types'
+import type { CompressionFinished, CompressionProgress, ImageJob, LicenseView, OutputMode, ScanComplete, ThumbnailReady } from '@/types'
 
-const emptyLicense: LicenseView = { id: null, status: 'unlicensed', used: 0, limit: 0, tokenCount: 0, startsAt: null, expiresAt: null, scheduledPeriods: [] }
+const emptyLicense: LicenseView = { id: null, status: 'unlicensed', used: 0, limit: 0, tokenCount: 0, startsAt: null, expiresAt: null, scheduledPeriods: [], packages: [] }
+const tokenUsageDebugEnabled = import.meta.env.DEV
+const TokenUsageDebug = tokenUsageDebugEnabled
+  ? lazy(() => import('@/components/token-usage-debug').then(({ TokenUsageDebug: Component }) => ({ default: Component })))
+  : null
 
 function messageFromError(error: unknown) {
   const value = error instanceof Error ? error.message : String(error)
@@ -36,16 +40,13 @@ export function App() {
   const [booting, setBooting] = useState(true)
   const [running, setRunning] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
+  const [deletingPackageId, setDeletingPackageId] = useState<string | null>(null)
   const [scanning, setScanning] = useState(false)
   const [dropActive, setDropActive] = useState(false)
   const [activationOpen, setActivationOpen] = useState(false)
   const [activationCode, setActivationCode] = useState('')
   const [outputMode, setOutputMode] = useState<OutputMode>('new_folder')
   const [overwriteConfirmOpen, setOverwriteConfirmOpen] = useState(false)
-  const [usageOpen, setUsageOpen] = useState(false)
-  const [usageLoading, setUsageLoading] = useState(false)
-  const [usageReport, setUsageReport] = useState<TokenUsageReport | null>(null)
-  const [usageError, setUsageError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
   const licenseIdRef = useRef<string | null>(null)
   licenseIdRef.current = license.id
@@ -81,14 +82,22 @@ export function App() {
     }
   }, [])
 
-  const inspectUsage = useCallback(() => {
-    setUsageOpen(true)
-    setUsageLoading(true)
-    setUsageError(null)
-    void queryTokenUsage()
-      .then(setUsageReport)
-      .catch((error) => setUsageError(messageFromError(error)))
-      .finally(() => setUsageLoading(false))
+  const inspectDebugUsage = useCallback((packageId?: string) => {
+    if (tokenUsageDebugEnabled) {
+      window.dispatchEvent(new CustomEvent('smartcompress:debug-token-usage', { detail: packageId }))
+    }
+  }, [])
+
+  const deletePackage = useCallback(async (packageId: string) => {
+    setDeletingPackageId(packageId)
+    try {
+      setLicense(await deleteLicensePackage(packageId))
+      setNotice('已删除失效套餐的本地记录。')
+    } catch (error) {
+      setNotice(messageFromError(error))
+    } finally {
+      setDeletingPackageId(null)
+    }
   }, [])
 
   const doPreview = useCallback(async (code: string) => {
@@ -105,7 +114,7 @@ export function App() {
       setLicense(next)
       setActivationCode('')
       setActivationOpen(false)
-      setNotice('授权已更新，可以开始新的压缩批次。')
+      setNotice(next.packages.length > 1 ? '新套餐已添加，将按旧套餐优先顺序使用。' : '当前套餐续费已更新，可以开始新的压缩批次。')
     } catch (error) {
       throw new Error(messageFromError(error))
     }
@@ -151,6 +160,10 @@ export function App() {
     void removeJobs(ids)
   }, [queueStore])
 
+  const openResults = useCallback((ids: string[]) => {
+    void openResultFolders(ids).catch((error) => setNotice(messageFromError(error)))
+  }, [])
+
   useEffect(() => {
     void bootstrap()
       .then((view) => {
@@ -183,6 +196,10 @@ export function App() {
       }),
       listen<ImageJob[]>('queue-items-added', (event) => {
         startTransition(() => queueStore.add(event.payload))
+      }),
+      listen('queue-replaced', () => {
+        startTransition(() => queueStore.clear())
+        setNotice(null)
       }),
       listen<ScanComplete>('scan-complete', (event) => {
         setScanning(false)
@@ -251,22 +268,19 @@ export function App() {
   return (
     <main className="app-window">
       <header className="workspace-toolbar">
-        <div className="flex min-w-0 items-center gap-2.5"><div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-[#1D1D1F] text-white"><Aperture className="h-4 w-4" /></div><div className="min-w-0"><h1 className="truncate text-[13px] font-semibold text-[#1D1D1F]">智能压缩工具</h1><p className="text-[10px] text-[#86868B]">图片压缩工作台</p></div></div>
-        <div className="flex shrink-0 items-center gap-2">
-          {running ? <Button variant="danger" size="sm" onClick={() => void cancel()}><Pause className="h-3.5 w-3.5" />取消</Button> : <Button size="sm" onClick={start} disabled={!canStart} title={license.status !== 'active' ? '需要有效授权才能开始新批次' : scanning ? '正在扫描导入内容' : queuedIds.length === 0 ? '请先导入图片' : undefined}><Play className="h-3.5 w-3.5 fill-current" />开始压缩</Button>}
-        </div>
+        <div className="flex min-w-0 items-center gap-2.5"><img src={appIcon} alt="" className="h-8 w-8 shrink-0 rounded-[8px]" /><div className="min-w-0"><h1 className="truncate text-[13px] font-semibold text-[#1D1D1F]">TinyPNG 压缩助手</h1><p className="text-[10px] text-[#86868B]">TinyPNG 图片压缩工作台</p></div></div>
       </header>
       <div className="workspace-layout">
         <section className="workspace-main">
-          <DropZone active={dropActive} disabled={running} scanning={scanning} onPickImages={importImages} onPickFolder={importFolder} />
+          <DropZone active={dropActive} disabled={running} scanning={scanning} canStart={canStart} running={running} onPickImages={importImages} onPickFolder={importFolder} onStart={start} onCancel={() => void cancel()} />
           {notice ? <div role="status" className="workspace-notice"><span>{notice}</span><button type="button" onClick={() => setNotice(null)}>关闭</button></div> : null}
-          <FileQueue snapshot={queue} running={running} scanning={scanning} onRemove={removeQueueItem} onClear={clearQueue} onRequestThumbnails={requestVisibleThumbnails} />
+          <FileQueue snapshot={queue} running={running} scanning={scanning} outputMode={outputMode} onRemove={removeQueueItem} onClear={clearQueue} onOpenResults={openResults} onRequestThumbnails={requestVisibleThumbnails} />
         </section>
-        <LicensePanel license={license} refreshing={refreshing} onRefresh={() => void doRefresh()} onInspectUsage={inspectUsage} usageDisabled={running || usageLoading} onActivate={() => setActivationOpen(true)} outputMode={outputMode} outputDisabled={running} onOutputModeChange={setOutputMode} />
+        <LicensePanel license={license} refreshing={refreshing} onRefresh={() => void doRefresh()} debugUsageEnabled={tokenUsageDebugEnabled} onInspectUsage={inspectDebugUsage} usageDisabled={running} onDeletePackage={deletePackage} deletingPackageId={deletingPackageId} onActivate={() => setActivationOpen(true)} outputMode={outputMode} outputDisabled={running} onOutputModeChange={setOutputMode} />
       </div>
       <ActivationDialog open={activationOpen} initialCode={activationCode} onOpenChange={setActivationOpen} onRedeem={doRedeem} />
       <OverwriteConfirmDialog open={overwriteConfirmOpen} imageCount={queuedIds.length} onOpenChange={setOverwriteConfirmOpen} onConfirm={() => void runCompression()} />
-      <TokenUsageDialog open={usageOpen} loading={usageLoading} report={usageReport} error={usageError} onOpenChange={setUsageOpen} onRefresh={inspectUsage} />
+      {TokenUsageDebug ? <Suspense fallback={null}><TokenUsageDebug /></Suspense> : null}
     </main>
   )
 }

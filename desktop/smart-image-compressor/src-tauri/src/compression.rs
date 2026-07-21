@@ -1,5 +1,5 @@
 use std::{
-    collections::{HashMap, HashSet},
+    collections::{BTreeSet, HashMap, HashSet},
     path::PathBuf,
     sync::{
         atomic::{AtomicBool, Ordering},
@@ -19,12 +19,15 @@ use crate::{
     license_api::LicenseApi,
     models::{
         CompressionFinished, CompressionProgress, CompressionStart, CompressionSummary,
-        ImageJobView, KeyState, LicenseView, TokenUsageReport, TokenUsageView,
+        ImageJobView, KeyState, LicenseView,
     },
     scanner::ImageJob,
     tinify::{self, TinifyError},
     vault::CredentialVault,
 };
+
+#[cfg(debug_assertions)]
+use crate::models::{TokenUsageReport, TokenUsageView};
 
 pub const COMPRESSION_CONCURRENCY: usize = 4;
 const CHECKPOINT_SIZE: usize = 20;
@@ -97,7 +100,40 @@ impl CompressionRuntime {
         Ok(())
     }
 
-    pub async fn token_usage(&self) -> Result<TokenUsageReport> {
+    pub fn clear_jobs(&self) -> Result<()> {
+        self.jobs
+            .lock()
+            .map_err(|_| anyhow::anyhow!("任务队列锁已损坏"))?
+            .clear();
+        self.pending_thumbnails
+            .lock()
+            .map_err(|_| anyhow::anyhow!("缩略图队列锁已损坏"))?
+            .clear();
+        Ok(())
+    }
+
+    pub fn result_folders(&self, ids: &[String]) -> Result<Vec<PathBuf>> {
+        let stored = self
+            .jobs
+            .lock()
+            .map_err(|_| anyhow::anyhow!("任务队列锁已损坏"))?;
+        let folders = ids
+            .iter()
+            .filter_map(|id| stored.get(id))
+            .filter_map(|job| job.output.parent())
+            .filter(|folder| folder.is_dir())
+            .map(PathBuf::from)
+            .collect::<BTreeSet<_>>()
+            .into_iter()
+            .collect::<Vec<_>>();
+        if folders.is_empty() {
+            anyhow::bail!("尚未找到可打开的压缩结果文件夹");
+        }
+        Ok(folders)
+    }
+
+    #[cfg(debug_assertions)]
+    pub async fn token_usage(&self, package_id: Option<String>) -> Result<TokenUsageReport> {
         if self.running.load(Ordering::SeqCst) {
             anyhow::bail!("压缩进行中，请在当前任务完成后查询 TinyPNG 使用情况");
         }
@@ -105,29 +141,47 @@ impl CompressionRuntime {
             anyhow::bail!("正在查询 TinyPNG 使用情况");
         }
         let _usage_guard = RunningGuard(self.usage_inspecting.clone());
-        let mut keys = self.license_api.key_states()?;
-        if keys.is_empty() {
+        let packages = self.license_api.package_keys(package_id.as_deref())?;
+        if packages.is_empty() || packages.iter().all(|package| package.keys.is_empty()) {
             anyhow::bail!("本机没有可查询的 TinyPNG Token");
         }
-        let query_keys = keys
+        let targets = packages
             .iter()
-            .map(|key| key.api_key.clone())
+            .flat_map(|package| {
+                package.keys.iter().enumerate().map(move |(index, key)| {
+                    (
+                        package.license_id.clone(),
+                        package.package_index,
+                        index,
+                        key.api_key.clone(),
+                    )
+                })
+            })
             .collect::<Vec<_>>();
-        let mut results =
-            stream::iter(query_keys.into_iter().enumerate().map(|(index, api_key)| {
+        let mut results = stream::iter(targets.iter().cloned().enumerate().map(
+            |(target_index, target)| {
                 let client = self.http.clone();
-                async move { (index, tinify::query_usage(&client, &api_key).await) }
-            }))
-            .buffer_unordered(COMPRESSION_CONCURRENCY)
-            .collect::<Vec<_>>()
-            .await;
+                async move { (target_index, tinify::query_usage(&client, &target.3).await) }
+            },
+        ))
+        .buffer_unordered(COMPRESSION_CONCURRENCY)
+        .collect::<Vec<_>>()
+        .await;
         results.sort_by_key(|(index, _)| *index);
 
+        let mut updates = packages
+            .iter()
+            .map(|package| (package.license_id.clone(), package.keys.clone()))
+            .collect::<HashMap<_, _>>();
         let mut views = Vec::with_capacity(results.len());
         let mut checked_at = Utc::now();
-        for (index, usage) in results {
+        for (target_index, usage) in results {
+            let (license_id, package_index, key_index, _) = &targets[target_index];
             checked_at = checked_at.max(usage.observed_at);
-            if let Some(key) = keys.get_mut(index) {
+            if let Some(key) = updates
+                .get_mut(license_id)
+                .and_then(|keys| keys.get_mut(*key_index))
+            {
                 key.month = usage.observed_at.format("%Y-%m").to_string();
                 if let Some(count) = usage.count {
                     key.count = count;
@@ -142,7 +196,8 @@ impl CompressionRuntime {
                 }
             }
             views.push(TokenUsageView {
-                index: index + 1,
+                package_index: *package_index,
+                index: key_index + 1,
                 used: usage.count,
                 limit: 500,
                 status: usage.status.as_str().into(),
@@ -150,7 +205,7 @@ impl CompressionRuntime {
                 message: usage.message,
             });
         }
-        self.license_api.replace_key_states(keys)?;
+        self.license_api.replace_package_keys(updates)?;
         Ok(TokenUsageReport {
             tokens: views,
             checked_at: checked_at.to_rfc3339(),
@@ -289,29 +344,27 @@ async fn process_job(
             observed_at: None,
         };
     }
-    if output_mode == OutputMode::Overwrite {
-        match runtime.overwrite_manifest.was_compressed(&job.source).await {
-            Ok(true) => {
-                return FileOutcome {
-                    id: job.id,
-                    status: "skipped",
-                    compressed_size: None,
-                    savings_percent: None,
-                    error: Some("检测到本文件夹的压缩记录，已跳过重复压缩".into()),
-                    observed_at: None,
-                };
-            }
-            Ok(false) => {}
-            Err(error) => {
-                return FileOutcome {
-                    id: job.id,
-                    status: "failed",
-                    compressed_size: None,
-                    savings_percent: None,
-                    error: Some(format!("无法校验本地压缩记录：{error}")),
-                    observed_at: None,
-                };
-            }
+    match runtime.overwrite_manifest.was_compressed(&job.source).await {
+        Ok(true) => {
+            return FileOutcome {
+                id: job.id,
+                status: "skipped",
+                compressed_size: None,
+                savings_percent: None,
+                error: Some("检测到本文件夹的压缩记录，已跳过重复压缩".into()),
+                observed_at: None,
+            };
+        }
+        Ok(false) => {}
+        Err(error) => {
+            return FileOutcome {
+                id: job.id,
+                status: "failed",
+                compressed_size: None,
+                savings_percent: None,
+                error: Some(format!("无法校验本地压缩记录：{error}")),
+                observed_at: None,
+            };
         }
     }
 
@@ -370,20 +423,17 @@ async fn process_job(
                 } else {
                     (1.0 - output.compressed_size as f64 / job.original_size as f64) * 100.0
                 };
-                let record_error = if output_mode == OutputMode::Overwrite {
-                    runtime
-                        .overwrite_manifest
-                        .record_completed_overwrite(
-                            &job.source,
-                            job.original_size,
-                            output.compressed_size,
-                        )
-                        .await
-                        .err()
-                        .map(|error| format!("已覆盖原图，但无法写入重复压缩记录：{error}"))
+                let compressed_file = if output_mode == OutputMode::Overwrite {
+                    &job.source
                 } else {
-                    None
+                    output_path
                 };
+                let record_error = runtime
+                    .overwrite_manifest
+                    .record_completed(compressed_file, job.original_size, output.compressed_size)
+                    .await
+                    .err()
+                    .map(|error| format!("图片已压缩，但无法写入重复压缩记录：{error}"));
                 return FileOutcome {
                     id: job.id,
                     status: "completed",
@@ -463,7 +513,6 @@ async fn run_compression(
     mut latest_license: LicenseView,
 ) -> Result<CompressionSummary> {
     let _running_guard = RunningGuard(runtime.running.clone());
-    let keys = Arc::new(AsyncMutex::new(runtime.license_api.key_states()?));
     let mut completed = 0;
     let mut failed = 0;
     let mut skipped = 0;
@@ -476,30 +525,29 @@ async fn run_compression(
         let _ = license_api.sync_pending_usage_reports().await;
     });
 
-    for chunk in jobs.chunks(CHECKPOINT_SIZE) {
+    let mut next_job = 0;
+    while next_job < jobs.len() {
         if runtime.cancel.load(Ordering::SeqCst) {
             break;
         }
-        let has_capacity = {
-            let mut locked = keys.lock().await;
-            reset_month(&mut locked);
-            locked.iter().any(|key| !key.invalid && key.count < 500)
+        let reservation = match runtime.license_api.reserve_next_local(
+            CHECKPOINT_SIZE.min(jobs.len() - next_job),
+            &execution_report_id,
+        ) {
+            Ok(reservation) => reservation,
+            Err(_) => {
+                failed += mark_unprocessed(
+                    &app,
+                    &jobs,
+                    &mut processed,
+                    "failed",
+                    "所有套餐的可用额度或 TinyPNG Token 容量均已用尽",
+                );
+                break;
+            }
         };
-        if !has_capacity {
-            failed += mark_unprocessed(
-                &app,
-                &jobs,
-                &mut processed,
-                "failed",
-                "已领取的 TinyPNG Token 本月容量均已用尽",
-            );
-            break;
-        }
-
-        let (reservation_id, reserved_license) = runtime
-            .license_api
-            .reserve_local(chunk.len(), &execution_report_id)?;
-        let expires_at = reserved_license
+        let expires_at = reservation
+            .license
             .expires_at
             .as_deref()
             .context("授权有效期缺失")
@@ -508,7 +556,8 @@ async fn run_compression(
                     .map(|value| value.with_timezone(&Utc))
                     .context("授权有效期格式无效")
             })?;
-        let batch_jobs = chunk.to_vec();
+        let batch_jobs = jobs[next_job..next_job + reservation.requested_count].to_vec();
+        let keys = Arc::new(AsyncMutex::new(reservation.keys));
         let mut outcomes = stream::iter(batch_jobs.into_iter().map(|job| {
             let runtime = runtime.clone();
             let app = app.clone();
@@ -537,11 +586,13 @@ async fn run_compression(
             emit_progress(&app, outcome.progress());
         }
         latest_license = runtime.license_api.complete_local(
-            &reservation_id,
+            &reservation.license_id,
+            &reservation.id,
             success_count,
             keys.lock().await.clone(),
             observed_at,
         )?;
+        next_job += reservation.requested_count;
     }
 
     if runtime.cancel.load(Ordering::SeqCst) {
@@ -585,9 +636,9 @@ pub async fn start(
     if jobs.len() != ids.len() {
         anyhow::bail!("部分任务已失效，请重新添加");
     }
-    let remaining = current_license.limit.saturating_sub(current_license.used);
+    let remaining = runtime.license_api.available_local_capacity()?;
     if jobs.len() as u32 > remaining {
-        anyhow::bail!("本地授权仅剩 {remaining} 张额度，请减少本批图片数量");
+        anyhow::bail!("当前全部套餐仅剩 {remaining} 张可用额度，请减少本批图片数量");
     }
     if runtime.usage_inspecting.load(Ordering::SeqCst) {
         anyhow::bail!("正在查询 TinyPNG 使用情况，请稍候开始压缩");

@@ -11,6 +11,21 @@ pub struct ScheduledPeriod {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct LicensePackageView {
+    pub id: String,
+    pub status: String,
+    pub used: u32,
+    pub limit: u32,
+    pub starts_at: Option<String>,
+    pub expires_at: Option<String>,
+    #[serde(default)]
+    pub scheduled_periods: Vec<ScheduledPeriod>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub message: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct LicenseView {
     pub id: Option<String>,
     pub status: String,
@@ -21,6 +36,8 @@ pub struct LicenseView {
     pub expires_at: Option<String>,
     #[serde(default)]
     pub scheduled_periods: Vec<ScheduledPeriod>,
+    #[serde(default)]
+    pub packages: Vec<LicensePackageView>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub message: Option<String>,
 }
@@ -36,6 +53,7 @@ impl LicenseView {
             starts_at: None,
             expires_at: None,
             scheduled_periods: Vec::new(),
+            packages: Vec::new(),
             message: None,
         }
     }
@@ -118,9 +136,11 @@ pub struct CompressionFinished {
     pub error: Option<String>,
 }
 
+#[cfg(debug_assertions)]
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TokenUsageView {
+    pub package_index: usize,
     pub index: usize,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub used: Option<u32>,
@@ -131,6 +151,7 @@ pub struct TokenUsageView {
     pub message: Option<String>,
 }
 
+#[cfg(debug_assertions)]
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TokenUsageReport {
@@ -176,6 +197,19 @@ pub struct PendingUsageReport {
     pub period_starts_at: String,
 }
 
+#[derive(Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct StoredLicense {
+    pub license: LicenseView,
+    pub access_token: Option<String>,
+    #[serde(default)]
+    pub keys: Vec<KeyState>,
+    #[serde(default)]
+    pub pending_reservations: Vec<PendingReservation>,
+    #[serde(default)]
+    pub pending_usage_reports: Vec<PendingUsageReport>,
+}
+
 #[derive(Clone, Serialize, Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct CredentialBundle {
@@ -189,6 +223,8 @@ pub struct CredentialBundle {
     pub pending_reservations: Vec<PendingReservation>,
     #[serde(default)]
     pub pending_usage_reports: Vec<PendingUsageReport>,
+    #[serde(default)]
+    pub packages: Vec<StoredLicense>,
     #[serde(default)]
     pub last_seen_at: Option<String>,
 }

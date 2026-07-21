@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react'
-import { Aperture, CalendarClock, ImageIcon, KeyRound, Loader2, LockKeyhole, ShieldCheck } from 'lucide-react'
+import { CalendarClock, ImageIcon, KeyRound, Loader2, LockKeyhole, ShieldCheck } from 'lucide-react'
+import appIcon from '@/assets/tinypng-compressor-icon.png'
 import { Button } from '@/components/ui/button'
 import { extractActivationCode } from '@/lib/activation'
 import type { ActivationPlanPreview } from '@/types'
@@ -79,7 +80,7 @@ export function ActivationScreen({ initialCode, serviceMessage, onPreview, onRed
   const canRedeem = extractActivationCode(value).length >= 20
   return (
     <main className="activation-window text-[#1D1D1F]">
-      <header className="activation-titlebar"><div className="flex items-center gap-2"><div className="flex h-7 w-7 items-center justify-center rounded-md bg-[#0A63C9] text-white"><Aperture className="h-4 w-4" /></div><span className="text-[13px] font-semibold">智能压缩工具</span></div></header>
+      <header className="activation-titlebar"><div className="flex items-center gap-2"><img src={appIcon} alt="" className="h-7 w-7 rounded-[7px]" /><span className="text-[13px] font-semibold">TinyPNG 压缩助手</span></div></header>
       <div className="flex flex-1 items-center justify-center p-8">
         <section className="activation-sheet" aria-labelledby="activation-title">
           <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#E9F2FF] text-[#0A63C9]"><LockKeyhole className="h-5 w-5" /></div>

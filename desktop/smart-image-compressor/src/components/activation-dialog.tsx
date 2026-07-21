@@ -46,8 +46,8 @@ export function ActivationDialog({ open, initialCode, onOpenChange, onRedeem }: 
           <div className="mb-2 flex h-10 w-10 items-center justify-center rounded-[10px] bg-[#2956D8]/10 text-[#2956D8]">
             <ShieldCheck className="h-5 w-5" />
           </div>
-          <DialogTitle>激活或续费授权</DialogTitle>
-          <DialogDescription>粘贴管理员提供的 HTTPS 授权链接或一次性授权码。凭证会直接交给 Rust 层并加密保存。</DialogDescription>
+          <DialogTitle>添加套餐或续费</DialogTitle>
+          <DialogDescription>新套餐链接会添加独立的 Token 与有效期；续费链接只延长对应套餐。凭证会直接交给 Rust 层并加密保存。</DialogDescription>
         </DialogHeader>
         <label className="mt-5 block text-xs font-medium text-[#42506A]" htmlFor="activation-code">授权链接或授权码</label>
         <div className="relative mt-2">

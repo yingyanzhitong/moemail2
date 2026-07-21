@@ -1,7 +1,7 @@
 [package]
 name = "smart-image-compressor"
 version = "0.2.2"
-description = "智能压缩工具"
+description = "TinyPNG 压缩助手"
 authors = ["moemail"]
 edition = "2021"
 

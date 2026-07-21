@@ -2,6 +2,28 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.14.35] - 2026-07-21
+
+### Features
+
+- **TinyPNG 桌面端工作台**：新增 Auth Link 激活、Stronghold 本地凭证保存、多套餐优先级、续费排期、离线状态保留及授权撤销后的本地套餐删除；图片通过 Rust 侧直接调用 TinyPNG，渲染层不接触 Token。
+- **图片队列与导出体验**：支持文件/文件夹导入、异步缩略图、虚拟化列表、全局进度与总压缩率；文件夹重新选择会替换当前队列。新文件夹导出完成后可直接在 Finder/资源管理器打开结果目录。
+- **重复压缩保护**：覆盖和新文件夹导出都会维护隐藏 `.smartcompress.json`，再次导入文件 Hash 未变化的压缩结果会跳过，不重复消耗 TinyPNG 次数。
+- **Gitee 安装包镜像**：`desktop-v*` 的 GitHub Actions 在三端 Tauri 构建完成后，会自动创建或复用 Gitee Release 镜像仓库并同步 DMG、NSIS EXE 安装包。
+
+### Changed
+
+- **品牌与图标**：桌面端产品名调整为“TinyPNG 压缩助手”，更新 macOS、Windows 和界面内图标资源。
+- **调试能力隔离**：TinyPNG Token 使用情况弹窗与查询 IPC 仅保留在本地调试构建；正式桌面包不包含入口、弹窗模块、样式或查询命令。
+
+### Fixed
+
+- **停止授权同步**：桌面端状态校验可识别已在管理端停止的套餐，自动删除本地 TinyPNG Token 并显示失效状态。
+
+### Tests
+
+- **桌面端回归**：前端 30 项、Rust 29 项测试通过；完成生产前端构建、设计规范校验和 release 二进制中调试查询代码剔除检查。
+
 ## [1.14.34] - 2026-07-21
 
 ### Features

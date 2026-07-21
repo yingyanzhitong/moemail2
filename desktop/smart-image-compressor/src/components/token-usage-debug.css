@@ -1,0 +1,15 @@
+.token-usage-list {
+  max-height: min(48vh, 390px);
+  overflow-y: auto;
+  border: 1px solid #e5e5ea;
+  border-radius: 10px;
+  background: #fff;
+}
+
+.token-usage-row {
+  padding: 12px;
+}
+
+.token-usage-row + .token-usage-row {
+  border-top: 1px solid #e5e5ea;
+}

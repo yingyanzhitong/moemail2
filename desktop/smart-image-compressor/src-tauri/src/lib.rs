@@ -126,17 +126,20 @@ pub fn run() {
             commands::preview_activation,
             commands::redeem_activation,
             commands::refresh_license,
+            commands::delete_license_package,
+            #[cfg(debug_assertions)]
             commands::query_token_usage,
             commands::pick_images,
             commands::pick_folder,
             commands::add_paths,
             commands::request_thumbnails,
             commands::remove_jobs,
+            commands::open_result_folders,
             commands::start_compression,
             commands::cancel_compression,
         ])
         .run(tauri::generate_context!())
-        .expect("启动智能压缩工具失败");
+        .expect("启动 TinyPNG 压缩助手失败");
 }
 
 #[cfg(test)]

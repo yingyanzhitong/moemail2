@@ -1,6 +1,6 @@
-# 智能压缩工具
+# TinyPNG 压缩助手
 
-Tauri v2 桌面端，支持 macOS Apple Silicon、macOS Intel 与 Windows x64。Auth Link 仅用于一次性领取套餐参数和 TinyPNG Token；激活后由 Rust 层直接请求 TinyPNG。每个压缩批次结束后只向业务后端回传批次 ID、授权周期、任务数和成功数，不接收图片、文件名或本地路径。
+非官方的 Tauri v2 桌面端，支持 macOS Apple Silicon、macOS Intel 与 Windows x64。Auth Link 仅用于一次性领取套餐参数和 TinyPNG Token；激活后由 Rust 层直接请求 TinyPNG。每个压缩批次结束后只向业务后端回传批次 ID、授权周期、任务数和成功数，不接收图片、文件名或本地路径。
 
 ## 本地开发
 
@@ -56,4 +56,4 @@ cargo test --manifest-path src-tauri/Cargo.toml
 
 ## 测试版发布
 
-推送 `desktop-v*` 标签会触发 GitHub Actions，分别生成 Apple Silicon DMG、Intel DMG 和 Windows x64 NSIS EXE，并发布为 GitHub Pre-release。v1 不包含自动更新、商店签名或正式代码签名。
+推送 `desktop-v*` 标签会触发 GitHub Actions，分别生成 Apple Silicon DMG、Intel DMG 和 Windows x64 NSIS EXE，并发布为 GitHub Pre-release。三个构建全部成功后，工作流会将同一标签的安装包同步到 [Gitee 发布镜像](https://gitee.com/masongzhi1/tinypng-image-compressor-releases)。v1 不包含自动更新、商店签名或正式代码签名。

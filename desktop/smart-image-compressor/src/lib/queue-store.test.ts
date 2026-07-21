@@ -30,4 +30,15 @@ describe('队列状态存储', () => {
     expect(store.getSnapshot().order).toEqual(['one'])
     expect(store.actionableIds()).toEqual(['one'])
   })
+
+  it('清空后导入新文件夹时只保留新文件夹的任务', () => {
+    const store = new QueueStore()
+    store.add([{ id: 'folder-one', name: 'one.png', sourcePath: '/folder-one/one.png', outputPath: '/folder-one-压缩结果/one.png', parentLabel: '/folder-one', originalSize: 100, thumbnailDataUrl: null }])
+
+    store.clear()
+    store.add([{ id: 'folder-two', name: 'two.png', sourcePath: '/folder-two/two.png', outputPath: '/folder-two-压缩结果/two.png', parentLabel: '/folder-two', originalSize: 200, thumbnailDataUrl: null }])
+
+    expect(store.getSnapshot().order).toEqual(['folder-two'])
+    expect([...store.getSnapshot().items.values()].map((item) => item.sourcePath)).toEqual(['/folder-two/two.png'])
+  })
 })

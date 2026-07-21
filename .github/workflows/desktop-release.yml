@@ -19,14 +19,20 @@ jobs:
             runner: macos-15
             target: aarch64-apple-darwin
             bundles: dmg
+            artifact: desktop-aarch64-apple-darwin
+            artifact_path: desktop/smart-image-compressor/src-tauri/target/aarch64-apple-darwin/release/bundle/dmg/*.dmg
           - name: macOS Intel
             runner: macos-15-intel
             target: x86_64-apple-darwin
             bundles: dmg
+            artifact: desktop-x86_64-apple-darwin
+            artifact_path: desktop/smart-image-compressor/src-tauri/target/x86_64-apple-darwin/release/bundle/dmg/*.dmg
           - name: Windows x64
             runner: windows-2025
             target: x86_64-pc-windows-msvc
             bundles: nsis
+            artifact: desktop-x86_64-pc-windows-msvc
+            artifact_path: desktop/smart-image-compressor/src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis/*.exe
     runs-on: ${{ matrix.runner }}
     defaults:
       run:
@@ -67,9 +73,43 @@ jobs:
         with:
           projectPath: desktop/smart-image-compressor
           tagName: ${{ github.ref_name }}
-          releaseName: 智能压缩工具 ${{ github.ref_name }}
+          releaseName: TinyPNG 压缩助手 ${{ github.ref_name }}
           releaseBody: |
             未签名测试版。macOS 首次打开时可能需要在“隐私与安全性”中确认；Windows 可能显示 SmartScreen 提示。
           releaseDraft: false
           prerelease: true
           args: --target ${{ matrix.target }} --bundles ${{ matrix.bundles }}
+
+      - name: 保留安装包用于 Gitee 镜像
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: ${{ matrix.artifact_path }}
+          if-no-files-found: error
+
+  sync-gitee:
+    name: Sync installers to Gitee
+    runs-on: ubuntu-latest
+    needs: build
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: 下载安装包
+        uses: actions/download-artifact@v4
+        with:
+          pattern: desktop-*
+          path: release-assets
+
+      - name: 同步 Gitee Release 镜像
+        env:
+          GITEE_ACCESS_TOKEN: ${{ secrets.GITEE_ACCESS_TOKEN }}
+          GITEE_OWNER: masongzhi1
+          GITEE_REPO: tinypng-image-compressor-releases
+          GITEE_BRANCH: master
+          RELEASE_TAG: ${{ github.ref_name }}
+          RELEASE_NAME: TinyPNG 压缩助手 ${{ github.ref_name }}
+          RELEASE_BODY: 未签名测试版安装包镜像，由 GitHub Actions 自动同步。
+          RELEASE_ASSET_DIR: release-assets
+        run: node desktop/smart-image-compressor/scripts/sync-gitee-release.mjs

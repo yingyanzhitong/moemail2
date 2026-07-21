@@ -1,5 +1,5 @@
 import { invoke, isTauri } from '@tauri-apps/api/core'
-import type { ActivationPlanPreview, BootstrapView, CompressionStart, LicenseView, OutputMode, TokenUsageReport } from '@/types'
+import type { ActivationPlanPreview, BootstrapView, CompressionStart, LicenseView, OutputMode } from '@/types'
 
 const demoLicense: LicenseView = {
   id: 'preview',
@@ -10,6 +10,15 @@ const demoLicense: LicenseView = {
   startsAt: new Date().toISOString(),
   expiresAt: new Date(Date.now() + 18 * 86400000).toISOString(),
   scheduledPeriods: [],
+  packages: [{
+    id: 'preview',
+    status: 'active',
+    used: 3284,
+    limit: 10000,
+    startsAt: new Date().toISOString(),
+    expiresAt: new Date(Date.now() + 18 * 86400000).toISOString(),
+    scheduledPeriods: [],
+  }],
 }
 
 export async function bootstrap(): Promise<BootstrapView> {
@@ -40,17 +49,8 @@ export async function refreshLicense(): Promise<LicenseView> {
   return invoke<LicenseView>('refresh_license')
 }
 
-export async function queryTokenUsage(): Promise<TokenUsageReport> {
-  if (!isTauri()) {
-    return {
-      checkedAt: new Date().toISOString(),
-      tokens: [
-        { index: 1, used: 201, limit: 500, status: 'active', resetAt: new Date(new Date().getFullYear(), new Date().getMonth() + 1, 1).toISOString() },
-        { index: 2, used: 500, limit: 500, status: 'exhausted', resetAt: new Date(new Date().getFullYear(), new Date().getMonth() + 1, 1).toISOString() },
-      ],
-    }
-  }
-  return invoke<TokenUsageReport>('query_token_usage')
+export async function deleteLicensePackage(licenseId: string): Promise<LicenseView> {
+  return invoke<LicenseView>('delete_license_package', { licenseId })
 }
 
 export async function pickImages(): Promise<void> {
@@ -73,6 +73,11 @@ export async function requestThumbnails(ids: string[]): Promise<void> {
 export async function removeJobs(ids: string[]): Promise<void> {
   if (!isTauri()) return
   return invoke('remove_jobs', { ids })
+}
+
+export async function openResultFolders(ids: string[]): Promise<void> {
+  if (!isTauri()) return
+  return invoke('open_result_folders', { ids })
 }
 
 export async function startCompression(ids: string[], outputMode: OutputMode): Promise<CompressionStart> {

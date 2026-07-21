@@ -1,5 +1,6 @@
 use std::{
     path::PathBuf,
+    process::Command,
     sync::{Arc, Mutex},
 };
 
@@ -12,11 +13,14 @@ use crate::{
     compression::{self, CompressionRuntime},
     models::{
         ActivationPlanPreview, BootstrapView, CompressionStart, LicenseView, ScanComplete,
-        ThumbnailReady, TokenUsageReport,
+        ThumbnailReady,
     },
     scanner::{generate_thumbnail, scan_paths_in_batches},
     vault::CredentialVault,
 };
+
+#[cfg(debug_assertions)]
+use crate::models::TokenUsageReport;
 
 pub struct AppState {
     pub runtime: CompressionRuntime,
@@ -115,14 +119,37 @@ pub async fn preview_activation(
 pub async fn refresh_license(
     state: State<'_, AppState>,
 ) -> std::result::Result<LicenseView, String> {
-    state.runtime.license_api.refresh().map_err(command_error)
+    state
+        .runtime
+        .license_api
+        .refresh_online()
+        .await
+        .map_err(command_error)
 }
 
 #[tauri::command]
+pub fn delete_license_package(
+    license_id: String,
+    state: State<'_, AppState>,
+) -> std::result::Result<LicenseView, String> {
+    state
+        .runtime
+        .license_api
+        .delete_revoked_package(&license_id)
+        .map_err(command_error)
+}
+
+#[cfg(debug_assertions)]
+#[tauri::command]
 pub async fn query_token_usage(
+    package_id: Option<String>,
     state: State<'_, AppState>,
 ) -> std::result::Result<TokenUsageReport, String> {
-    state.runtime.token_usage().await.map_err(command_error)
+    state
+        .runtime
+        .token_usage(package_id)
+        .await
+        .map_err(command_error)
 }
 
 #[tauri::command]
@@ -174,6 +201,8 @@ pub async fn pick_folder(
         .into_iter()
         .collect::<Vec<_>>();
     if !paths.is_empty() {
+        state.runtime.clear_jobs().map_err(command_error)?;
+        let _ = app.emit("queue-replaced", ());
         begin_import(app, state.runtime.clone(), paths);
     } else {
         let _ = app.emit(
@@ -267,6 +296,32 @@ pub fn remove_jobs(
     state: State<'_, AppState>,
 ) -> std::result::Result<(), String> {
     state.runtime.remove_jobs(&ids).map_err(command_error)
+}
+
+#[tauri::command]
+pub fn open_result_folders(
+    ids: Vec<String>,
+    state: State<'_, AppState>,
+) -> std::result::Result<(), String> {
+    let folders = state.runtime.result_folders(&ids).map_err(command_error)?;
+    for folder in folders {
+        #[cfg(target_os = "macos")]
+        Command::new("open")
+            .arg(&folder)
+            .spawn()
+            .map_err(|error| command_error(format!("无法打开结果文件夹：{error}")))?;
+        #[cfg(target_os = "windows")]
+        Command::new("explorer.exe")
+            .arg(&folder)
+            .spawn()
+            .map_err(|error| command_error(format!("无法打开结果文件夹：{error}")))?;
+        #[cfg(not(any(target_os = "macos", target_os = "windows")))]
+        {
+            let _ = folder;
+            return Err(command_error("当前系统不支持打开结果文件夹"));
+        }
+    }
+    Ok(())
 }
 
 #[tauri::command]
