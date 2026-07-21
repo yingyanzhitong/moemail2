@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.14.37] - 2026-07-21
+
+### Fixed
+
+- **Gitee 发布镜像**：同步脚本的 Gitee API 查询改用带连接超时和临时网络重试的 `curl`，避免 GitHub Runner 中 Node `fetch` 的 10 秒连接超时中断镜像发布；安装包上传同样增加可恢复网络重试。
+
 ## [1.14.36] - 2026-07-21
 
 ### Fixed

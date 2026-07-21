@@ -145,8 +145,8 @@ async function deleteAsset(releaseId, assetId) {
 async function uploadAsset(releaseId, file, name) {
   console.log(`上传 ${name}…`)
   await execFileAsync('curl', [
-    '--fail-with-body', '--silent', '--show-error', '--retry', '2', '--retry-delay', '10',
-    '--connect-timeout', '60', '--max-time', '1800', '--request', 'POST', '--header', 'Expect:',
+    '--fail-with-body', '--silent', '--show-error', '--retry', '4', '--retry-all-errors', '--retry-delay', '5',
+    '--retry-max-time', '1800', '--connect-timeout', '30', '--max-time', '1800', '--request', 'POST', '--header', 'Expect:',
     '--form', `file=@${file};filename=${name};type=application/octet-stream`,
     apiUrl(`/repos/${config.owner}/${config.repo}/releases/${releaseId}/attach_files`).toString(),
   ], { maxBuffer: 10 * 1024 * 1024 }).catch((error) => { throw sanitizeError(error) })
@@ -160,11 +160,46 @@ async function giteeJson(pathname, init = {}) {
 
 async function giteeFetch(pathname, init = {}) {
   const headers = new Headers(init.headers)
-  const options = { ...init, headers }
+  const args = [
+    '--silent', '--show-error', '--location', '--retry', '4', '--retry-all-errors', '--retry-delay', '5',
+    '--retry-max-time', '180', '--connect-timeout', '30', '--max-time', '90', '--request', init.method || 'GET',
+  ]
+
   if (init.body instanceof URLSearchParams) {
     headers.set('Content-Type', 'application/x-www-form-urlencoded;charset=UTF-8')
+    args.push('--data', init.body.toString())
   }
-  return fetch(apiUrl(pathname), options)
+  for (const [name, value] of headers) args.push('--header', `${name}: ${value}`)
+  args.push('--write-out', '\n__GITEE_STATUS__%{http_code}', apiUrl(pathname).toString())
+
+  try {
+    const { stdout } = await execFileAsync('curl', args, { maxBuffer: 10 * 1024 * 1024 })
+    return curlResponse(stdout)
+  } catch (error) {
+    throw sanitizeError(error)
+  }
+}
+
+function curlResponse(output) {
+  const marker = '\n__GITEE_STATUS__'
+  const markerIndex = output.lastIndexOf(marker)
+  if (markerIndex === -1) throw new Error('Gitee API 响应缺少 HTTP 状态码')
+
+  const body = output.slice(0, markerIndex)
+  const status = Number(output.slice(markerIndex + marker.length))
+  if (!Number.isInteger(status)) throw new Error('Gitee API 返回了无效的 HTTP 状态码')
+
+  return {
+    status,
+    ok: status >= 200 && status < 300,
+    async json() {
+      if (!body.trim()) return null
+      return JSON.parse(body)
+    },
+    async text() {
+      return body
+    },
+  }
 }
 
 function apiUrl(pathname) {
