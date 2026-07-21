@@ -56,4 +56,6 @@ cargo test --manifest-path src-tauri/Cargo.toml
 
 ## 测试版发布
 
-推送 `desktop-v*` 标签会触发 GitHub Actions，分别生成 Apple Silicon DMG、Intel DMG 和 Windows x64 NSIS EXE，并发布为 GitHub Pre-release。三个构建全部成功后，工作流会将同一标签的安装包同步到 [Gitee 发布镜像](https://gitee.com/masongzhi1/tinypng-image-compressor-releases)。v1 不包含自动更新、商店签名或正式代码签名。
+推送 `desktop-v*` 标签会触发 GitHub Actions，分别生成 Apple Silicon DMG、Intel DMG 和 Windows x64 NSIS EXE；这三个手动安装包会以 ASCII 文件名发布到 GitHub 与 [Gitee 发布镜像](https://gitee.com/masongzhi1/tinypng-image-compressor-releases)。
+
+同一次构建还会生成 macOS `.app.tar.gz`、Windows `.exe.sig` 及 Gitee `release/latest.json`。应用启动和每小时会检查该清单，左上角“检查更新”可手动检查；下载后由 Tauri 使用内置公钥验证签名再安装并重启。签名私钥只保存在 GitHub Actions Secret，不进入仓库或安装包。

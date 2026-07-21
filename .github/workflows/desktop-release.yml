@@ -18,21 +18,29 @@ jobs:
           - name: macOS Apple Silicon
             runner: macos-15
             target: aarch64-apple-darwin
-            bundles: dmg
+            bundles: app,dmg
             artifact: desktop-aarch64-apple-darwin
-            artifact_path: desktop/smart-image-compressor/src-tauri/target/aarch64-apple-darwin/release/bundle/dmg/*.dmg
+            artifact_path: |
+              desktop/smart-image-compressor/src-tauri/target/aarch64-apple-darwin/release/bundle/dmg/*.dmg
+              desktop/smart-image-compressor/src-tauri/target/aarch64-apple-darwin/release/bundle/macos/*.app.tar.gz
+              desktop/smart-image-compressor/src-tauri/target/aarch64-apple-darwin/release/bundle/macos/*.app.tar.gz.sig
           - name: macOS Intel
             runner: macos-15-intel
             target: x86_64-apple-darwin
-            bundles: dmg
+            bundles: app,dmg
             artifact: desktop-x86_64-apple-darwin
-            artifact_path: desktop/smart-image-compressor/src-tauri/target/x86_64-apple-darwin/release/bundle/dmg/*.dmg
+            artifact_path: |
+              desktop/smart-image-compressor/src-tauri/target/x86_64-apple-darwin/release/bundle/dmg/*.dmg
+              desktop/smart-image-compressor/src-tauri/target/x86_64-apple-darwin/release/bundle/macos/*.app.tar.gz
+              desktop/smart-image-compressor/src-tauri/target/x86_64-apple-darwin/release/bundle/macos/*.app.tar.gz.sig
           - name: Windows x64
             runner: windows-2025
             target: x86_64-pc-windows-msvc
             bundles: nsis
             artifact: desktop-x86_64-pc-windows-msvc
-            artifact_path: desktop/smart-image-compressor/src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis/*.exe
+            artifact_path: |
+              desktop/smart-image-compressor/src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis/*.exe
+              desktop/smart-image-compressor/src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis/*.exe.sig
     runs-on: ${{ matrix.runner }}
     defaults:
       run:
@@ -65,20 +73,11 @@ jobs:
       - name: 运行 Rust 测试
         run: cargo test --manifest-path src-tauri/Cargo.toml
 
-      - name: 构建并上传未签名测试版
-        uses: tauri-apps/tauri-action@v0
+      - name: 构建带签名更新包
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          APPLE_SIGNING_IDENTITY: ${{ startsWith(matrix.runner, 'macos-') && '-' || '' }}
-        with:
-          projectPath: desktop/smart-image-compressor
-          tagName: ${{ github.ref_name }}
-          releaseName: TinyPNG 压缩助手 ${{ github.ref_name }}
-          releaseBody: |
-            未签名测试版。macOS 首次打开时可能需要在“隐私与安全性”中确认；Windows 可能显示 SmartScreen 提示。
-          releaseDraft: false
-          prerelease: true
-          args: --target ${{ matrix.target }} --bundles ${{ matrix.bundles }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: pnpm tauri build --target ${{ matrix.target }} --bundles ${{ matrix.bundles }}
 
       - name: 保留安装包用于 Gitee 镜像
         uses: actions/upload-artifact@v4
@@ -87,20 +86,52 @@ jobs:
           path: ${{ matrix.artifact_path }}
           if-no-files-found: error
 
-  sync-gitee:
-    name: Sync installers to Gitee
+  release:
+    name: Publish installers and updater manifest
     runs-on: ubuntu-latest
     needs: build
     permissions:
-      contents: read
+      contents: write
     steps:
       - uses: actions/checkout@v6
 
-      - name: 下载安装包
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+
+      - name: 下载构建产物
         uses: actions/download-artifact@v4
         with:
           pattern: desktop-*
           path: release-assets
+
+      - name: 整理安装包与更新清单
+        id: version
+        run: |
+          VERSION="$(node -p "require('./desktop/smart-image-compressor/package.json').version")"
+          TAG="${{ github.ref_name }}"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          rm -rf normalized-release-assets
+          node desktop/smart-image-compressor/scripts/prepare-release-assets.mjs \
+            --input release-assets \
+            --output normalized-release-assets \
+            --owner masongzhi1 \
+            --repo tinypng-image-compressor-releases \
+            --app-name tinypng-image-compressor \
+            --tag "$TAG" \
+            --version "$VERSION" \
+            --notes "TinyPNG 压缩助手 $VERSION 更新。"
+
+      - name: 发布 GitHub 预发布安装包
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          if ! gh release view "$TAG" >/dev/null 2>&1; then
+            gh release create "$TAG" --target "$GITHUB_SHA" --title "TinyPNG 压缩助手 $TAG" --notes "未签名测试版，支持应用内签名更新。" --prerelease
+          fi
+          mapfile -d '' upload_files < <(find normalized-release-assets -type f -print0)
+          gh release upload "$TAG" "${upload_files[@]}" --clobber
 
       - name: 同步 Gitee Release 镜像
         env:
@@ -110,6 +141,7 @@ jobs:
           GITEE_BRANCH: master
           RELEASE_TAG: ${{ github.ref_name }}
           RELEASE_NAME: TinyPNG 压缩助手 ${{ github.ref_name }}
-          RELEASE_BODY: 未签名测试版安装包镜像，由 GitHub Actions 自动同步。
-          RELEASE_ASSET_DIR: release-assets
+          RELEASE_BODY: TinyPNG 压缩助手安装包与已签名更新包镜像，由 GitHub Actions 自动同步。
+          RELEASE_ASSET_DIR: normalized-release-assets
+          LATEST_JSON_PATH: normalized-release-assets/latest.json
         run: node desktop/smart-image-compressor/scripts/sync-gitee-release.mjs

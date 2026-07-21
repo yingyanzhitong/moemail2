@@ -7,6 +7,8 @@
     "core:default",
     "core:event:default",
     "core:webview:default",
-    "core:window:default"
+    "core:window:default",
+    "process:default",
+    "updater:default"
   ]
 }

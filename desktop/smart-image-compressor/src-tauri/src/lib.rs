@@ -51,7 +51,8 @@ pub fn run() {
             }
         }))
         .plugin(tauri_plugin_deep_link::init())
-        .plugin(tauri_plugin_dialog::init());
+        .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_process::init());
 
     #[cfg(desktop)]
     let builder = builder
@@ -103,6 +104,10 @@ pub fn run() {
 
     builder
         .setup(|app| {
+            #[cfg(desktop)]
+            app.handle()
+                .plugin(tauri_plugin_updater::Builder::new().build())?;
+
             let vault = Arc::new(CredentialVault::open(app.handle())?);
             vault.ensure_device_identity()?;
             app.manage(AppState::new(vault)?);

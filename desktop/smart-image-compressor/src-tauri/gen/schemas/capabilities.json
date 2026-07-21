@@ -1,1 +1,1 @@
-{"main-window":{"identifier":"main-window","description":"仅允许主窗口调用应用命令、监听脱敏事件和接收原生拖放。","local":true,"windows":["main"],"permissions":["core:default","core:event:default","core:webview:default","core:window:default"]}}
+{"main-window":{"identifier":"main-window","description":"仅允许主窗口调用应用命令、监听脱敏事件和接收原生拖放。","local":true,"windows":["main"],"permissions":["core:default","core:event:default","core:webview:default","core:window:default","process:default","updater:default"]}}

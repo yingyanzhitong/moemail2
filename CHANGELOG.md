@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.14.38] - 2026-07-21
+
+### Features
+
+- **应用内更新**：桌面端接入 Tauri 官方 updater；启动及每小时自动检查 Gitee `release/latest.json`，左上角提供“检查更新”入口，展示版本、更新说明与下载进度，并在签名验证后安装和重启。
+- **签名更新包**：桌面端构建同时生成 macOS Apple Silicon / Intel `.app.tar.gz` 及 Windows NSIS 签名文件；私钥仅保存在 GitHub Actions Secret，客户端只内置公开验证密钥。
+
+### Fixed
+
+- **Gitee 安装包镜像**：发布流程统一将两种 macOS DMG、Windows x64 EXE、更新包和签名文件标准化为 ASCII 文件名后同步至 Gitee Release，并写入仓库的 `release/latest.json`；上传强制 HTTP/1.1 并进行独立重试，规避 Gitee 对含中文 multipart 文件名返回空响应的问题。
+
+### Tests
+
+- **桌面端回归**：前端 32 项、Rust 29 项测试通过；完成生产构建、设计规范、Tauri 配置与发布脚本语法校验。
+
 ## [1.14.37] - 2026-07-21
 
 ### Fixed
