@@ -1,0 +1,24 @@
+.github/workflows/desktop-release.yml
+  s_1f8bb950e0bc25::t_d8f9d043f93153 147-148
+desktop/smart-image-compressor/scripts/sync-gitee-release-core.mjs
+  s_1f8bb950e0bc25::t_507bc06a748465 1-66
+desktop/smart-image-compressor/scripts/sync-gitee-release-core.node-test.mjs
+  s_1f8bb950e0bc25::t_5ac914b0d04862 1-98
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "178acb05cda994148ff2e014eaa966f864b11e7e",
+  "prompts": {},
+  "logical_commit_id": "178acb05cda994148ff2e014eaa966f864b11e7e",
+  "sessions": {
+    "s_1f8bb950e0bc25": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f9329-5e0d-7623-8255-77dad86a5fe6",
+        "model": "unknown"
+      },
+      "human_author": "masongzhi <masongzhi@bigo.sg>"
+    }
+  }
+}
