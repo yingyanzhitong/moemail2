@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.14.41] - 2026-07-24
+
+### Features
+
+- **EdgeOne 鉴权中转**：新增部署于 EdgeOne Pages 的接口中转服务，通过 `auth.xyyamsz.cn` 转发邮件生成与 TinyPNG 桌面端鉴权请求；仅开放必要接口和方法，并禁止缓存鉴权响应。
+
+### Changed
+
+- **桌面端鉴权地址**：TinyPNG 压缩助手默认鉴权服务由 Cloudflare 域名切换至 `https://auth.xyyamsz.cn`，避免客户端直接访问 Cloudflare 服务。
+- **桌面端版本**：TinyPNG 压缩助手版本升级至 `0.2.8`。
+
+### Tests
+
+- **中转服务回归**：覆盖请求头、请求体、查询参数和上游响应转发，以及接口白名单、方法限制和上游异常处理。
+- **桌面端回归**：验证默认鉴权域名配置，并运行前端、Rust 与现有桌面授权测试。
+
 ## [1.14.40] - 2026-07-21
 
 ### Changed

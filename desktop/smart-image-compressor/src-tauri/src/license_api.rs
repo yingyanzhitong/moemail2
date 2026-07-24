@@ -21,6 +21,7 @@ use crate::{
 
 const CLOCK_ROLLBACK_TOLERANCE_MINUTES: i64 = 5;
 const STARTUP_LICENSE_CHECK_TIMEOUT: StdDuration = StdDuration::from_secs(5);
+const DEFAULT_AUTH_API_URL: &str = "https://auth.xyyamsz.cn";
 
 enum RemoteLicenseStatus {
     Available(LicenseView),
@@ -319,7 +320,7 @@ fn revoke_local_package(bundle: &mut CredentialBundle, license_id: &str) {
 impl LicenseApi {
     pub fn new(client: Client, vault: Arc<CredentialVault>) -> Self {
         let base_url = option_env!("SMART_COMPRESS_API_URL")
-            .unwrap_or("https://snapmail.tinypng-token.site")
+            .unwrap_or(DEFAULT_AUTH_API_URL)
             .trim_end_matches('/')
             .to_string();
         Self {
@@ -897,7 +898,9 @@ impl LicenseApi {
 mod tests {
     use chrono::{Duration, Utc};
 
-    use super::{apply_observed_time, ensure_packages, revoke_local_package};
+    use super::{
+        apply_observed_time, ensure_packages, revoke_local_package, DEFAULT_AUTH_API_URL,
+    };
     use crate::models::{CredentialBundle, KeyState, LicenseView, StoredLicense};
 
     fn active_license(id: &str, now: chrono::DateTime<Utc>, used: u32, limit: u32) -> LicenseView {
@@ -913,6 +916,11 @@ mod tests {
             packages: Vec::new(),
             message: None,
         }
+    }
+
+    #[test]
+    fn default_auth_api_uses_edgeone_domain() {
+        assert_eq!(DEFAULT_AUTH_API_URL, "https://auth.xyyamsz.cn");
     }
 
     #[test]

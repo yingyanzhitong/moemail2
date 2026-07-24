@@ -1,6 +1,6 @@
 {
   "name": "moemail",
-  "version": "1.14.40",
+  "version": "1.14.41",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -17,6 +17,7 @@
     "test:cleanup": "curl http://localhost:8787/__scheduled",
     "test:desktop-backend": "node --import tsx --test tests/desktop-license-*.test.mjs",
     "test:tinypng-pool": "node --import tsx --test tests/tinypng-pool-*.test.mjs",
+    "test:edgeone-proxy": "npm --prefix edgeone-auth-proxy test",
     "deploy:local": "pnpm dlx tsx ./scripts/deploy/index.ts",
     "deploy:email": "wrangler deploy --config wrangler.email.json",
     "deploy:cleanup": "wrangler deploy --config wrangler.cleanup.json",

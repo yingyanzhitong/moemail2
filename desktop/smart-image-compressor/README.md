@@ -9,7 +9,7 @@ pnpm install
 pnpm tauri dev
 ```
 
-默认业务后端为 `https://snapmail.tinypng-token.site`。如需连接本地或测试环境，在编译 Rust 前设置：
+默认业务后端为 EdgeOne 中转域名 `https://auth.xyyamsz.cn`。如需连接本地或测试环境，在编译 Rust 前设置：
 
 ```bash
 SMART_COMPRESS_API_URL=http://localhost:3000 pnpm tauri dev
