@@ -1,0 +1,48 @@
+CHANGELOG.md
+  s_1f8bb950e0bc25::t_ea752e3b1d6ece 5-20
+desktop/smart-image-compressor/README.md
+  s_1f8bb950e0bc25::t_06c7735e7e22b1 12
+desktop/smart-image-compressor/package.json
+  s_1f8bb950e0bc25::t_5661c4e8b92026 3
+desktop/smart-image-compressor/src-tauri/Cargo.lock
+  s_1f8bb950e0bc25::t_57dc282900aaec 4642
+desktop/smart-image-compressor/src-tauri/Cargo.toml
+  s_1f8bb950e0bc25::t_14e7916fc5b46d 3
+desktop/smart-image-compressor/src-tauri/src/license_api.rs
+  s_1f8bb950e0bc25::t_8909d6e4941108 24,323,901-903,919-923
+desktop/smart-image-compressor/src-tauri/tauri.conf.json
+  s_1f8bb950e0bc25::t_cdfc5f7f9b1bf5 4
+edgeone-auth-proxy/.gitignore
+  s_1f8bb950e0bc25::t_e15381d0838237 1
+edgeone-auth-proxy/README.md
+  s_1f8bb950e0bc25::t_eed464a55dce7a 1-24
+edgeone-auth-proxy/edge-functions/api/[[path]].js
+  s_1f8bb950e0bc25::t_6e64cbb71522b6 1-90
+edgeone-auth-proxy/edge-functions/health.js
+  s_1f8bb950e0bc25::t_771d42b1567900 1-14
+edgeone-auth-proxy/index.html
+  s_1f8bb950e0bc25::t_52f2fb99f722b1 1-12
+edgeone-auth-proxy/package.json
+  s_1f8bb950e0bc25::t_6a80be8df8e7f1 1-9
+edgeone-auth-proxy/tests/proxy.test.mjs
+  s_1f8bb950e0bc25::t_1e5dc797966339 1-122
+package.json
+  s_1f8bb950e0bc25::t_ac9264c8563d4e 3,20
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "1faf1fb26fe2ac1d733b291f4f9a623d0ef58ab6",
+  "prompts": {},
+  "logical_commit_id": "1faf1fb26fe2ac1d733b291f4f9a623d0ef58ab6",
+  "sessions": {
+    "s_1f8bb950e0bc25": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f9329-5e0d-7623-8255-77dad86a5fe6",
+        "model": "unknown"
+      },
+      "human_author": "masongzhi <masongzhi@bigo.sg>"
+    }
+  }
+}
