@@ -144,4 +144,6 @@ jobs:
           RELEASE_BODY: TinyPNG 压缩助手安装包与已签名更新包镜像，由 GitHub Actions 自动同步。
           RELEASE_ASSET_DIR: normalized-release-assets
           LATEST_JSON_PATH: normalized-release-assets/latest.json
+          GITEE_UPLOAD_ATTEMPTS: "3"
+          GITEE_UPLOAD_TIMEOUT_SECONDS: "600"
         run: node desktop/smart-image-compressor/scripts/sync-gitee-release.mjs

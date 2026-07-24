@@ -1,6 +1,6 @@
 {
   "name": "moemail",
-  "version": "1.14.41",
+  "version": "1.14.42",
   "private": true,
   "scripts": {
     "dev": "next dev",

@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.14.42] - 2026-07-24
+
+### Fixed
+
+- **Gitee Release 完整同步**：桌面发布改为逐文件上传和重试，单个 macOS 资产超时后仍会继续处理其他文件；移除“部分附件失败但工作流成功”的仓库文件降级，缺少任何资产时发布任务会明确失败。
+- **更新清单发布门禁**：`latest.json` 现在作为第 9 个非源码 Release 资产上传，并且只有两套 macOS 安装包、更新包、签名与 Windows 安装包、签名全部出现在 Gitee Release 后，才更新客户端读取的 Gitee `release/latest.json`。
+
+### Changed
+
+- **桌面端版本**：TinyPNG 压缩助手版本升级至 `0.2.9`。
+
+### Tests
+
+- **发布同步回归**：新增 5 项测试，覆盖资产筛选、已有文件跳过、逐文件重试、不完整发布失败，以及 `latest.json` 最后发布门禁；桌面前端 32 项测试与生产构建通过。
+
 ## [1.14.41] - 2026-07-24
 
 ### Features
