@@ -59,11 +59,10 @@ test('资产不完整时同步失败而不是降级为成功', async () => {
   )
 })
 
-test('latest.json 只在所有安装资产同步完成后发布', async () => {
+test('latest.json 只写入仓库且在所有安装资产同步完成后发布', async () => {
   const calls = []
   await publishReleaseAssets({
     assetFiles: ['/tmp/app.dmg', '/tmp/app.exe'],
-    manifestFile: '/tmp/latest.json',
     syncReleaseAssets: async (files) => {
       calls.push(`sync:${files.map((file) => file.split('/').pop()).join(',')}`)
     },
@@ -74,7 +73,6 @@ test('latest.json 只在所有安装资产同步完成后发布', async () => {
 
   assert.deepEqual(calls, [
     'sync:app.dmg,app.exe',
-    'sync:latest.json',
     'publish:latest',
   ])
 })
@@ -84,7 +82,6 @@ test('安装资产同步失败时不会发布 latest.json', async () => {
   await assert.rejects(
     publishReleaseAssets({
       assetFiles: ['/tmp/app.dmg'],
-      manifestFile: '/tmp/latest.json',
       syncReleaseAssets: async () => {
         throw new Error('incomplete release')
       },

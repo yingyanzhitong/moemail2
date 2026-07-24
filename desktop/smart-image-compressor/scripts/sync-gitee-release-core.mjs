@@ -54,13 +54,11 @@ export async function syncMissingReleaseAssets({
 
 export async function publishReleaseAssets({
   assetFiles,
-  manifestFile,
   syncReleaseAssets,
   publishLatest,
 }) {
   if (assetFiles.length === 0) throw new Error('未找到待同步的 Release 资产')
 
   await syncReleaseAssets(assetFiles)
-  await syncReleaseAssets([manifestFile])
   await publishLatest()
 }

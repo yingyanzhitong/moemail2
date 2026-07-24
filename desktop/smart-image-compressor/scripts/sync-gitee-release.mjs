@@ -36,7 +36,6 @@ const releaseId = await ensureRelease()
 const releaseFiles = await findReleaseFiles(config.assetDir)
 await publishReleaseAssets({
   assetFiles: releaseFiles,
-  manifestFile: config.latestJsonPath,
   syncReleaseAssets: (files) => syncReleaseAssets(releaseId, files),
   publishLatest: upsertLatestJson,
 })

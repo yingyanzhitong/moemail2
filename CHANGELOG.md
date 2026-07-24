@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.14.43] - 2026-07-24
+
+### Fixed
+
+- **Gitee Release 附件范围**：参照 `build-raw-jpeg-matcher-mac-client` 的发布方式，Gitee Release 只上传两套 macOS 与 Windows 的 8 个安装包、更新包和签名，明确排除源码与 `latest.json`。
+- **更新清单独立发布**：全部构建产物确认就绪后，`latest.json` 仅提交到 Gitee 仓库的 `release/latest.json`，继续作为桌面端更新检查入口。
+
+### Changed
+
+- **桌面端版本**：TinyPNG 压缩助手版本升级至 `0.2.10`。
+
+### Tests
+
+- **发布门禁回归**：更新发布同步测试，验证 Release 只接收构建产物、源码和更新清单均不会作为附件上传，并确保构建产物不完整时不会更新 `release/latest.json`。
+
 ## [1.14.42] - 2026-07-24
 
 ### Fixed
