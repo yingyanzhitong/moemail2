@@ -59,7 +59,7 @@ test('资产不完整时同步失败而不是降级为成功', async () => {
   )
 })
 
-test('latest.json 只写入仓库且在所有安装资产同步完成后发布', async () => {
+test('latest.json 只在所有安装资产同步完成后发布', async () => {
   const calls = []
   await publishReleaseAssets({
     assetFiles: ['/tmp/app.dmg', '/tmp/app.exe'],

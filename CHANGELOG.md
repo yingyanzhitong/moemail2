@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.14.44] - 2026-07-25
+
+### Changed
+
+- **Gitee 仅使用 Release**：清理镜像仓库源码中的 `release/` 安装包目录；后续版本化 Release 只包含两套 macOS 与 Windows 的 8 个构建产物。
+- **Release 更新清单**：更新清单迁移至固定 `updater-latest` Release 的 `latest.json` 附件，桌面端不再读取仓库源码文件。
+- **桌面端版本**：TinyPNG 压缩助手版本升级至 `0.2.11`。
+
+### Tests
+
+- **发布同步回归**：验证构建产物完成后才发布 `updater-latest` Release 更新清单，确保版本化 Release 与源码仓库均不存放更新清单或安装包。
+
 ## [1.14.43] - 2026-07-24
 
 ### Fixed

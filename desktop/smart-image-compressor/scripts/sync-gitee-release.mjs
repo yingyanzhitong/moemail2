@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { execFile } from 'node:child_process'
-import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises'
+import { mkdtemp, readdir, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { promisify } from 'node:util'
@@ -25,6 +25,9 @@ const config = {
   releaseBody: process.env.RELEASE_BODY || 'GitHub Actions 自动同步的桌面端安装包。',
   assetDir: process.env.RELEASE_ASSET_DIR || 'release-assets',
   latestJsonPath: process.env.LATEST_JSON_PATH || 'normalized-release-assets/latest.json',
+  latestManifestTag: process.env.GITEE_LATEST_MANIFEST_TAG || 'updater-latest',
+  latestManifestName: process.env.GITEE_LATEST_MANIFEST_NAME || 'TinyPNG 压缩助手最新更新清单',
+  latestManifestBody: process.env.GITEE_LATEST_MANIFEST_BODY || 'TinyPNG 压缩助手自动更新清单。',
   uploadAttempts: positiveIntegerEnv('GITEE_UPLOAD_ATTEMPTS', 3),
   uploadTimeoutSeconds: positiveIntegerEnv('GITEE_UPLOAD_TIMEOUT_SECONDS', 600),
 }
@@ -32,14 +35,23 @@ const config = {
 const repository = await ensureRepository()
 await ensurePublicRepository(repository)
 await ensureBranch(repository.default_branch || config.branch)
-const releaseId = await ensureRelease()
+const releaseId = await ensureRelease({
+  tag: config.tag,
+  name: config.releaseName,
+  body: config.releaseBody,
+})
+const latestManifestReleaseId = await ensureRelease({
+  tag: config.latestManifestTag,
+  name: config.latestManifestName,
+  body: config.latestManifestBody,
+})
 const releaseFiles = await findReleaseFiles(config.assetDir)
 await publishReleaseAssets({
   assetFiles: releaseFiles,
-  syncReleaseAssets: (files) => syncReleaseAssets(releaseId, files),
-  publishLatest: upsertLatestJson,
+  syncReleaseAssets: (files) => syncReleaseAssets(releaseId, config.tag, files),
+  publishLatest: () => replaceLatestManifest(latestManifestReleaseId),
 })
-console.log(`Gitee Release 已同步：${config.owner}/${config.repo} ${config.tag}`)
+console.log(`Gitee Release 已同步：${config.owner}/${config.repo} ${config.tag}；更新清单已发布到 ${config.latestManifestTag}`)
 
 async function ensureRepository() {
   const existing = await getRepository()
@@ -105,33 +117,33 @@ async function ensureBranch(defaultBranch) {
   }
 }
 
-async function ensureRelease() {
-  const existing = await getReleaseByTag()
+async function ensureRelease({ tag, name, body }) {
+  const existing = await getReleaseByTag(tag)
   if (existing) return existing.id
-  const body = new URLSearchParams({
-    tag_name: config.tag,
-    name: config.releaseName,
-    body: config.releaseBody,
+  const requestBody = new URLSearchParams({
+    tag_name: tag,
+    name,
+    body,
     target_commitish: config.branch,
   })
-  const release = await giteeJson(`/repos/${config.owner}/${config.repo}/releases`, { method: 'POST', body })
+  const release = await giteeJson(`/repos/${config.owner}/${config.repo}/releases`, { method: 'POST', body: requestBody })
   if (!release.id) throw new Error('Gitee Release 响应缺少 ID')
   return release.id
 }
 
-async function getReleaseByTag() {
-  const response = await giteeFetch(`/repos/${config.owner}/${config.repo}/releases/tags/${encodeURIComponent(config.tag)}`)
+async function getReleaseByTag(tag) {
+  const response = await giteeFetch(`/repos/${config.owner}/${config.repo}/releases/tags/${encodeURIComponent(tag)}`)
   if (response.status === 404) return null
   if (!response.ok) throw new Error(`无法查询 Gitee Release：${await safeText(response)}`)
   return response.json()
 }
 
-async function syncReleaseAssets(releaseId, files) {
+async function syncReleaseAssets(releaseId, releaseTag, files) {
   await syncMissingReleaseAssets({
     files,
     listAssets: () => listAssets(releaseId),
     uploadAsset: (file, name, attempt, maxAttempts) => (
-      uploadAsset(releaseId, file, name, attempt, maxAttempts)
+      uploadAsset(releaseId, releaseTag, file, name, attempt, maxAttempts)
     ),
     maxAttempts: config.uploadAttempts,
     retryDelay: (attempt) => sleep(attempt * 5_000),
@@ -157,9 +169,9 @@ async function listAssets(releaseId) {
   return Array.isArray(assets) ? assets : []
 }
 
-async function uploadAsset(releaseId, file, name, attempt, maxAttempts) {
+async function uploadAsset(releaseId, releaseTag, file, name, attempt, maxAttempts) {
   const url = apiUrl(`/repos/${config.owner}/${config.repo}/releases/${releaseId}/attach_files`).toString()
-  console.log(`上传 ${name}（${attempt}/${maxAttempts}）…`)
+  console.log(`上传 ${name} 到 ${releaseTag}（${attempt}/${maxAttempts}）…`)
   try {
     await execFileAsync('curl', [
       '--fail-with-body', '--silent', '--show-error', '--http1.1', '--connect-timeout', '30',
@@ -171,34 +183,25 @@ async function uploadAsset(releaseId, file, name, attempt, maxAttempts) {
   }
 }
 
-async function upsertLatestJson() {
-  let workdir = await mkdtemp(path.join(tmpdir(), 'tinypng-gitee-release-'))
-  try {
-    try {
-      await cloneRepository(workdir, config.gitUsername)
-    } catch {
-      await rm(workdir, { recursive: true, force: true })
-      workdir = await mkdtemp(path.join(tmpdir(), 'tinypng-gitee-release-'))
-      await cloneRepository(workdir, 'oauth2')
-    }
-    await mkdir(path.join(workdir, 'release'), { recursive: true })
-    await writeFile(path.join(workdir, 'release', 'latest.json'), await latestManifestContent())
-    const { stdout } = await execFileAsync('git', ['status', '--porcelain', '--', 'release/latest.json'], { cwd: workdir })
-    if (!stdout.trim()) return
-    await runGit(['add', 'release/latest.json'], workdir)
-    await runGit(['-c', 'user.name=tinypng-release-bot', '-c', 'user.email=actions@github.com', 'commit', '-m', `chore: update updater manifest for ${config.tag}`], workdir)
-    await runGit(['push', 'origin', `HEAD:${config.branch}`], workdir)
-  } finally {
-    await rm(workdir, { recursive: true, force: true })
+async function replaceLatestManifest(releaseId) {
+  const name = path.basename(config.latestJsonPath)
+  const existing = await listAssets(releaseId)
+  for (const asset of existing) {
+    await deleteAsset(releaseId, asset.id)
+  }
+
+  await syncReleaseAssets(releaseId, config.latestManifestTag, [config.latestJsonPath])
+  const published = await listAssets(releaseId)
+  if (published.length !== 1 || published[0].name !== name) {
+    throw new Error(`Gitee ${config.latestManifestTag} Release 应仅包含一个 ${name}`)
   }
 }
 
-async function cloneRepository(workdir, username) {
-  await runGit(['clone', '--depth', '1', '--branch', config.branch, authenticatedRemoteUrl(username), workdir], process.cwd())
-}
-
-async function latestManifestContent() {
-  return readFile(config.latestJsonPath, 'utf8')
+async function deleteAsset(releaseId, assetId) {
+  const response = await giteeFetch(`/repos/${config.owner}/${config.repo}/releases/${releaseId}/attach_files/${assetId}`, { method: 'DELETE' })
+  if (response.status !== 204) {
+    throw new Error(`无法删除 Gitee Release 附件 ${assetId}：${await safeText(response)}`)
+  }
 }
 
 async function giteeJson(pathname, init = {}) {

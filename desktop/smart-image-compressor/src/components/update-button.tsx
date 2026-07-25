@@ -183,7 +183,7 @@ export function UpdateButton() {
 
             {message ? <p className={status === 'error' ? 'rounded-[8px] border border-[#F1C5C7] bg-[#FFF5F5] px-3 py-2 text-xs leading-5 text-[#B4232B]' : 'rounded-[8px] border border-[#D6DDE8] bg-white px-3 py-2 text-xs leading-5 text-[#667085]'}>{message}</p> : null}
 
-            <p className="rounded-[8px] border border-[#D6DDE8] bg-[#F7F9FC] px-3 py-2 text-[11px] leading-5 text-[#667085]">更新清单：<span className="font-mono">Gitee release/latest.json</span></p>
+            <p className="rounded-[8px] border border-[#D6DDE8] bg-[#F7F9FC] px-3 py-2 text-[11px] leading-5 text-[#667085]">更新清单：<span className="font-mono">Gitee Release updater-latest/latest.json</span></p>
 
             <div className="flex justify-end gap-2 pt-1">
               <Button disabled={isInstalling} onClick={() => setDialogOpen(false)} type="button" variant="outline">关闭</Button>
