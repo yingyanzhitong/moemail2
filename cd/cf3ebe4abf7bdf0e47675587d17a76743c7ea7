@@ -1,0 +1,46 @@
+.github/workflows/desktop-release.yml
+  s_f1d92f0c20eff5::t_c862f06aee2396 147-149
+desktop/smart-image-compressor/README.md
+  s_f1d92f0c20eff5::t_a09833c3ae1e18 61
+desktop/smart-image-compressor/scripts/sync-gitee-release.mjs
+  s_f1d92f0c20eff5::t_8c809196dacc00 4,28-30,38-47,51-52,54,120-121,123-126,129,134-135,141,146,172,174,186-190,193-197,200-204
+desktop/smart-image-compressor/src-tauri/tauri.conf.json
+  s_f1d92f0c20eff5::t_f89e56b42f90dc 4,62
+desktop/smart-image-compressor/src/components/update-button.tsx
+  s_f1d92f0c20eff5::t_ed43a673c8a404 186
+desktop/smart-image-compressor/package.json
+  s_1f8bb950e0bc25::t_9bde327896aa49 3
+desktop/smart-image-compressor/scripts/sync-gitee-release-core.node-test.mjs
+  s_1f8bb950e0bc25::t_427dd92c1d8645 62
+desktop/smart-image-compressor/src-tauri/Cargo.lock
+  s_1f8bb950e0bc25::t_417cb0bf0e5bd4 4642
+desktop/smart-image-compressor/src-tauri/Cargo.toml
+  s_1f8bb950e0bc25::t_753f5af40883ff 3
+package.json
+  s_1f8bb950e0bc25::t_14f65c7dc7e6a2 3
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "cdcf3ebe4abf7bdf0e47675587d17a76743c7ea7",
+  "prompts": {},
+  "logical_commit_id": "cdcf3ebe4abf7bdf0e47675587d17a76743c7ea7",
+  "sessions": {
+    "s_1f8bb950e0bc25": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f9329-5e0d-7623-8255-77dad86a5fe6",
+        "model": "unknown"
+      },
+      "human_author": "masongzhi <masongzhi@bigo.sg>"
+    },
+    "s_f1d92f0c20eff5": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f92eb-8cb0-77a3-b4ff-3d87c30c046e",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "masongzhi <masongzhi@bigo.sg>"
+    }
+  }
+}
