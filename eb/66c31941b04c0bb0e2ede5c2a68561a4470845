@@ -1,0 +1,36 @@
+AGENTS.md
+  s_1f8bb950e0bc25::t_c7ff9bc360eaea 23-27
+app/api/admin/tinypng-desktop/licenses/[id]/auth-link/route.ts
+  s_1f8bb950e0bc25::t_de297c9089195c 21-24
+app/api/tinypng/desktop/grants/route.ts
+  s_1f8bb950e0bc25::t_3d60450660d725 29-32
+app/components/profile/desktop-license-admin.tsx
+  s_1f8bb950e0bc25::t_5ac7fc655dec12 75,128-130,133,154-156,159,226-228,231,240-241,268,270,272-273,328
+app/components/profile/tinypng-pool-stats-card.tsx
+  s_1f8bb950e0bc25::t_74b68165599d69 94,96-101,170-171,243-246,258-259,267,826,830,865,872,876,888,899
+desktop/smart-image-compressor/src-tauri/src/main.rs
+  s_1f8bb950e0bc25::t_38e888528819cf 1-2
+desktop/smart-image-compressor/src/lib/activation.test.ts
+  s_1f8bb950e0bc25::t_49aaaa4c5983fb 1-16
+desktop/smart-image-compressor/src/lib/activation.ts
+  s_1f8bb950e0bc25::t_1aa2874322d4ea 5-12
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "eb66c31941b04c0bb0e2ede5c2a68561a4470845",
+  "prompts": {},
+  "logical_commit_id": "eb66c31941b04c0bb0e2ede5c2a68561a4470845",
+  "sessions": {
+    "s_1f8bb950e0bc25": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f9329-5e0d-7623-8255-77dad86a5fe6",
+        "model": "gpt-5.6-terra"
+      },
+      "human_author": "masongzhi <masongzhi@bigo.sg>",
+      "total_additions": 110,
+      "total_deletions": 4
+    }
+  }
+}
