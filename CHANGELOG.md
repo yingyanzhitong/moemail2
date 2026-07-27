@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.14.45] - 2026-07-27
+
+### Changed
+
+- **发布触发收敛**：Cloudflare 网页部署移除手动触发入口，仅在推送 `v*` tag 时执行；桌面端发布继续仅匹配 `desktop-v*` tag。
+- **普通推送不发布**：根目录 `pnpm deploy` 改为只推送 `master`，不再自动推送全部本地 tag。
+- **桌面端用户指南**：桌面端 README 增加飞书安装与使用指南入口，包含各平台安装包、macOS“仍要打开”放行与压缩操作说明。
+
 ## [1.14.44] - 2026-07-25
 
 ### Changed

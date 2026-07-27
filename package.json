@@ -1,6 +1,6 @@
 {
   "name": "moemail",
-  "version": "1.14.44",
+  "version": "1.14.45",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -24,7 +24,7 @@
     "deploy:tinypng": "wrangler deploy --config wrangler.tinypng.json",
     "deploy:pages": "npm run build:pages && wrangler pages deploy .vercel/output/static --branch main --no-bundle",
     "design:lint": "pnpm --dir desktop/smart-image-compressor design:lint",
-    "deploy": "git push origin master && git push -u origin --tags"
+    "deploy": "git push origin master"
   },
   "type": "module",
   "dependencies": {

@@ -2,6 +2,10 @@
 
 非官方的 Tauri v2 桌面端，支持 macOS Apple Silicon、macOS Intel 与 Windows x64。Auth Link 仅用于一次性领取套餐参数和 TinyPNG Token；激活后由 Rust 层直接请求 TinyPNG。每个压缩批次结束后只向业务后端回传批次 ID、授权周期、任务数和成功数，不接收图片、文件名或本地路径。
 
+## 用户指南
+
+安装包下载、macOS“仍要打开”放行与图片压缩操作说明见：[TinyPNG 压缩助手：安装与使用指南](https://my.feishu.cn/docx/Jb3fdvkTYoR5HdxaBejcYDW0nRg)。
+
 ## 本地开发
 
 ```bash
