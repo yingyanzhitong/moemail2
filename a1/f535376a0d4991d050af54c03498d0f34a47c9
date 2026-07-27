@@ -1,0 +1,58 @@
+drizzle/0032_desktop-usage-metrics.sql
+  s_1f8bb950e0bc25::t_58d265c7f3609a 1-4
+drizzle/meta/0032_snapshot.json
+  s_1f8bb950e0bc25::t_00ea20d62f5570 1-1933
+drizzle/meta/_journal.json
+  s_1f8bb950e0bc25::t_3f4a9294a104b0 228-234
+CHANGELOG.md
+  s_1f8bb950e0bc25::t_21cc6cd47aa33f 5-21
+app/api/tinypng/desktop/grants/route.ts
+  s_1f8bb950e0bc25::t_92db9736401d6e 20,24-34
+app/api/tinypng/desktop/usage/reports/route.ts
+  s_1f8bb950e0bc25::t_d681c4873387f0 15-17,24-26
+app/components/profile/desktop-license-admin.tsx
+  s_1f8bb950e0bc25::t_d04597bd88a344 21,36-44,81-84,95,167,301,304,312,314,321,327-331,391-394
+app/lib/desktop-license-service.ts
+  s_1f8bb950e0bc25::t_85fdf76ee3cfae 2,87-125,182,198-199,227,246,254,608-610,622-624,649-651,666-667,784,812-825,827-835,838-841,845,857-865
+app/lib/schema.ts
+  s_1f8bb950e0bc25::t_7907fcd4ccd101 299,362-364
+desktop/smart-image-compressor/package.json
+  s_1f8bb950e0bc25::t_d549a49cfbde51 3
+desktop/smart-image-compressor/src-tauri/Cargo.lock
+  s_1f8bb950e0bc25::t_25444bdd1a8f08 4642
+desktop/smart-image-compressor/src-tauri/Cargo.toml
+  s_1f8bb950e0bc25::t_8d19f11d9a079e 3
+desktop/smart-image-compressor/src-tauri/src/compression.rs
+  s_1f8bb950e0bc25::t_575cca74ff03eb 560-563,574-575,586-590,603-604
+desktop/smart-image-compressor/src-tauri/src/license_api.rs
+  s_1f8bb950e0bc25::t_e10abdefde39e9 25,163-164,172-173,181-183,211-212,728-729,765-766,916-917,939-968
+desktop/smart-image-compressor/src-tauri/src/models.rs
+  s_1f8bb950e0bc25::t_b4787d9c282dc5 3-6,202-207
+desktop/smart-image-compressor/src-tauri/tauri.conf.json
+  s_1f8bb950e0bc25::t_acfb77cd10bdc0 4
+desktop/smart-image-compressor/src/components/update-button.test.tsx
+  s_1f8bb950e0bc25::t_255e646930ec91 5,7-8,12,25-31,37-39
+desktop/smart-image-compressor/src/components/update-button.tsx
+  s_1f8bb950e0bc25::t_8dcc5918ab2dd7 117,119
+package.json
+  s_1f8bb950e0bc25::t_f4ffd59557642c 3
+tests/desktop-license-sql.test.mjs
+  s_1f8bb950e0bc25::t_a317fcde6a878f 21,177-193
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "a1f535376a0d4991d050af54c03498d0f34a47c9",
+  "prompts": {},
+  "logical_commit_id": "a1f535376a0d4991d050af54c03498d0f34a47c9",
+  "sessions": {
+    "s_1f8bb950e0bc25": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f9329-5e0d-7623-8255-77dad86a5fe6",
+        "model": "gpt-5.6-terra"
+      },
+      "human_author": "masongzhi <masongzhi@bigo.sg>"
+    }
+  }
+}
