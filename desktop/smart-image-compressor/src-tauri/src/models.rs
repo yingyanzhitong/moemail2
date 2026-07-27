@@ -1,5 +1,9 @@
 use serde::{Deserialize, Serialize};
 
+fn current_app_version() -> String {
+    env!("CARGO_PKG_VERSION").to_string()
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ScheduledPeriod {
@@ -195,6 +199,12 @@ pub struct PendingUsageReport {
     pub requested_count: u32,
     pub success_count: u32,
     pub period_starts_at: String,
+    #[serde(default)]
+    pub original_bytes: u64,
+    #[serde(default)]
+    pub compressed_bytes: u64,
+    #[serde(default = "current_app_version")]
+    pub app_version: String,
 }
 
 #[derive(Clone, Serialize, Deserialize)]

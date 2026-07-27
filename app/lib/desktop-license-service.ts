@@ -1,5 +1,5 @@
 import { drizzle } from 'drizzle-orm/d1'
-import { and, asc, count, desc, eq, gt, inArray, lte } from 'drizzle-orm'
+import { and, asc, count, desc, eq, gt, inArray, lte, sql } from 'drizzle-orm'
 import * as schema from '@/lib/schema'
 import {
   desktopActivationGrants,
@@ -84,6 +84,45 @@ function normalizeGrantPlan(input: Partial<DesktopGrantPlan> = {}): DesktopGrant
   return plan
 }
 
+function normalizeBuyerId(input: unknown): string | null {
+  if (input === undefined || input === null) return null
+  if (typeof input !== 'string') {
+    throw new DesktopLicenseError('买家 ID 格式无效', 400, 'INVALID_BUYER_ID')
+  }
+  const buyerId = input.trim()
+  if (!buyerId) return null
+  if (buyerId.length > 128) {
+    throw new DesktopLicenseError('买家 ID 最多 128 个字符', 400, 'INVALID_BUYER_ID')
+  }
+  return buyerId
+}
+
+function normalizeUsageBytes(input: number | undefined, label: string): number {
+  const bytes = input ?? 0
+  if (!Number.isSafeInteger(bytes) || bytes < 0) {
+    throw new DesktopLicenseError(`${label}格式无效`, 400, 'INVALID_USAGE_BYTES')
+  }
+  return bytes
+}
+
+function normalizeAppVersion(input: unknown): string | null {
+  if (input === undefined || input === null) return null
+  if (typeof input !== 'string') {
+    throw new DesktopLicenseError('软件版本格式无效', 400, 'INVALID_APP_VERSION')
+  }
+  const appVersion = input.trim()
+  if (!appVersion) return null
+  if (appVersion.length > 64) {
+    throw new DesktopLicenseError('软件版本最多 64 个字符', 400, 'INVALID_APP_VERSION')
+  }
+  return appVersion
+}
+
+function compressionRatio(originalBytes: number, compressedBytes: number): number | null {
+  if (originalBytes <= 0) return null
+  return Math.max(0, (1 - compressedBytes / originalBytes) * 100)
+}
+
 export async function cleanupExpiredDesktopState(database: D1Database): Promise<void> {
   const db = getDb(database)
   const now = new Date()
@@ -140,7 +179,7 @@ export async function cleanupExpiredDesktopState(database: D1Database): Promise<
 
 async function insertNewGrantWithReservedKeys(
   database: D1Database,
-  grant: { id: string; licenseId: string; codeHash: string; codeCiphertext: string; expiresAt: Date; plan: DesktopGrantPlan },
+  grant: { id: string; licenseId: string; codeHash: string; codeCiphertext: string; expiresAt: Date; plan: DesktopGrantPlan; buyerId: string | null },
 ): Promise<void> {
   const db = getDb(database)
   for (let attempt = 0; attempt < 3; attempt += 1) {
@@ -156,8 +195,8 @@ async function insertNewGrantWithReservedKeys(
     const now = Date.now()
     const statements = [
       database.prepare(
-        "INSERT INTO desktop_licenses (id, status, initial_key_count, key_limit, created_at, updated_at) VALUES (?, 'pending', ?, ?, ?, ?)",
-      ).bind(grant.licenseId, grant.plan.tokenCount, grant.plan.tokenCount + DESKTOP_EMERGENCY_KEY_COUNT, now, now),
+        "INSERT INTO desktop_licenses (id, buyer_id, status, initial_key_count, key_limit, created_at, updated_at) VALUES (?, ?, 'pending', ?, ?, ?, ?)",
+      ).bind(grant.licenseId, grant.buyerId, grant.plan.tokenCount, grant.plan.tokenCount + DESKTOP_EMERGENCY_KEY_COUNT, now, now),
       database.prepare(
         "INSERT INTO desktop_activation_grants (id, license_id, kind, code_hash, code_ciphertext, status, token_count, quota_total, duration_days, expires_at, created_at) VALUES (?, ?, 'new', ?, ?, 'issued', ?, ?, ?, ?, ?)",
       ).bind(grant.id, grant.licenseId, grant.codeHash, grant.codeCiphertext, grant.plan.tokenCount, grant.plan.compressionLimit, grant.plan.durationDays, grant.expiresAt.getTime(), now),
@@ -185,6 +224,7 @@ export async function createDesktopGrant(
   kind: DesktopGrantKind,
   targetLicenseId?: string,
   requestedPlan: Partial<DesktopGrantPlan> = {},
+  requestedBuyerId?: string,
 ): Promise<{ code: string; licenseId: string; expiresAt: Date; plan: DesktopGrantPlan }> {
   await cleanupExpiredDesktopState(database)
   const db = getDb(database)
@@ -203,6 +243,7 @@ export async function createDesktopGrant(
 
   if (kind === 'new') {
     plan = normalizeGrantPlan(requestedPlan)
+    const buyerId = normalizeBuyerId(requestedBuyerId)
     await insertNewGrantWithReservedKeys(database, {
       id: grantId,
       licenseId,
@@ -210,6 +251,7 @@ export async function createDesktopGrant(
       codeCiphertext,
       expiresAt,
       plan,
+      buyerId,
     })
   } else {
     const license = await db.select().from(desktopLicenses).where(eq(desktopLicenses.id, licenseId)).get()
@@ -563,6 +605,9 @@ export async function reportDesktopUsage(
     requestedCount: number
     successCount: number
     periodStartsAt: string
+    originalBytes?: number
+    compressedBytes?: number
+    appVersion?: string
   },
 ) {
   if (!/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(input.reportId)) {
@@ -574,6 +619,9 @@ export async function reportDesktopUsage(
   if (!Number.isInteger(input.successCount) || input.successCount < 0 || input.successCount > input.requestedCount) {
     throw new DesktopLicenseError('批次成功数量无效', 400, 'INVALID_SUCCESS_COUNT')
   }
+  const originalBytes = normalizeUsageBytes(input.originalBytes, '原图字节数')
+  const compressedBytes = normalizeUsageBytes(input.compressedBytes, '压缩后字节数')
+  const appVersion = normalizeAppVersion(input.appVersion)
   const periodStartsAt = new Date(input.periodStartsAt)
   if (Number.isNaN(periodStartsAt.getTime())) {
     throw new DesktopLicenseError('授权周期时间格式无效', 400, 'INVALID_PERIOD_START')
@@ -598,6 +646,9 @@ export async function reportDesktopUsage(
     || existing.periodId !== period.id
     || existing.requestedCount !== input.requestedCount
     || existing.successCount !== input.successCount
+    || (existing.originalBytes ?? 0) !== originalBytes
+    || (existing.compressedBytes ?? 0) !== compressedBytes
+    || (existing.appVersion ?? null) !== appVersion
   )) {
     throw new DesktopLicenseError('用量批次标识冲突', 409, 'REPORT_ID_CONFLICT')
   }
@@ -612,8 +663,8 @@ export async function reportDesktopUsage(
   const now = Date.now()
   await database.batch([
     database.prepare(
-      "INSERT INTO desktop_usage_reservations (id, license_id, period_id, requested_count, status, expires_at, created_at) SELECT ?, ?, ?, ?, 'active', ?, ? WHERE NOT EXISTS (SELECT 1 FROM desktop_usage_reservations WHERE id = ?)",
-    ).bind(input.reportId, license.id, period.id, input.requestedCount, period.expiresAt.getTime(), now, input.reportId),
+      "INSERT INTO desktop_usage_reservations (id, license_id, period_id, requested_count, original_bytes, compressed_bytes, app_version, status, expires_at, created_at) SELECT ?, ?, ?, ?, ?, ?, ?, 'active', ?, ? WHERE NOT EXISTS (SELECT 1 FROM desktop_usage_reservations WHERE id = ?)",
+    ).bind(input.reportId, license.id, period.id, input.requestedCount, originalBytes, compressedBytes, appVersion, period.expiresAt.getTime(), now, input.reportId),
     database.prepare(
       "UPDATE desktop_license_periods SET used_count = MIN(quota_total, used_count + ?) WHERE id = ? AND EXISTS (SELECT 1 FROM desktop_usage_reservations WHERE id = ? AND license_id = ? AND status = 'active')",
     ).bind(input.successCount, period.id, input.reportId, license.id),
@@ -730,7 +781,7 @@ export async function listDesktopLicenses(database: D1Database) {
   const db = getDb(database)
   const licenses = await db.select().from(desktopLicenses).orderBy(desc(desktopLicenses.createdAt))
   return Promise.all(licenses.map(async (license) => {
-    const [view, [{ value: keyCount = 0 } = { value: 0 }], latestPlanGrant, activeGrant] = await Promise.all([
+    const [view, [{ value: keyCount = 0 } = { value: 0 }], latestPlanGrant, activeGrant, latestUsage, totalUsage] = await Promise.all([
       getDesktopLicenseView(database, license.id),
       db.select({ value: count() })
         .from(desktopLicenseKeys)
@@ -760,10 +811,38 @@ export async function listDesktopLicenses(database: D1Database) {
         .orderBy(desc(desktopActivationGrants.createdAt))
         .limit(1)
         .get(),
+      db.select({
+        originalBytes: desktopUsageReservations.originalBytes,
+        compressedBytes: desktopUsageReservations.compressedBytes,
+        successCount: desktopUsageReservations.successCount,
+        appVersion: desktopUsageReservations.appVersion,
+        completedAt: desktopUsageReservations.completedAt,
+      }).from(desktopUsageReservations)
+        .where(and(
+          eq(desktopUsageReservations.licenseId, license.id),
+          eq(desktopUsageReservations.status, 'completed'),
+        ))
+        .orderBy(desc(desktopUsageReservations.completedAt))
+        .limit(1)
+        .get(),
+      db.select({
+        originalBytes: sql<number>`coalesce(sum(${desktopUsageReservations.originalBytes}), 0)`,
+        compressedBytes: sql<number>`coalesce(sum(${desktopUsageReservations.compressedBytes}), 0)`,
+      }).from(desktopUsageReservations)
+        .where(and(
+          eq(desktopUsageReservations.licenseId, license.id),
+          eq(desktopUsageReservations.status, 'completed'),
+        ))
+        .get(),
     ])
+    const latestOriginalBytes = latestUsage?.originalBytes ?? 0
+    const latestCompressedBytes = latestUsage?.compressedBytes ?? 0
+    const totalOriginalBytes = Number(totalUsage?.originalBytes ?? 0)
+    const totalCompressedBytes = Number(totalUsage?.compressedBytes ?? 0)
     return {
       ...view,
       limit: view.limit || latestPlanGrant?.compressionLimit || 0,
+      buyerId: license.buyerId,
       deviceBound: Boolean(license.deviceId),
       keyCount,
       createdAt: license.createdAt.toISOString(),
@@ -775,6 +854,15 @@ export async function listDesktopLicenses(database: D1Database) {
       grantStatus: latestPlanGrant?.status ?? null,
       grantExpiresAt: latestPlanGrant?.expiresAt.toISOString() ?? null,
       hasActiveAuthLink: Boolean(activeGrant),
+      latestUsage: latestUsage ? {
+        successCount: latestUsage.successCount ?? 0,
+        originalBytes: latestOriginalBytes,
+        compressedBytes: latestCompressedBytes,
+        compressionRatio: compressionRatio(latestOriginalBytes, latestCompressedBytes),
+        appVersion: latestUsage.appVersion,
+        completedAt: latestUsage.completedAt?.toISOString() ?? null,
+      } : null,
+      totalCompressionRatio: compressionRatio(totalOriginalBytes, totalCompressedBytes),
     }
   }))
 }

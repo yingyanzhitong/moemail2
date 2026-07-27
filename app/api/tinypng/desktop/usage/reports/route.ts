@@ -12,12 +12,18 @@ export async function POST(request: Request) {
       requestedCount?: number
       successCount?: number
       periodStartsAt?: string
+      originalBytes?: number
+      compressedBytes?: number
+      appVersion?: string
     }
     const result = await reportDesktopUsage(request, getRequestContext().env.DB, {
       reportId: body.reportId ?? '',
       requestedCount: body.requestedCount ?? 0,
       successCount: body.successCount ?? -1,
       periodStartsAt: body.periodStartsAt ?? '',
+      originalBytes: body.originalBytes,
+      compressedBytes: body.compressedBytes,
+      appVersion: body.appVersion,
     })
     return NextResponse.json(result, { headers: { 'Cache-Control': 'no-store' } })
   } catch (error) {

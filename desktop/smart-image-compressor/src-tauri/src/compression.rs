@@ -557,6 +557,10 @@ async fn run_compression(
                     .context("授权有效期格式无效")
             })?;
         let batch_jobs = jobs[next_job..next_job + reservation.requested_count].to_vec();
+        let batch_original_sizes = batch_jobs
+            .iter()
+            .map(|job| (job.id.clone(), job.original_size))
+            .collect::<HashMap<_, _>>();
         let keys = Arc::new(AsyncMutex::new(reservation.keys));
         let mut outcomes = stream::iter(batch_jobs.into_iter().map(|job| {
             let runtime = runtime.clone();
@@ -567,6 +571,8 @@ async fn run_compression(
         .buffer_unordered(COMPRESSION_CONCURRENCY);
 
         let mut success_count = 0_u32;
+        let mut original_bytes = 0_u64;
+        let mut compressed_bytes = 0_u64;
         let mut observed_at: Option<DateTime<Utc>> = None;
         while let Some(outcome) = outcomes.next().await {
             if let Some(value) = outcome.observed_at {
@@ -577,6 +583,11 @@ async fn run_compression(
                 "completed" => {
                     completed += 1;
                     success_count += 1;
+                    original_bytes = original_bytes.saturating_add(
+                        batch_original_sizes.get(&outcome.id).copied().unwrap_or(0),
+                    );
+                    compressed_bytes =
+                        compressed_bytes.saturating_add(outcome.compressed_size.unwrap_or(0));
                 }
                 "failed" => failed += 1,
                 "skipped" => skipped += 1,
@@ -589,6 +600,8 @@ async fn run_compression(
             &reservation.license_id,
             &reservation.id,
             success_count,
+            original_bytes,
+            compressed_bytes,
             keys.lock().await.clone(),
             observed_at,
         )?;

@@ -17,15 +17,21 @@ export async function POST(request: Request) {
   }
 
   try {
-    const body = await request.json() as { kind?: DesktopGrantKind; licenseId?: string } & Partial<DesktopGrantPlan>
+    const body = await request.json() as { kind?: DesktopGrantKind; licenseId?: string; buyer_id?: string } & Partial<DesktopGrantPlan>
     if (!body.kind || !['new', 'renew', 'rebind'].includes(body.kind)) {
       return NextResponse.json({ error: '凭证类型无效' }, { status: 400 })
     }
-    const result = await createDesktopGrant(getRequestContext().env.DB, body.kind, body.licenseId, {
-      tokenCount: body.tokenCount,
-      compressionLimit: body.compressionLimit,
-      durationDays: body.durationDays,
-    })
+    const result = await createDesktopGrant(
+      getRequestContext().env.DB,
+      body.kind,
+      body.licenseId,
+      {
+        tokenCount: body.tokenCount,
+        compressionLimit: body.compressionLimit,
+        durationDays: body.durationDays,
+      },
+      body.buyer_id,
+    )
     return NextResponse.json(
       { token: result.code },
       { headers: { 'Cache-Control': 'private, no-store' } },

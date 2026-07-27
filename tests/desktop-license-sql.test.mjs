@@ -18,6 +18,7 @@ function database() {
   db.exec(readFileSync(new URL('../drizzle/0026_desktop-licenses.sql', import.meta.url), 'utf8'))
   db.exec(readFileSync(new URL('../drizzle/0027_dynamic-desktop-grants.sql', import.meta.url), 'utf8'))
   db.exec(readFileSync(new URL('../drizzle/0028_brainy_callisto.sql', import.meta.url), 'utf8'))
+  db.exec(readFileSync(new URL('../drizzle/0032_desktop-usage-metrics.sql', import.meta.url), 'utf8'))
   return db
 }
 
@@ -173,6 +174,23 @@ test('单次超过 20 张的客户端用量回传按执行标识幂等累计', (
   report()
   assert.equal(db.prepare("SELECT used_count used FROM desktop_license_periods WHERE id = 'period'").get().used, 57)
   assert.equal(db.prepare("SELECT COUNT(*) count FROM desktop_usage_reservations WHERE id = 'usage-report'").get().count, 1)
+})
+
+test('Auth Link 买家 ID 与客户端压缩指标可持久化并计算累计压缩比', () => {
+  const db = database()
+  seedKeys(db, 1)
+  issueNewGrant(db, 'license-metrics', 1)
+  db.prepare("UPDATE desktop_licenses SET buyer_id = 'buyer-42' WHERE id = 'license-metrics'").run()
+  db.prepare("INSERT INTO desktop_license_periods VALUES ('period', 'license-metrics', 1, 1000, 10000, 0, 0, 1)").run()
+  db.prepare("INSERT INTO desktop_usage_reservations (id, license_id, period_id, requested_count, success_count, original_bytes, compressed_bytes, app_version, status, expires_at, completed_at, created_at) VALUES ('usage-report-a', 'license-metrics', 'period', 2, 2, 1000, 700, '0.2.13', 'completed', 1000, 2, 1)").run()
+  db.prepare("INSERT INTO desktop_usage_reservations (id, license_id, period_id, requested_count, success_count, original_bytes, compressed_bytes, app_version, status, expires_at, completed_at, created_at) VALUES ('usage-report-b', 'license-metrics', 'period', 3, 3, 3000, 2100, '0.2.13', 'completed', 1000, 3, 1)").run()
+
+  assert.equal(db.prepare("SELECT buyer_id buyerId FROM desktop_licenses WHERE id = 'license-metrics'").get().buyerId, 'buyer-42')
+  const latest = db.prepare("SELECT original_bytes originalBytes, compressed_bytes compressedBytes, app_version appVersion FROM desktop_usage_reservations WHERE id = 'usage-report-b'").get()
+  assert.deepEqual({ ...latest }, { originalBytes: 3000, compressedBytes: 2100, appVersion: '0.2.13' })
+  const total = db.prepare("SELECT SUM(original_bytes) originalBytes, SUM(compressed_bytes) compressedBytes FROM desktop_usage_reservations WHERE license_id = 'license-metrics' AND status = 'completed'").get()
+  assert.equal(Number((1 - latest.compressedBytes / latest.originalBytes).toFixed(3)), 0.3)
+  assert.equal(Number((1 - total.compressedBytes / total.originalBytes).toFixed(3)), 0.3)
 })
 
 test('停止已激活授权会清除访问令牌并将 Token 释放回 Pool', () => {

@@ -296,6 +296,7 @@ export const tinypngTaskRuns = sqliteTable('tinypng_task_runs', {
 
 export const desktopLicenses = sqliteTable('desktop_licenses', {
   id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  buyerId: text('buyer_id'),
   status: text('status', { enum: ['pending', 'active', 'revoked'] }).notNull().default('pending'),
   deviceId: text('device_id'),
   accessTokenHash: text('access_token_hash').unique(),
@@ -358,6 +359,9 @@ export const desktopUsageReservations = sqliteTable('desktop_usage_reservations'
   periodId: text('period_id').notNull().references(() => desktopLicensePeriods.id, { onDelete: 'cascade' }),
   requestedCount: integer('requested_count').notNull(),
   successCount: integer('success_count'),
+  originalBytes: integer('original_bytes'),
+  compressedBytes: integer('compressed_bytes'),
+  appVersion: text('app_version'),
   status: text('status', { enum: ['active', 'completed', 'expired'] }).notNull().default('active'),
   expiresAt: integer('expires_at', { mode: 'timestamp_ms' }).notNull(),
   completedAt: integer('completed_at', { mode: 'timestamp_ms' }),

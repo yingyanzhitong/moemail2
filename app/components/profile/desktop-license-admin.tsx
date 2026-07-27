@@ -18,6 +18,7 @@ import { useToast } from '@/components/ui/use-toast'
 
 interface DesktopLicenseAdminItem {
   id: string
+  buyerId: string | null
   status: 'active' | 'pending' | 'expired' | 'exhausted' | 'revoked'
   used: number
   limit: number
@@ -32,6 +33,15 @@ interface DesktopLicenseAdminItem {
   grantStatus: 'issued' | 'redeemed' | 'expired' | null
   grantExpiresAt: string | null
   hasActiveAuthLink: boolean
+  latestUsage: {
+    successCount: number
+    originalBytes: number
+    compressedBytes: number
+    compressionRatio: number | null
+    appVersion: string | null
+    completedAt: string | null
+  } | null
+  totalCompressionRatio: number | null
 }
 
 interface DesktopLicenseKeyItem {
@@ -68,6 +78,10 @@ function formatDate(value: string | null) {
   return value ? new Intl.DateTimeFormat('zh-CN', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value)) : '—'
 }
 
+function formatCompressionRatio(value: number | null) {
+  return value === null ? '—' : `${value.toFixed(1)}%`
+}
+
 export function DesktopLicenseAdmin() {
   const [licenses, setLicenses] = useState<DesktopLicenseAdminItem[]>([])
   const [loading, setLoading] = useState(true)
@@ -78,6 +92,7 @@ export function DesktopLicenseAdmin() {
   const [createTokenCount, setCreateTokenCount] = useState(40)
   const [createLimit, setCreateLimit] = useState(10000)
   const [createDays, setCreateDays] = useState(30)
+  const [createBuyerId, setCreateBuyerId] = useState('')
   const [renewTarget, setRenewTarget] = useState<DesktopLicenseAdminItem | null>(null)
   const [renewLimit, setRenewLimit] = useState(10000)
   const [renewDays, setRenewDays] = useState(30)
@@ -149,6 +164,7 @@ export function DesktopLicenseAdmin() {
           tokenCount: createTokenCount,
           compressionLimit: createLimit,
           durationDays: createDays,
+          buyer_id: createBuyerId.trim() || undefined,
         }),
       })
       const data = await response.json() as { token?: string; error?: string }
@@ -282,8 +298,10 @@ export function DesktopLicenseAdmin() {
           <TableHeader>
             <TableRow>
               <TableHead>授权</TableHead>
+              <TableHead>买家 ID</TableHead>
               <TableHead>状态</TableHead>
               <TableHead>使用情况</TableHead>
+              <TableHead>压缩情况</TableHead>
               <TableHead>当前到期</TableHead>
               <TableHead>排队周期</TableHead>
               <TableHead className="text-right">操作</TableHead>
@@ -291,19 +309,25 @@ export function DesktopLicenseAdmin() {
           </TableHeader>
           <TableBody>
             {loading && licenses.length === 0 ? (
-              <TableRow><TableCell colSpan={6} className="h-24 text-center"><Loader2 className="mx-auto h-4 w-4 animate-spin" /></TableCell></TableRow>
+              <TableRow><TableCell colSpan={8} className="h-24 text-center"><Loader2 className="mx-auto h-4 w-4 animate-spin" /></TableCell></TableRow>
             ) : licenses.length === 0 ? (
-              <TableRow><TableCell colSpan={6} className="h-24 text-center text-muted-foreground">暂无桌面授权</TableCell></TableRow>
+              <TableRow><TableCell colSpan={8} className="h-24 text-center text-muted-foreground">暂无桌面授权</TableCell></TableRow>
             ) : licenses.map((license) => (
               <TableRow key={license.id}>
                 <TableCell>
                   <p className="font-mono text-xs">{license.id.slice(0, 12)}…</p>
                   <p className="mt-1 text-xs text-muted-foreground">{license.deviceBound ? '已绑定设备' : '未绑定设备'} · 授权 {license.tokenCount} Token · 当前 {license.keyCount} Key</p>
                 </TableCell>
+                <TableCell className="font-mono text-xs">{license.buyerId || '—'}</TableCell>
                 <TableCell><span className="rounded-full bg-muted px-2 py-1 text-xs">{STATUS_LABEL[license.status]}</span></TableCell>
                 <TableCell>
                   <p className="font-mono text-xs">{license.used.toLocaleString()} / {license.limit.toLocaleString()}</p>
                   <p className="mt-1 text-xs text-muted-foreground">客户端压缩完成后回传</p>
+                </TableCell>
+                <TableCell>
+                  <p className="font-mono text-xs">本次 {formatCompressionRatio(license.latestUsage?.compressionRatio ?? null)}</p>
+                  <p className="mt-1 font-mono text-xs text-muted-foreground">累计 {formatCompressionRatio(license.totalCompressionRatio)}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">{license.latestUsage?.appVersion ? `v${license.latestUsage.appVersion}` : '待客户端回传版本'}</p>
                 </TableCell>
                 <TableCell className="whitespace-nowrap text-sm">
                   {license.status === 'pending' && license.plan ? (
@@ -364,6 +388,10 @@ export function DesktopLicenseAdmin() {
               <Label htmlFor="createDurationDays">有效天数</Label>
               <Input id="createDurationDays" type="number" min={1} max={365} value={createDays} onChange={(event) => setCreateDays(Number(event.target.value))} />
             </div>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="createBuyerId">买家 ID</Label>
+            <Input id="createBuyerId" maxLength={128} value={createBuyerId} onChange={(event) => setCreateBuyerId(event.target.value)} placeholder="创建接口会以 buyer_id 传入，可留空" />
           </div>
           <DialogFooter>
             <Button variant="outline" disabled={actionId !== null} onClick={() => setCreateDialogOpen(false)}>取消</Button>

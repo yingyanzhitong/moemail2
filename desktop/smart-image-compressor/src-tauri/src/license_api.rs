@@ -22,6 +22,7 @@ use crate::{
 const CLOCK_ROLLBACK_TOLERANCE_MINUTES: i64 = 5;
 const STARTUP_LICENSE_CHECK_TIMEOUT: StdDuration = StdDuration::from_secs(5);
 const DEFAULT_AUTH_API_URL: &str = "https://auth.xyyamsz.cn";
+const APP_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 enum RemoteLicenseStatus {
     Available(LicenseView),
@@ -159,6 +160,8 @@ fn append_usage_report(
     requested_count: u32,
     success_count: u32,
     period_starts_at: String,
+    original_bytes: u64,
+    compressed_bytes: u64,
 ) {
     if let Some(report) = reports
         .iter_mut()
@@ -166,6 +169,8 @@ fn append_usage_report(
     {
         report.requested_count = report.requested_count.saturating_add(requested_count);
         report.success_count = report.success_count.saturating_add(success_count);
+        report.original_bytes = report.original_bytes.saturating_add(original_bytes);
+        report.compressed_bytes = report.compressed_bytes.saturating_add(compressed_bytes);
         return;
     }
     reports.push(PendingUsageReport {
@@ -173,6 +178,9 @@ fn append_usage_report(
         requested_count,
         success_count,
         period_starts_at,
+        original_bytes,
+        compressed_bytes,
+        app_version: APP_VERSION.into(),
     });
 }
 
@@ -200,6 +208,8 @@ fn reconcile_package(package: &mut StoredLicense) -> usize {
                 reservation.requested_count.max(consumed),
                 consumed,
                 period_starts_at,
+                0,
+                0,
             );
         }
     }
@@ -715,6 +725,8 @@ impl LicenseApi {
         license_id: &str,
         reservation_id: &str,
         success_count: u32,
+        original_bytes: u64,
+        compressed_bytes: u64,
         keys: Vec<KeyState>,
         observed_at: Option<DateTime<Utc>>,
     ) -> Result<LicenseView> {
@@ -750,6 +762,8 @@ impl LicenseApi {
                     reservation.requested_count,
                     success_count,
                     period_starts_at,
+                    original_bytes,
+                    compressed_bytes,
                 );
             }
             package.keys = keys;
@@ -899,7 +913,8 @@ mod tests {
     use chrono::{Duration, Utc};
 
     use super::{
-        apply_observed_time, ensure_packages, revoke_local_package, DEFAULT_AUTH_API_URL,
+        append_usage_report, apply_observed_time, ensure_packages, revoke_local_package,
+        DEFAULT_AUTH_API_URL,
     };
     use crate::models::{CredentialBundle, KeyState, LicenseView, StoredLicense};
 
@@ -921,6 +936,36 @@ mod tests {
     #[test]
     fn default_auth_api_uses_edgeone_domain() {
         assert_eq!(DEFAULT_AUTH_API_URL, "https://auth.xyyamsz.cn");
+    }
+
+    #[test]
+    fn usage_report_aggregates_compression_bytes_and_app_version() {
+        let mut reports = Vec::new();
+        append_usage_report(
+            &mut reports,
+            "report-id".into(),
+            2,
+            2,
+            "2026-07-28T00:00:00Z".into(),
+            1_000,
+            700,
+        );
+        append_usage_report(
+            &mut reports,
+            "report-id".into(),
+            3,
+            3,
+            "2026-07-28T00:00:00Z".into(),
+            3_000,
+            2_100,
+        );
+
+        assert_eq!(reports.len(), 1);
+        assert_eq!(reports[0].requested_count, 5);
+        assert_eq!(reports[0].success_count, 5);
+        assert_eq!(reports[0].original_bytes, 4_000);
+        assert_eq!(reports[0].compressed_bytes, 2_800);
+        assert_eq!(reports[0].app_version, env!("CARGO_PKG_VERSION"));
     }
 
     #[test]
