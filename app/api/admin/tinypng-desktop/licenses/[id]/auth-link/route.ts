@@ -18,10 +18,10 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   try {
     const { id } = await params
     const result = await getOrRotateDesktopAuthLinkCode(getRequestContext().env.DB, id)
-    return NextResponse.json({
-      authLink: new URL(`/activate/${result.code}`, request.url).toString(),
-      expiresAt: result.expiresAt.toISOString(),
-    }, { headers: { 'Cache-Control': 'private, no-store' } })
+    return NextResponse.json(
+      { token: result.code },
+      { headers: { 'Cache-Control': 'private, no-store' } },
+    )
   } catch (error) {
     return desktopApiError(error, 'Failed to get desktop auth link')
   }

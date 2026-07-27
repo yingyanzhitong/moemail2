@@ -91,17 +91,14 @@ interface PoolStats {
 }
 
 interface GenerateResponse {
-  success: boolean
-  licenseId?: string
-  authLink?: string
-  expiresAt?: string
-  code?: string
-  plan?: {
-    tokenCount: number
-    compressionLimit: number
-    durationDays: number
-  }
+  token?: string
   error?: string
+}
+
+interface GeneratedPlan {
+  tokenCount: number
+  compressionLimit: number
+  durationDays: number
 }
 
 const TASK_STATUS_META: Record<TinyPngTaskRunStatus, { label: string; className: string }> = {
@@ -170,8 +167,8 @@ export function TinyPngPoolStatsCard() {
   const [tokenCount, setTokenCount] = useState(40)
   const [compressionLimit, setCompressionLimit] = useState(10000)
   const [durationDays, setDurationDays] = useState(30)
-  const [generatedLink, setGeneratedLink] = useState<string | null>(null)
-  const [generatedPlan, setGeneratedPlan] = useState<GenerateResponse['plan']>(undefined)
+  const [generatedToken, setGeneratedToken] = useState<string | null>(null)
+  const [generatedPlan, setGeneratedPlan] = useState<GeneratedPlan>()
   const [copied, setCopied] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [taskLogDialogOpen, setTaskLogDialogOpen] = useState(false)
@@ -243,10 +240,10 @@ export function TinyPngPoolStatsCard() {
         body: JSON.stringify({ kind: "new", tokenCount, compressionLimit, durationDays })
       })
       const data = await res.json() as GenerateResponse
-      if (res.ok && data.authLink) {
-        setGeneratedLink(data.authLink)
-        setGeneratedPlan(data.plan)
-        window.dispatchEvent(new CustomEvent('desktop-license-created', { detail: { licenseId: data.licenseId } }))
+      if (res.ok && data.token) {
+        setGeneratedToken(data.token)
+        setGeneratedPlan({ tokenCount, compressionLimit, durationDays })
+        window.dispatchEvent(new CustomEvent('desktop-license-created'))
       } else {
         setError(data.error || "Failed to generate link")
       }
@@ -258,8 +255,8 @@ export function TinyPngPoolStatsCard() {
   }
 
   const handleCopy = async () => {
-    if (generatedLink) {
-      await navigator.clipboard.writeText(generatedLink)
+    if (generatedToken) {
+      await navigator.clipboard.writeText(generatedToken)
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
     }
@@ -267,7 +264,7 @@ export function TinyPngPoolStatsCard() {
 
   const handleOpenDialog = () => {
     setShowDialog(true)
-    setGeneratedLink(null)
+    setGeneratedToken(null)
     setGeneratedPlan(undefined)
     setError(null)
   }
@@ -826,11 +823,11 @@ export function TinyPngPoolStatsCard() {
           <DialogHeader>
             <DialogTitle>生成“智能压缩工具”授权链接</DialogTitle>
             <DialogDescription>
-              Token 数量、压缩额度和授权有效期均写入本次 Auth Link；链接 24 小时内有效且只能兑换一次。
+            Token 数量、压缩额度和授权有效期均写入本次授权 Token；Token 24 小时内有效且只能兑换一次。
             </DialogDescription>
           </DialogHeader>
           
-          {!generatedLink ? (
+          {!generatedToken ? (
             <div className="space-y-4">
               <div className="grid grid-cols-3 gap-3">
                 <div className="space-y-2">
@@ -865,18 +862,18 @@ export function TinyPngPoolStatsCard() {
                     生成中…
                   </>
                 ) : (
-                  "生成授权链接"
+                  "生成授权 Token"
                 )}
               </Button>
             </div>
           ) : (
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label>授权链接</Label>
+                <Label>授权 Token</Label>
                 <div className="flex gap-2">
                   <Input
                     readOnly
-                    value={generatedLink}
+                    value={generatedToken}
                     className="font-mono text-xs"
                   />
                   <Button size="icon" variant="outline" onClick={handleCopy}>
@@ -888,7 +885,7 @@ export function TinyPngPoolStatsCard() {
                   </Button>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  此链接将在 24 小时后失效，且只能兑换一次。
+                  直接粘贴到桌面端即可激活；Token 将在 24 小时后失效，且只能兑换一次。
                 </p>
                 {generatedPlan ? (
                   <p className="rounded-md border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
@@ -899,7 +896,7 @@ export function TinyPngPoolStatsCard() {
               
               <Button 
                 variant="outline"
-                onClick={() => setGeneratedLink(null)}
+                onClick={() => setGeneratedToken(null)}
                 className="w-full"
               >
                 再生成一个

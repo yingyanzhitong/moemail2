@@ -26,14 +26,10 @@ export async function POST(request: Request) {
       compressionLimit: body.compressionLimit,
       durationDays: body.durationDays,
     })
-    return NextResponse.json({
-      success: true,
-      licenseId: result.licenseId,
-      authLink: new URL(`/activate/${result.code}`, request.url).toString(),
-      code: result.code,
-      expiresAt: result.expiresAt.toISOString(),
-      plan: result.plan,
-    })
+    return NextResponse.json(
+      { token: result.code },
+      { headers: { 'Cache-Control': 'private, no-store' } },
+    )
   } catch (error) {
     return desktopApiError(error, 'Failed to create desktop grant')
   }

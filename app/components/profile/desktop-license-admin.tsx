@@ -72,7 +72,7 @@ export function DesktopLicenseAdmin() {
   const [licenses, setLicenses] = useState<DesktopLicenseAdminItem[]>([])
   const [loading, setLoading] = useState(true)
   const [actionId, setActionId] = useState<string | null>(null)
-  const [generatedLink, setGeneratedLink] = useState<string | null>(null)
+  const [generatedToken, setGeneratedToken] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
   const [createDialogOpen, setCreateDialogOpen] = useState(false)
   const [createTokenCount, setCreateTokenCount] = useState(40)
@@ -125,12 +125,12 @@ export function DesktopLicenseAdmin() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ kind, licenseId, ...plan }),
       })
-      const data = await response.json() as { authLink?: string; error?: string }
-      if (!response.ok || !data.authLink) throw new Error(data.error || '生成链接失败')
-      setGeneratedLink(data.authLink)
+      const data = await response.json() as { token?: string; error?: string }
+      if (!response.ok || !data.token) throw new Error(data.error || '生成 Token 失败')
+      setGeneratedToken(data.token)
       if (kind === 'renew') setRenewTarget(null)
       await loadLicenses()
-      toast({ title: kind === 'renew' ? '续费链接已生成' : '换机链接已生成', description: '链接将在 24 小时后失效。' })
+      toast({ title: kind === 'renew' ? '续费 Token 已生成' : '换机 Token 已生成', description: 'Token 将在 24 小时后失效。' })
     } catch (error) {
       toast({ title: '操作失败', description: error instanceof Error ? error.message : '请稍后重试', variant: 'destructive' })
     } finally {
@@ -151,12 +151,12 @@ export function DesktopLicenseAdmin() {
           durationDays: createDays,
         }),
       })
-      const data = await response.json() as { authLink?: string; error?: string }
-      if (!response.ok || !data.authLink) throw new Error(data.error || '创建链接失败')
-      setGeneratedLink(data.authLink)
+      const data = await response.json() as { token?: string; error?: string }
+      if (!response.ok || !data.token) throw new Error(data.error || '创建 Token 失败')
+      setGeneratedToken(data.token)
       setCreateDialogOpen(false)
       await loadLicenses()
-      toast({ title: 'Auth Link 已创建', description: '链接将在 24 小时后失效。' })
+      toast({ title: '授权 Token 已创建', description: 'Token 将在 24 小时后失效。' })
     } catch (error) {
       toast({ title: '创建失败', description: error instanceof Error ? error.message : '请稍后重试', variant: 'destructive' })
     } finally {
@@ -223,12 +223,12 @@ export function DesktopLicenseAdmin() {
         method: 'POST',
         cache: 'no-store',
       })
-      const data = await response.json() as { authLink?: string; error?: string }
-      if (!response.ok || !data.authLink) throw new Error(data.error || '获取 Auth Link 失败')
-      await navigator.clipboard.writeText(data.authLink)
+      const data = await response.json() as { token?: string; error?: string }
+      if (!response.ok || !data.token) throw new Error(data.error || '获取授权 Token 失败')
+      await navigator.clipboard.writeText(data.token)
       setCopiedAuthLinkId(licenseId)
       window.setTimeout(() => setCopiedAuthLinkId(null), 1600)
-      toast({ title: 'Auth Link 已复制' })
+      toast({ title: '授权 Token 已复制' })
     } catch (error) {
       toast({ title: '复制失败', description: error instanceof Error ? error.message : '请稍后重试', variant: 'destructive' })
     } finally {
@@ -237,8 +237,8 @@ export function DesktopLicenseAdmin() {
   }
 
   const copyLink = async () => {
-    if (!generatedLink) return
-    await navigator.clipboard.writeText(generatedLink)
+    if (!generatedToken) return
+    await navigator.clipboard.writeText(generatedToken)
     setCopied(true)
     window.setTimeout(() => setCopied(false), 1600)
   }
@@ -265,12 +265,12 @@ export function DesktopLicenseAdmin() {
         </div>
       </div>
 
-      {generatedLink ? (
+      {generatedToken ? (
         <div className="rounded-lg border border-primary/20 bg-primary/5 p-3">
-          <p className="mb-2 text-sm font-medium">刚生成的授权链接</p>
+          <p className="mb-2 text-sm font-medium">刚生成的授权 Token</p>
           <div className="flex gap-2">
-            <Input readOnly value={generatedLink} className="font-mono text-xs" />
-            <Button variant="outline" size="icon" onClick={copyLink} aria-label="复制授权链接">
+            <Input readOnly value={generatedToken} className="font-mono text-xs" />
+            <Button variant="outline" size="icon" onClick={copyLink} aria-label="复制授权 Token">
               {copied ? <Check className="h-4 w-4 text-emerald-600" /> : <Copy className="h-4 w-4" />}
             </Button>
           </div>
@@ -325,7 +325,7 @@ export function DesktopLicenseAdmin() {
                         : copiedAuthLinkId === license.id
                           ? <Check className="mr-1 h-3.5 w-3.5 text-emerald-600" />
                           : <Link2 className="mr-1 h-3.5 w-3.5" />}
-                      复制 Auth Link
+                      复制授权 Token
                     </Button>
                     <Button variant="ghost" size="sm" disabled={license.status === 'pending' || license.status === 'revoked' || actionId !== null} onClick={() => openRenewDialog(license)}>
                       <RotateCcw className="mr-1 h-3.5 w-3.5" />续费

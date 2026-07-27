@@ -20,3 +20,8 @@
 - 桌面端发布：`git tag desktop-vX.Y.Z && git push origin desktop-vX.Y.Z`
 
 推送 `v*` tag 后，GitHub Actions 会自动触发 `.github/workflows/deploy.yml` 完成网页部署；推送 `desktop-v*` tag 后，GitHub Actions 会构建桌面端并同步 GitHub 与 Gitee Release。
+
+## TinyPNG 桌面端产品约束
+
+- 软件使用的 TinyPNG 压缩 API 以近似无损优化为主，**不需要将压缩倍率或压缩率作为功能决策、发布门槛或验收指标**。
+- 可继续展示单张和批次压缩率作为结果信息，但不得据此拒绝任务、改变压缩策略或判断任务成败；优先保证压缩成功、原图保护和结果文件可用。
