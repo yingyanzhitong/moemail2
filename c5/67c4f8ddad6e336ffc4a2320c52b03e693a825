@@ -1,0 +1,27 @@
+desktop/smart-image-compressor/README.md
+  s_1f8bb950e0bc25::t_887a74985ee556 5-8
+package.json
+  s_1f8bb950e0bc25::t_3d9a3c2b4d842c 27
+  s_1f8bb950e0bc25::t_56281329a787d7 3
+CHANGELOG.md
+  s_1f8bb950e0bc25::t_56281329a787d7 5-12
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "c567c4f8ddad6e336ffc4a2320c52b03e693a825",
+  "prompts": {},
+  "logical_commit_id": "c567c4f8ddad6e336ffc4a2320c52b03e693a825",
+  "sessions": {
+    "s_1f8bb950e0bc25": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f9329-5e0d-7623-8255-77dad86a5fe6",
+        "model": "gpt-5.6-terra"
+      },
+      "human_author": "masongzhi <masongzhi@bigo.sg>",
+      "total_additions": 76,
+      "total_deletions": 3
+    }
+  }
+}
