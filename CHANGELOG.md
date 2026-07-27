@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.14.46] - 2026-07-27
+
+### Changed
+
+- **提交与发布约定**：项目规则明确为普通提交只推送 `master`，不创建或推送 tag；仅在用户明确标记“发布”时才推送 `v*` 或 `desktop-v*` tag 并触发对应发布流程。
+
 ## [1.14.45] - 2026-07-27
 
 ### Changed
