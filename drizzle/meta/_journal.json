@@ -232,6 +232,13 @@
       "when": 1785175844766,
       "tag": "0032_desktop-usage-metrics",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "6",
+      "when": 1785212297586,
+      "tag": "0033_desktop-period-calendar-month",
+      "breakpoints": true
     }
   ]
 }

@@ -15,7 +15,7 @@ import {
   encryptDesktopGrantCode,
   sha256Hex,
 } from '@/lib/desktop-license-crypto'
-import { calculateEmergencyKeyCount, getDesktopRedeemConflict, getNextDesktopPeriodWindow } from '@/lib/desktop-license-domain'
+import { calculateEmergencyKeyCount, getDesktopPeriodExpiry, getDesktopRedeemConflict, getNextDesktopPeriodWindow } from '@/lib/desktop-license-domain'
 import {
   DESKTOP_GRANT_TTL_MS,
   DESKTOP_EMERGENCY_KEY_COUNT,
@@ -31,8 +31,6 @@ import {
   type DesktopGrantPlan,
   type DesktopLicenseView,
 } from '@/lib/desktop-license-types'
-
-const DAY_MS = 24 * 60 * 60 * 1000
 
 export class DesktopLicenseError extends Error {
   constructor(
@@ -393,7 +391,7 @@ export async function redeemDesktopGrant(
   const accessToken = createDesktopSecret(36)
   const accessTokenHash = await sha256Hex(accessToken)
   const now = new Date()
-  const periodMs = grant.durationDays * DAY_MS
+  const expiresAt = getDesktopPeriodExpiry(now.getTime(), grant.durationDays)
 
   try {
     if (grant.kind === 'new') {
@@ -404,7 +402,7 @@ export async function redeemDesktopGrant(
         ).bind(deviceId, accessTokenHash, now.getTime(), now.getTime(), license.id),
         database.prepare(
           'INSERT INTO desktop_license_periods (id, license_id, starts_at, expires_at, quota_total, used_count, reserved_count, created_at) VALUES (?, ?, ?, ?, ?, 0, 0, ?)',
-        ).bind(periodId, license.id, now.getTime(), now.getTime() + periodMs, grant.quotaTotal, now.getTime()),
+        ).bind(periodId, license.id, now.getTime(), expiresAt, grant.quotaTotal, now.getTime()),
         database.prepare(
           "UPDATE tinypng_key_pool SET status = 'assigned', updated_at = ? WHERE id IN (SELECT pool_key_id FROM desktop_license_keys WHERE license_id = ?) AND status = 'reserved'",
         ).bind(now.getTime(), license.id),
@@ -416,7 +414,7 @@ export async function redeemDesktopGrant(
         .limit(1)
         .get()
       if (!latest) throw new DesktopLicenseError('授权周期数据缺失', 409, 'PERIOD_MISSING')
-      const window = getNextDesktopPeriodWindow(now.getTime(), latest.expiresAt.getTime(), periodMs)
+      const window = getNextDesktopPeriodWindow(now.getTime(), latest.expiresAt.getTime(), grant.durationDays)
       await database.batch([
         database.prepare(
           'INSERT INTO desktop_license_periods (id, license_id, starts_at, expires_at, quota_total, used_count, reserved_count, created_at) VALUES (?, ?, ?, ?, ?, 0, 0, ?)',

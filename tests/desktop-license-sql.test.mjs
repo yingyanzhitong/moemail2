@@ -209,6 +209,34 @@ test('已完成压缩批次按完成时间倒序保留压缩前后大小、压�
   assert.equal(Number((1 - reports[0].compressedBytes / reports[0].originalBytes).toFixed(3)), 0.8)
 })
 
+test('自然月到期迁移会补正有效授权和排队周期的 30 天固定时长', () => {
+  const db = database()
+  seedKeys(db, 1)
+  issueNewGrant(db, 'license-calendar', 1)
+  db.prepare("UPDATE desktop_licenses SET status = 'active' WHERE id = 'license-calendar'").run()
+  const july27 = Date.UTC(2099, 6, 27, 9, 47, 52, 634)
+  const oldCurrentExpiresAt = july27 + 30 * 24 * 60 * 60 * 1000
+  const oldQueuedExpiresAt = oldCurrentExpiresAt + 30 * 24 * 60 * 60 * 1000
+  db.prepare("INSERT INTO desktop_license_periods VALUES ('current-period', 'license-calendar', ?, ?, 10000, 0, 0, 1)").run(july27, oldCurrentExpiresAt)
+  db.prepare("INSERT INTO desktop_license_periods VALUES ('queued-period', 'license-calendar', ?, ?, 10000, 0, 0, 1)").run(oldCurrentExpiresAt, oldQueuedExpiresAt)
+
+  db.exec(readFileSync(new URL('../drizzle/0033_desktop-period-calendar-month.sql', import.meta.url), 'utf8'))
+
+  const periods = db.prepare("SELECT id, starts_at startsAt, expires_at expiresAt FROM desktop_license_periods WHERE license_id = 'license-calendar' ORDER BY starts_at").all()
+  assert.deepEqual(periods.map((period) => ({ ...period })), [
+    {
+      id: 'current-period',
+      startsAt: july27,
+      expiresAt: Date.UTC(2099, 7, 27, 9, 47, 52, 634),
+    },
+    {
+      id: 'queued-period',
+      startsAt: Date.UTC(2099, 7, 27, 9, 47, 52, 634),
+      expiresAt: Date.UTC(2099, 8, 27, 9, 47, 52, 634),
+    },
+  ])
+})
+
 test('停止已激活授权会清除访问令牌并将 Token 释放回 Pool', () => {
   const db = database()
   seedKeys(db, 40)

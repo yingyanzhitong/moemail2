@@ -2,6 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import {
   calculateEmergencyKeyCount,
+  getDesktopPeriodExpiry,
   getDesktopRedeemConflict,
   getNextDesktopPeriodWindow,
 } from '../app/lib/desktop-license-domain.ts'
@@ -10,9 +11,24 @@ import {
   encryptDesktopGrantCode,
 } from '../app/lib/desktop-license-crypto.ts'
 
-test('续费周期排在现有周期后，不覆盖当前周期', () => {
-  assert.deepEqual(getNextDesktopPeriodWindow(100, 200, 30), { startsAt: 200, expiresAt: 230 })
-  assert.deepEqual(getNextDesktopPeriodWindow(300, 200, 30), { startsAt: 300, expiresAt: 330 })
+test('30 天套餐按自然月到期，续费周期仍排在现有周期后', () => {
+  const july27 = Date.UTC(2026, 6, 27, 9, 47, 52, 634)
+  const august27 = Date.UTC(2026, 7, 27, 9, 47, 52, 634)
+  const july28 = Date.UTC(2026, 6, 27, 16, 40, 44, 45)
+  const august28 = Date.UTC(2026, 7, 27, 16, 40, 44, 45)
+
+  assert.equal(getDesktopPeriodExpiry(july27, 30), august27)
+  assert.equal(getDesktopPeriodExpiry(july28, 30), august28)
+  assert.deepEqual(getNextDesktopPeriodWindow(july27, august27, 30), {
+    startsAt: august27,
+    expiresAt: Date.UTC(2026, 8, 27, 9, 47, 52, 634),
+  })
+})
+
+test('自然月到期在月末会落在目标月的最后一天，非 30 天按实际天数计算', () => {
+  const january31 = Date.UTC(2026, 0, 31, 16, 40, 44, 45)
+  assert.equal(getDesktopPeriodExpiry(january31, 30), Date.UTC(2026, 1, 28, 16, 40, 44, 45))
+  assert.equal(getDesktopPeriodExpiry(january31, 45), january31 + 45 * 24 * 60 * 60 * 1000)
 })
 
 test('换机允许新设备，续费拒绝设备冲突', () => {

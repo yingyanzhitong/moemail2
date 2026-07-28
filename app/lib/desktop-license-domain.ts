@@ -1,6 +1,30 @@
-export function getNextDesktopPeriodWindow(nowMs: number, latestExpiresAtMs: number, periodMs: number) {
+const DAY_MS = 24 * 60 * 60 * 1000
+
+export function getDesktopPeriodExpiry(startAtMs: number, durationDays: number) {
+  if (durationDays % 30 !== 0) return startAtMs + durationDays * DAY_MS
+
+  const startAt = new Date(startAtMs)
+  const targetMonth = startAt.getUTCMonth() + durationDays / 30
+  const lastDayOfTargetMonth = new Date(Date.UTC(
+    startAt.getUTCFullYear(),
+    targetMonth + 1,
+    0,
+  )).getUTCDate()
+
+  return Date.UTC(
+    startAt.getUTCFullYear(),
+    targetMonth,
+    Math.min(startAt.getUTCDate(), lastDayOfTargetMonth),
+    startAt.getUTCHours(),
+    startAt.getUTCMinutes(),
+    startAt.getUTCSeconds(),
+    startAt.getUTCMilliseconds(),
+  )
+}
+
+export function getNextDesktopPeriodWindow(nowMs: number, latestExpiresAtMs: number, durationDays: number) {
   const startsAt = Math.max(nowMs, latestExpiresAtMs)
-  return { startsAt, expiresAt: startsAt + periodMs }
+  return { startsAt, expiresAt: getDesktopPeriodExpiry(startsAt, durationDays) }
 }
 
 export function calculateEmergencyKeyCount(input: {
