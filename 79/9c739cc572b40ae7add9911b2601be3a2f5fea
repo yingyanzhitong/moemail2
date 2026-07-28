@@ -1,0 +1,42 @@
+drizzle/0033_desktop-period-calendar-month.sql
+  s_258faeeff8c0fa::t_8966b9e6ad75cf 1-75
+CHANGELOG.md
+  s_1f8bb950e0bc25::t_f1ec919bc57887 5-15
+app/lib/desktop-license-domain.ts
+  s_1f8bb950e0bc25::t_fc1cfe97f93ad5 1-25,27
+app/lib/desktop-license-service.ts
+  s_1f8bb950e0bc25::t_b7612a64859db1 18,394,405,417
+drizzle/meta/_journal.json
+  s_1f8bb950e0bc25::t_b04e6aff694fd9 235-241,244
+package.json
+  s_1f8bb950e0bc25::t_81044ec475381e 3
+tests/desktop-license-domain.test.mjs
+  s_1f8bb950e0bc25::t_e0bb98abb71bd0 5,14-31
+tests/desktop-license-sql.test.mjs
+  s_1f8bb950e0bc25::t_595f103160e5df 212-239
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "799c739cc572b40ae7add9911b2601be3a2f5fea",
+  "prompts": {},
+  "logical_commit_id": "799c739cc572b40ae7add9911b2601be3a2f5fea",
+  "sessions": {
+    "s_1f8bb950e0bc25": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f9329-5e0d-7623-8255-77dad86a5fe6",
+        "model": "unknown"
+      },
+      "human_author": "masongzhi <masongzhi@bigo.sg>"
+    },
+    "s_258faeeff8c0fa": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f8e8b-2764-73b1-b871-4b2a8e767986",
+        "model": "gpt-5.6-terra"
+      },
+      "human_author": "masongzhi <masongzhi@bigo.sg>"
+    }
+  }
+}
