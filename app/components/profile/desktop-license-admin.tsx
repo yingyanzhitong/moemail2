@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { useToast } from '@/components/ui/use-toast'
 
@@ -54,6 +55,18 @@ interface DesktopLicenseKeyItem {
   updatedAt: string
 }
 
+interface DesktopUsageReportItem {
+  id: string
+  successCount: number
+  originalBytes: number
+  compressedBytes: number
+  compressionRatio: number | null
+  appVersion: string | null
+  completedAt: string | null
+}
+
+type LicenseStatusFilter = DesktopLicenseAdminItem['status'] | 'all'
+
 const STATUS_LABEL: Record<DesktopLicenseAdminItem['status'], string> = {
   active: '有效',
   pending: '待激活',
@@ -82,6 +95,10 @@ function formatCompressionRatio(value: number | null) {
   return value === null ? '—' : `${value.toFixed(1)}%`
 }
 
+function formatKilobytes(value: number) {
+  return `${(value / 1024).toLocaleString('zh-CN', { maximumFractionDigits: 1 })} KB`
+}
+
 export function DesktopLicenseAdmin() {
   const [licenses, setLicenses] = useState<DesktopLicenseAdminItem[]>([])
   const [loading, setLoading] = useState(true)
@@ -102,6 +119,12 @@ export function DesktopLicenseAdmin() {
   const [keysLoading, setKeysLoading] = useState(false)
   const [copiedKeyId, setCopiedKeyId] = useState<string | null>(null)
   const [copiedAuthLinkId, setCopiedAuthLinkId] = useState<string | null>(null)
+  const [statusFilter, setStatusFilter] = useState<LicenseStatusFilter>('active')
+  const [usageDialogOpen, setUsageDialogOpen] = useState(false)
+  const [usageLicense, setUsageLicense] = useState<DesktopLicenseAdminItem | null>(null)
+  const [usageReports, setUsageReports] = useState<DesktopUsageReportItem[]>([])
+  const [usageReportsLoading, setUsageReportsLoading] = useState(false)
+  const [usageReportsError, setUsageReportsError] = useState<string | null>(null)
   const { toast } = useToast()
 
   const loadLicenses = useCallback(async () => {
@@ -226,6 +249,26 @@ export function DesktopLicenseAdmin() {
     }
   }
 
+  const openUsageDialog = async (license: DesktopLicenseAdminItem) => {
+    setUsageLicense(license)
+    setUsageReports([])
+    setUsageReportsError(null)
+    setUsageDialogOpen(true)
+    setUsageReportsLoading(true)
+    try {
+      const response = await fetch(`/api/admin/tinypng-desktop/licenses/${license.id}/usage-reports`, { cache: 'no-store' })
+      const data = await response.json() as { usageReports?: DesktopUsageReportItem[]; error?: string }
+      if (!response.ok || !data.usageReports) throw new Error(data.error || '获取压缩明细失败')
+      setUsageReports(data.usageReports)
+    } catch (error) {
+      const message = error instanceof Error ? error.message : '请稍后重试'
+      setUsageReportsError(message)
+      toast({ title: '压缩明细加载失败', description: message, variant: 'destructive' })
+    } finally {
+      setUsageReportsLoading(false)
+    }
+  }
+
   const copyKey = async (value: string, id: string) => {
     await navigator.clipboard.writeText(value)
     setCopiedKeyId(id)
@@ -259,6 +302,10 @@ export function DesktopLicenseAdmin() {
     window.setTimeout(() => setCopied(false), 1600)
   }
 
+  const visibleLicenses = statusFilter === 'all'
+    ? licenses
+    : licenses.filter((license) => license.status === statusFilter)
+
   return (
     <section className="space-y-4 rounded-lg border bg-background p-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -274,6 +321,19 @@ export function DesktopLicenseAdmin() {
             <Link2 className="mr-2 h-4 w-4" />
             创建 Auth Link
           </Button>
+          <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as LicenseStatusFilter)}>
+            <SelectTrigger className="w-[116px]" aria-label="授权状态筛选">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="active">有效</SelectItem>
+              <SelectItem value="pending">待激活</SelectItem>
+              <SelectItem value="expired">已过期</SelectItem>
+              <SelectItem value="exhausted">额度用尽</SelectItem>
+              <SelectItem value="revoked">已停止</SelectItem>
+              <SelectItem value="all">全部类型</SelectItem>
+            </SelectContent>
+          </Select>
           <Button variant="outline" size="sm" onClick={() => void loadLicenses()} disabled={loading || actionId !== null}>
             <RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
             刷新授权
@@ -310,9 +370,9 @@ export function DesktopLicenseAdmin() {
           <TableBody>
             {loading && licenses.length === 0 ? (
               <TableRow><TableCell colSpan={8} className="h-24 text-center"><Loader2 className="mx-auto h-4 w-4 animate-spin" /></TableCell></TableRow>
-            ) : licenses.length === 0 ? (
-              <TableRow><TableCell colSpan={8} className="h-24 text-center text-muted-foreground">暂无桌面授权</TableCell></TableRow>
-            ) : licenses.map((license) => (
+            ) : visibleLicenses.length === 0 ? (
+              <TableRow><TableCell colSpan={8} className="h-24 text-center text-muted-foreground">{statusFilter === 'all' ? '暂无桌面授权' : `暂无${STATUS_LABEL[statusFilter]}桌面授权`}</TableCell></TableRow>
+            ) : visibleLicenses.map((license) => (
               <TableRow key={license.id}>
                 <TableCell>
                   <p className="font-mono text-xs">{license.id.slice(0, 12)}…</p>
@@ -325,9 +385,20 @@ export function DesktopLicenseAdmin() {
                   <p className="mt-1 text-xs text-muted-foreground">客户端压缩完成后回传</p>
                 </TableCell>
                 <TableCell>
-                  <p className="font-mono text-xs">本次 {formatCompressionRatio(license.latestUsage?.compressionRatio ?? null)}</p>
-                  <p className="mt-1 font-mono text-xs text-muted-foreground">累计 {formatCompressionRatio(license.totalCompressionRatio)}</p>
-                  <p className="mt-1 text-xs text-muted-foreground">{license.latestUsage?.appVersion ? `v${license.latestUsage.appVersion}` : '待客户端回传版本'}</p>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-auto w-full items-start justify-start p-1 text-left font-normal hover:bg-muted/70"
+                    onClick={() => void openUsageDialog(license)}
+                    aria-label={`查看授权 ${license.id.slice(0, 12)} 的压缩明细`}
+                  >
+                    <span>
+                      <span className="block font-mono text-xs">本次 {formatCompressionRatio(license.latestUsage?.compressionRatio ?? null)}</span>
+                      <span className="mt-1 block font-mono text-xs text-muted-foreground">累计 {formatCompressionRatio(license.totalCompressionRatio)}</span>
+                      <span className="mt-1 block text-xs text-muted-foreground">{license.latestUsage?.appVersion ? `v${license.latestUsage.appVersion}` : '待客户端回传版本'}</span>
+                      <span className="mt-1 block text-xs text-primary">查看压缩明细</span>
+                    </span>
+                  </Button>
                 </TableCell>
                 <TableCell className="whitespace-nowrap text-sm">
                   {license.status === 'pending' && license.plan ? (
@@ -432,6 +503,58 @@ export function DesktopLicenseAdmin() {
               生成续费链接
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={usageDialogOpen} onOpenChange={(open) => {
+        setUsageDialogOpen(open)
+        if (!open) {
+          setUsageLicense(null)
+          setUsageReports([])
+          setUsageReportsError(null)
+        }
+      }}>
+        <DialogContent className="max-h-[85vh] sm:max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>压缩明细</DialogTitle>
+            <DialogDescription>
+              授权 {usageLicense?.id.slice(0, 12) ?? ''}… · 每条记录为客户端一次压缩完成后回传的批次汇总。
+            </DialogDescription>
+          </DialogHeader>
+          <div className="max-h-[58vh] overflow-y-auto rounded-lg border">
+            {usageReportsLoading ? (
+              <div className="flex h-32 items-center justify-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" />正在读取压缩明细…</div>
+            ) : usageReportsError ? (
+              <div className="flex h-32 items-center justify-center px-4 text-center text-sm text-destructive">{usageReportsError}</div>
+            ) : usageReports.length === 0 ? (
+              <div className="flex h-32 items-center justify-center text-sm text-muted-foreground">暂无客户端回传的压缩记录</div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>完成时间</TableHead>
+                    <TableHead>成功张数</TableHead>
+                    <TableHead>压缩前</TableHead>
+                    <TableHead>压缩后</TableHead>
+                    <TableHead>压缩比</TableHead>
+                    <TableHead>版本</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {usageReports.map((report) => (
+                    <TableRow key={report.id}>
+                      <TableCell className="whitespace-nowrap text-sm">{formatDate(report.completedAt)}</TableCell>
+                      <TableCell className="font-mono text-xs">{report.successCount.toLocaleString()}</TableCell>
+                      <TableCell className="font-mono text-xs whitespace-nowrap">{formatKilobytes(report.originalBytes)}</TableCell>
+                      <TableCell className="font-mono text-xs whitespace-nowrap">{formatKilobytes(report.compressedBytes)}</TableCell>
+                      <TableCell className="font-mono text-xs">{formatCompressionRatio(report.compressionRatio)}</TableCell>
+                      <TableCell className="font-mono text-xs">{report.appVersion ? `v${report.appVersion}` : '—'}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </div>
         </DialogContent>
       </Dialog>
 

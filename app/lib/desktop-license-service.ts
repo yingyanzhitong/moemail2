@@ -867,6 +867,43 @@ export async function listDesktopLicenses(database: D1Database) {
   }))
 }
 
+export async function listDesktopLicenseUsageReports(database: D1Database, licenseId: string) {
+  const db = getDb(database)
+  const license = await db.select({ id: desktopLicenses.id })
+    .from(desktopLicenses)
+    .where(eq(desktopLicenses.id, licenseId))
+    .get()
+  if (!license) throw new DesktopLicenseError('授权不存在', 404, 'LICENSE_NOT_FOUND')
+
+  const reports = await db.select({
+    id: desktopUsageReservations.id,
+    successCount: desktopUsageReservations.successCount,
+    originalBytes: desktopUsageReservations.originalBytes,
+    compressedBytes: desktopUsageReservations.compressedBytes,
+    appVersion: desktopUsageReservations.appVersion,
+    completedAt: desktopUsageReservations.completedAt,
+  }).from(desktopUsageReservations)
+    .where(and(
+      eq(desktopUsageReservations.licenseId, license.id),
+      eq(desktopUsageReservations.status, 'completed'),
+    ))
+    .orderBy(desc(desktopUsageReservations.completedAt))
+
+  return reports.map((report) => {
+    const originalBytes = report.originalBytes ?? 0
+    const compressedBytes = report.compressedBytes ?? 0
+    return {
+      id: report.id,
+      successCount: report.successCount ?? 0,
+      originalBytes,
+      compressedBytes,
+      compressionRatio: compressionRatio(originalBytes, compressedBytes),
+      appVersion: report.appVersion,
+      completedAt: toIso(report.completedAt),
+    }
+  })
+}
+
 export async function getOrRotateDesktopAuthLinkCode(
   database: D1Database,
   licenseId: string,

@@ -193,6 +193,22 @@ test('Auth Link 买家 ID 与客户端压缩指标可持久化并计算累计压
   assert.equal(Number((1 - total.compressedBytes / total.originalBytes).toFixed(3)), 0.3)
 })
 
+test('已完成压缩批次按完成时间倒序保留压缩前后大小、压缩比和客户端版本', () => {
+  const db = database()
+  seedKeys(db, 1)
+  issueNewGrant(db, 'license-history', 1)
+  db.prepare("INSERT INTO desktop_license_periods VALUES ('period', 'license-history', 1, 1000, 10000, 0, 0, 1)").run()
+  db.prepare("INSERT INTO desktop_usage_reservations (id, license_id, period_id, requested_count, success_count, original_bytes, compressed_bytes, app_version, status, expires_at, completed_at, created_at) VALUES ('usage-older', 'license-history', 'period', 2, 2, 2048, 1024, '0.2.12', 'completed', 1000, 2, 1)").run()
+  db.prepare("INSERT INTO desktop_usage_reservations (id, license_id, period_id, requested_count, success_count, original_bytes, compressed_bytes, app_version, status, expires_at, completed_at, created_at) VALUES ('usage-newer', 'license-history', 'period', 3, 3, 5120, 1024, '0.2.13', 'completed', 1000, 3, 1)").run()
+
+  const reports = db.prepare("SELECT success_count successCount, original_bytes originalBytes, compressed_bytes compressedBytes, app_version appVersion, completed_at completedAt FROM desktop_usage_reservations WHERE license_id = 'license-history' AND status = 'completed' ORDER BY completed_at DESC").all()
+  assert.deepEqual(reports.map((report) => ({ ...report })), [
+    { successCount: 3, originalBytes: 5120, compressedBytes: 1024, appVersion: '0.2.13', completedAt: 3 },
+    { successCount: 2, originalBytes: 2048, compressedBytes: 1024, appVersion: '0.2.12', completedAt: 2 },
+  ])
+  assert.equal(Number((1 - reports[0].compressedBytes / reports[0].originalBytes).toFixed(3)), 0.8)
+})
+
 test('停止已激活授权会清除访问令牌并将 Token 释放回 Pool', () => {
   const db = database()
   seedKeys(db, 40)
