@@ -35,6 +35,10 @@ export interface ActivationPlanPreview {
   redeemExpiresAt: string
 }
 
+export interface PurchaseConfig {
+  purchaseUrl: string
+}
+
 export interface ImageJob {
   id: string
   name: string

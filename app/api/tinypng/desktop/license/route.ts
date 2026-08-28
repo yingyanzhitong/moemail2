@@ -8,7 +8,7 @@ export const runtime = 'edge'
 export async function GET(request: Request) {
   try {
     const database = getRequestContext().env.DB
-    const license = await authenticateDesktopLicense(request, database)
+    const license = await authenticateDesktopLicense(request, database, { allowPending: true })
     return NextResponse.json(await getDesktopLicenseView(database, license.id), {
       headers: { 'Cache-Control': 'no-store' },
     })

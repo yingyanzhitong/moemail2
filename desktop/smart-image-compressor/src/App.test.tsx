@@ -3,7 +3,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { App } from '@/App'
 import type { ActivationPlanPreview, BootstrapView, LicenseView } from '@/types'
 
-const { bootstrapMock, previewMock, redeemMock } = vi.hoisted(() => ({
+const { activatePendingPackageMock, bootstrapMock, previewMock, redeemMock } = vi.hoisted(() => ({
+  activatePendingPackageMock: vi.fn<(licenseId: string) => Promise<LicenseView>>(),
   bootstrapMock: vi.fn<() => Promise<BootstrapView>>(),
   previewMock: vi.fn<(code: string) => Promise<ActivationPlanPreview>>(),
   redeemMock: vi.fn<(code: string) => Promise<LicenseView>>(),
@@ -12,8 +13,11 @@ const { bootstrapMock, previewMock, redeemMock } = vi.hoisted(() => ({
 vi.mock('@tauri-apps/api/core', () => ({ isTauri: () => false }))
 vi.mock('@/lib/desktop-api', () => ({
   addDroppedPaths: vi.fn(),
+  activatePendingPackage: activatePendingPackageMock,
   bootstrap: bootstrapMock,
   cancelCompression: vi.fn(),
+  getPurchaseConfig: vi.fn().mockResolvedValue(null),
+  openPurchaseUrl: vi.fn(),
   pickFolder: vi.fn(),
   pickImages: vi.fn(),
   queryTokenUsage: vi.fn(),

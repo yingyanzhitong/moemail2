@@ -24,7 +24,11 @@ const config = {
   releaseName: process.env.RELEASE_NAME || requiredEnv('RELEASE_TAG'),
   releaseBody: process.env.RELEASE_BODY || 'GitHub Actions 自动同步的桌面端安装包。',
   assetDir: process.env.RELEASE_ASSET_DIR || 'release-assets',
+  latestInstallerDir: process.env.LATEST_INSTALLER_DIR || 'latest-installers',
   latestJsonPath: process.env.LATEST_JSON_PATH || 'normalized-release-assets/latest.json',
+  latestInstallerTag: process.env.GITEE_LATEST_INSTALLER_TAG || 'latest',
+  latestInstallerName: process.env.GITEE_LATEST_INSTALLER_NAME || 'TinyPNG 压缩助手最新安装包',
+  latestInstallerBody: process.env.GITEE_LATEST_INSTALLER_BODY || '始终提供当前最新版本的 Windows 与 macOS 安装包。',
   latestManifestTag: process.env.GITEE_LATEST_MANIFEST_TAG || 'updater-latest',
   latestManifestName: process.env.GITEE_LATEST_MANIFEST_NAME || 'TinyPNG 压缩助手最新更新清单',
   latestManifestBody: process.env.GITEE_LATEST_MANIFEST_BODY || 'TinyPNG 压缩助手自动更新清单。',
@@ -45,13 +49,22 @@ const latestManifestReleaseId = await ensureRelease({
   name: config.latestManifestName,
   body: config.latestManifestBody,
 })
+const latestInstallerReleaseId = await ensureRelease({
+  tag: config.latestInstallerTag,
+  name: config.latestInstallerName,
+  body: config.latestInstallerBody,
+})
 const releaseFiles = await findReleaseFiles(config.assetDir)
+const latestInstallerFiles = await findReleaseFiles(config.latestInstallerDir)
 await publishReleaseAssets({
   assetFiles: releaseFiles,
   syncReleaseAssets: (files) => syncReleaseAssets(releaseId, config.tag, files),
-  publishLatest: () => replaceLatestManifest(latestManifestReleaseId),
+  publishLatest: async () => {
+    await replaceLatestInstallers(latestInstallerReleaseId, latestInstallerFiles)
+    await replaceLatestManifest(latestManifestReleaseId)
+  },
 })
-console.log(`Gitee Release 已同步：${config.owner}/${config.repo} ${config.tag}；更新清单已发布到 ${config.latestManifestTag}`)
+console.log(`Gitee Release 已同步：${config.owner}/${config.repo} ${config.tag}；最新安装包已发布到 ${config.latestInstallerTag}，更新清单已发布到 ${config.latestManifestTag}`)
 
 async function ensureRepository() {
   const existing = await getRepository()
@@ -194,6 +207,24 @@ async function replaceLatestManifest(releaseId) {
   const published = await listAssets(releaseId)
   if (published.length !== 1 || published[0].name !== name) {
     throw new Error(`Gitee ${config.latestManifestTag} Release 应仅包含一个 ${name}`)
+  }
+}
+
+async function replaceLatestInstallers(releaseId, files) {
+  if (files.length !== 3 || files.some((file) => !/\.(dmg|exe)$/i.test(file))) {
+    throw new Error('最新安装包目录必须包含两份 macOS DMG 和一份 Windows EXE')
+  }
+  const existing = await listAssets(releaseId)
+  for (const asset of existing) {
+    await deleteAsset(releaseId, asset.id)
+  }
+
+  await syncReleaseAssets(releaseId, config.latestInstallerTag, files)
+  const published = await listAssets(releaseId)
+  const expected = files.map((file) => path.basename(file)).sort()
+  const actual = published.map((asset) => asset.name).sort()
+  if (actual.length !== expected.length || actual.some((name, index) => name !== expected[index])) {
+    throw new Error(`Gitee ${config.latestInstallerTag} Release 安装包不完整`)
   }
 }
 

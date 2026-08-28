@@ -75,6 +75,12 @@ pub struct ActivationPlanPreview {
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
+pub struct PurchaseConfig {
+    pub purchase_url: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct BootstrapView {
     pub license: LicenseView,
     pub reconciled_reservations: usize,
@@ -243,6 +249,13 @@ pub struct CredentialBundle {
 #[serde(rename_all = "camelCase")]
 pub struct RedeemResponse {
     pub access_token: String,
+    pub license: LicenseView,
+    pub api_keys: Vec<String>,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PendingLicenseActivationResponse {
     pub license: LicenseView,
     pub api_keys: Vec<String>,
 }

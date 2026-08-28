@@ -2,6 +2,7 @@ const PUBLIC_DESKTOP_API_PATHS = new Set([
   '/api/tinypng/electron-auth/redeem',
   '/api/tinypng/desktop/grants/preview',
   '/api/tinypng/desktop/redeem',
+  '/api/tinypng/desktop/activate',
   '/api/tinypng/desktop/license',
   '/api/tinypng/desktop/keys/top-up',
 ])

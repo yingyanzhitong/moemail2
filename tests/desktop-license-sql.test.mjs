@@ -128,6 +128,32 @@ test('兑换使用条件更新保证一次性', () => {
   assert.equal(claim.get('grant-license-a', 10), undefined)
 })
 
+test('待激活的新套餐在手动激活前不开始有效期或下发已分配 Token', () => {
+  const db = database()
+  seedKeys(db, 1)
+  issueNewGrant(db, 'license-pending', 1, 3456, 45)
+  db.prepare("UPDATE desktop_activation_grants SET status = 'redeemed', redeemed_at = 10 WHERE license_id = 'license-pending'").run()
+  db.prepare("UPDATE desktop_licenses SET device_id = 'device', access_token_hash = 'token' WHERE id = 'license-pending' AND status = 'pending'").run()
+
+  assert.equal(db.prepare("SELECT COUNT(*) count FROM desktop_license_periods WHERE license_id = 'license-pending'").get().count, 0)
+  assert.equal(db.prepare("SELECT status FROM tinypng_key_pool WHERE id = 'key-0'").get().status, 'reserved')
+
+  db.exec('BEGIN IMMEDIATE')
+  try {
+    db.prepare("INSERT INTO desktop_license_periods (id, license_id, starts_at, expires_at, quota_total, used_count, reserved_count, created_at) SELECT 'period-pending', 'license-pending', 100, 200, 3456, 0, 0, 100 WHERE EXISTS (SELECT 1 FROM desktop_licenses WHERE id = 'license-pending' AND device_id = 'device' AND status = 'pending')").run()
+    db.prepare("UPDATE desktop_licenses SET status = 'active', activated_at = 100 WHERE id = 'license-pending' AND device_id = 'device' AND status = 'pending'").run()
+    db.prepare("UPDATE tinypng_key_pool SET status = 'assigned' WHERE id IN (SELECT pool_key_id FROM desktop_license_keys WHERE license_id = 'license-pending') AND status = 'reserved'").run()
+    db.exec('COMMIT')
+  } catch (error) {
+    db.exec('ROLLBACK')
+    throw error
+  }
+
+  assert.equal(db.prepare("SELECT status FROM desktop_licenses WHERE id = 'license-pending'").get().status, 'active')
+  assert.equal(db.prepare("SELECT COUNT(*) count FROM desktop_license_periods WHERE license_id = 'license-pending'").get().count, 1)
+  assert.equal(db.prepare("SELECT status FROM tinypng_key_pool WHERE id = 'key-0'").get().status, 'assigned')
+})
+
 test('额度条件更新不会超卖，结算只累计成功数', () => {
   const db = database()
   seedKeys(db, 40)

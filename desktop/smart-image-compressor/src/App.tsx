@@ -12,7 +12,7 @@ import { LicensePanel } from '@/components/license-panel'
 import { OverwriteConfirmDialog } from '@/components/overwrite-confirm-dialog'
 import { UpdateButton } from '@/components/update-button'
 import { Button } from '@/components/ui/button'
-import { addDroppedPaths, bootstrap, cancelCompression, deleteLicensePackage, openResultFolders, pickFolder, pickImages, previewActivation, redeem, refreshLicense, removeJobs, requestThumbnails, startCompression, takeActivationCode } from '@/lib/desktop-api'
+import { activatePendingPackage, addDroppedPaths, bootstrap, cancelCompression, deleteLicensePackage, openResultFolders, pickFolder, pickImages, previewActivation, redeem, refreshLicense, removeJobs, requestThumbnails, startCompression, takeActivationCode } from '@/lib/desktop-api'
 import { QueueStore } from '@/lib/queue-store'
 import type { CompressionFinished, CompressionProgress, ImageJob, LicenseView, OutputMode, ScanComplete, ThumbnailReady } from '@/types'
 
@@ -42,6 +42,7 @@ export function App() {
   const [running, setRunning] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
   const [deletingPackageId, setDeletingPackageId] = useState<string | null>(null)
+  const [activatingPackageId, setActivatingPackageId] = useState<string | null>(null)
   const [scanning, setScanning] = useState(false)
   const [dropActive, setDropActive] = useState(false)
   const [activationOpen, setActivationOpen] = useState(false)
@@ -115,9 +116,22 @@ export function App() {
       setLicense(next)
       setActivationCode('')
       setActivationOpen(false)
-      setNotice(next.packages.length > 1 ? '新套餐已添加，将按旧套餐优先顺序使用。' : '当前套餐续费已更新，可以开始新的压缩批次。')
+      const pendingPackage = next.packages.some((item) => item.status === 'pending' && item.startsAt === null)
+      setNotice(pendingPackage ? '新套餐已保存为待激活状态，请在套餐面板中手动激活。' : next.packages.length > 1 ? '新套餐已添加，将按旧套餐优先顺序使用。' : '当前套餐续费已更新，可以开始新的压缩批次。')
     } catch (error) {
       throw new Error(messageFromError(error))
+    }
+  }, [])
+
+  const activatePackage = useCallback(async (packageId: string) => {
+    setActivatingPackageId(packageId)
+    try {
+      setLicense(await activatePendingPackage(packageId))
+      setNotice('套餐已激活，有效期已开始计算。')
+    } catch (error) {
+      setNotice(messageFromError(error))
+    } finally {
+      setActivatingPackageId(null)
     }
   }, [])
 
@@ -262,6 +276,7 @@ export function App() {
 
   const queuedIds = queueStore.actionableIds()
   const canStart = license.status === 'active' && queuedIds.length > 0 && !running && !scanning
+  const hasActivePackage = license.status === 'active' || license.packages.some((item) => item.status === 'active')
 
   if (booting) return <main className="boot-screen"><Loader2 className="h-4 w-4 animate-spin text-[#0A63C9]" />正在恢复本地工作台…</main>
   if (license.id === null) return <ActivationScreen initialCode={activationCode} serviceMessage={notice} onPreview={doPreview} onRedeem={doRedeem} />
@@ -277,9 +292,9 @@ export function App() {
           {notice ? <div role="status" className="workspace-notice"><span>{notice}</span><button type="button" onClick={() => setNotice(null)}>关闭</button></div> : null}
           <FileQueue snapshot={queue} running={running} scanning={scanning} outputMode={outputMode} onRemove={removeQueueItem} onClear={clearQueue} onOpenResults={openResults} onRequestThumbnails={requestVisibleThumbnails} />
         </section>
-        <LicensePanel license={license} refreshing={refreshing} onRefresh={() => void doRefresh()} debugUsageEnabled={tokenUsageDebugEnabled} onInspectUsage={inspectDebugUsage} usageDisabled={running} onDeletePackage={deletePackage} deletingPackageId={deletingPackageId} onActivate={() => setActivationOpen(true)} outputMode={outputMode} outputDisabled={running} onOutputModeChange={setOutputMode} />
+        <LicensePanel license={license} refreshing={refreshing} onRefresh={() => void doRefresh()} debugUsageEnabled={tokenUsageDebugEnabled} onInspectUsage={inspectDebugUsage} usageDisabled={running} onDeletePackage={deletePackage} deletingPackageId={deletingPackageId} onActivatePendingPackage={(packageId) => void activatePackage(packageId)} activatingPackageId={activatingPackageId} onActivate={() => setActivationOpen(true)} outputMode={outputMode} outputDisabled={running} onOutputModeChange={setOutputMode} />
       </div>
-      <ActivationDialog open={activationOpen} initialCode={activationCode} onOpenChange={setActivationOpen} onRedeem={doRedeem} />
+      <ActivationDialog open={activationOpen} initialCode={activationCode} hasActivePackage={hasActivePackage} onOpenChange={setActivationOpen} onRedeem={doRedeem} />
       <OverwriteConfirmDialog open={overwriteConfirmOpen} imageCount={queuedIds.length} onOpenChange={setOverwriteConfirmOpen} onConfirm={() => void runCompression()} />
       {TokenUsageDebug ? <Suspense fallback={null}><TokenUsageDebug /></Suspense> : null}
     </main>

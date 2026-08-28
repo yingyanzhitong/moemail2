@@ -64,12 +64,17 @@ function displayPackages(license: LicenseView): DisplayPackage[] {
   })
 }
 
-function displayStatus(item: Pick<LicensePackage, 'status' | 'expiresAt'>) {
+function displayStatus(item: Pick<LicensePackage, 'status' | 'startsAt' | 'expiresAt'>) {
+  if (isManualActivationPending(item)) return '待激活'
   if (item.status === 'active' && item.expiresAt) {
     const remaining = new Date(item.expiresAt).getTime() - Date.now()
     if (remaining > 0 && remaining <= 3 * 24 * 60 * 60 * 1000) return '授权即将到期'
   }
   return STATUS_TEXT[item.status]
+}
+
+function isManualActivationPending(item: Pick<LicensePackage, 'status' | 'startsAt'>) {
+  return item.status === 'pending' && item.startsAt === null
 }
 
 interface LicensePanelProps {
@@ -81,6 +86,8 @@ interface LicensePanelProps {
   usageDisabled: boolean
   onDeletePackage: (packageId: string) => void
   deletingPackageId: string | null
+  onActivatePendingPackage: (packageId: string) => void
+  activatingPackageId: string | null
   onActivate: () => void
   outputMode: OutputMode
   outputDisabled: boolean
@@ -92,22 +99,28 @@ interface PackageCardProps {
   debugUsageEnabled: boolean
   usageDisabled: boolean
   deleting: boolean
+  activating: boolean
   onInspectUsage?: (packageId: string) => void
   onDeletePackage: (packageId: string) => void
+  onActivatePendingPackage: (packageId: string) => void
 }
 
-function PackageCard({ item, debugUsageEnabled, usageDisabled, deleting, onInspectUsage, onDeletePackage }: PackageCardProps) {
+function PackageCard({ item, debugUsageEnabled, usageDisabled, deleting, activating, onInspectUsage, onDeletePackage, onActivatePendingPackage }: PackageCardProps) {
   const percent = item.limit > 0 ? Math.min(100, item.used / item.limit * 100) : 0
   const status = displayStatus(item)
   const content = <>
     <div className="flex items-center justify-between gap-2 text-left"><span className="text-[11px] font-semibold text-[#343438]">{item.label}</span><span className={`package-status package-status-${item.status}`}>{item.scheduled ? '已排期' : status}</span></div>
     <div className="mt-3 flex items-end justify-between"><div><p className="font-mono text-[24px] font-semibold leading-none tracking-tight text-[#1D1D1F]">{item.used.toLocaleString()}</p><p className="mt-1.5 text-[11px] text-[#6E6E73]">已压缩数量</p></div><p className="font-mono text-[12px] text-[#6E6E73]">/ {item.limit.toLocaleString()}</p></div>
     <Progress value={percent} className="mt-3 h-1.5" aria-label={`${item.label} 已使用 ${percent.toFixed(1)}%`} />
-    <div className="package-period mt-2"><span>{item.priority}</span><span>{formatDate(item.startsAt)} — {formatDate(item.expiresAt)}</span></div>
+    <div className="package-period mt-2"><span>{isManualActivationPending(item) ? '手动激活后开始计时' : item.priority}</span><span>{formatDate(item.startsAt)} — {formatDate(item.expiresAt)}</span></div>
   </>
 
   if (item.status === 'revoked' && !item.scheduled) {
     return <article className="quota-card package-card package-card-static" aria-label={`${item.label}已失效`}>{content}<button type="button" className="package-delete" disabled={deleting} onClick={() => onDeletePackage(item.id)} aria-label={`删除${item.label}的本地记录`}><Trash2 className="h-3.5 w-3.5" />{deleting ? '正在删除' : '删除套餐'}</button></article>
+  }
+
+  if (!item.scheduled && isManualActivationPending(item)) {
+    return <article className="quota-card package-card package-card-static package-card-pending" aria-label={`${item.label}待激活`}>{content}<Button type="button" size="sm" className="mt-3 w-full" disabled={activating || usageDisabled} onClick={() => onActivatePendingPackage(item.id)}>{activating ? '正在激活…' : '激活套餐'}</Button></article>
   }
 
   if (!debugUsageEnabled || !onInspectUsage) {
@@ -117,7 +130,7 @@ function PackageCard({ item, debugUsageEnabled, usageDisabled, deleting, onInspe
   return <button type="button" className={`quota-card package-card ${item.scheduled ? 'package-card-pending' : ''}`} onClick={() => onInspectUsage(item.id)} disabled={usageDisabled} aria-label={`查看${item.label}的 TinyPNG Token 使用情况`}>{content}</button>
 }
 
-export function LicensePanel({ license, refreshing, onRefresh, debugUsageEnabled, onInspectUsage, usageDisabled, onDeletePackage, deletingPackageId, onActivate, outputMode, outputDisabled, onOutputModeChange }: LicensePanelProps) {
+export function LicensePanel({ license, refreshing, onRefresh, debugUsageEnabled, onInspectUsage, usageDisabled, onDeletePackage, deletingPackageId, onActivatePendingPackage, activatingPackageId, onActivate, outputMode, outputDisabled, onOutputModeChange }: LicensePanelProps) {
   const packages = displayPackages(license)
   const headerStatus = displayStatus(license)
   return (
@@ -144,7 +157,7 @@ export function LicensePanel({ license, refreshing, onRefresh, debugUsageEnabled
         </div>
 
         <div className="package-stack mt-4">
-          {packages.map((item) => <PackageCard key={`${item.id}:${item.label}`} item={item} debugUsageEnabled={debugUsageEnabled} usageDisabled={usageDisabled} deleting={deletingPackageId === item.id} onInspectUsage={onInspectUsage} onDeletePackage={onDeletePackage} />)}
+          {packages.map((item) => <PackageCard key={`${item.id}:${item.label}`} item={item} debugUsageEnabled={debugUsageEnabled} usageDisabled={usageDisabled} deleting={deletingPackageId === item.id} activating={activatingPackageId === item.id} onInspectUsage={onInspectUsage} onDeletePackage={onDeletePackage} onActivatePendingPackage={onActivatePendingPackage} />)}
         </div>
 
         {license.status !== 'active' ? <div className="mt-3 rounded-lg bg-[#FFF1F1] px-3 py-2.5"><p className="flex items-center gap-1.5 text-[11px] font-medium text-[#B4232B]"><ShieldAlert className="h-3.5 w-3.5" />新批次已暂停</p><p className="mt-1 text-[11px] leading-4 text-[#8D464B]">{license.message ?? '粘贴新的授权链接后可继续使用。'}</p></div> : null}

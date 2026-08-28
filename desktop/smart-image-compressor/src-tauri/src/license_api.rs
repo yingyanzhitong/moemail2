@@ -14,7 +14,8 @@ use uuid::Uuid;
 use crate::{
     models::{
         ActivationPlanPreview, BootstrapView, CredentialBundle, KeyState, LicensePackageView,
-        LicenseView, PendingReservation, PendingUsageReport, RedeemResponse, StoredLicense,
+        LicenseView, PendingLicenseActivationResponse, PendingReservation, PendingUsageReport,
+        RedeemResponse, StoredLicense,
     },
     vault::CredentialVault,
 };
@@ -93,8 +94,11 @@ fn reset_month(keys: &mut [KeyState]) {
     }
 }
 
-fn package_sort_key(package: &StoredLicense) -> String {
-    package.license.starts_at.clone().unwrap_or_default()
+fn package_sort_key(package: &StoredLicense) -> (bool, String) {
+    (
+        package.license.starts_at.is_none(),
+        package.license.starts_at.clone().unwrap_or_default(),
+    )
 }
 
 fn package_indexes(packages: &[StoredLicense]) -> Vec<usize> {
@@ -108,11 +112,15 @@ fn normalize_license(license: &mut LicenseView, now: DateTime<Utc>) -> Result<()
         return Ok(());
     }
     let Some(starts_at) = license.starts_at.as_deref() else {
-        license.status = "unlicensed".into();
+        if license.status != "pending" {
+            license.status = "unlicensed".into();
+        }
         return Ok(());
     };
     let Some(expires_at) = license.expires_at.as_deref() else {
-        license.status = "unlicensed".into();
+        if license.status != "pending" {
+            license.status = "unlicensed".into();
+        }
         return Ok(());
     };
     let mut starts_at = parse_time(starts_at)?;
@@ -398,9 +406,11 @@ impl LicenseApi {
         struct Body<'a> {
             code: &'a str,
             device_id: &'a str,
+            defer_activation: bool,
         }
 
         self.sync_pending_usage_reports().await?;
+        let defer_activation = self.refresh()?.status == "active";
         let device_id = self.vault.ensure_device_identity()?;
         let response = self
             .client
@@ -408,6 +418,7 @@ impl LicenseApi {
             .json(&Body {
                 code,
                 device_id: &device_id,
+                defer_activation,
             })
             .send()
             .await
@@ -461,6 +472,65 @@ impl LicenseApi {
             }
             let (license, _) = apply_observed_time(bundle, now, false)?;
             Ok(license)
+        })
+    }
+
+    pub async fn activate_pending_package(&self, license_id: &str) -> Result<LicenseView> {
+        let (device_id, access_token) = self.vault.update(|bundle| {
+            ensure_packages(bundle);
+            let package = bundle
+                .packages
+                .iter()
+                .find(|package| package.license.id.as_deref() == Some(license_id))
+                .context("待激活套餐不存在")?;
+            if package.license.status != "pending" || package.license.starts_at.is_some() {
+                return Err(anyhow!("该套餐无需手动激活"));
+            }
+            Ok((
+                bundle.device_id.clone(),
+                package.access_token.clone().context("待激活套餐凭证缺失")?,
+            ))
+        })?;
+        if device_id.is_empty() {
+            return Err(anyhow!("设备标识缺失"));
+        }
+        let response = self
+            .client
+            .post(format!("{}/api/tinypng/desktop/activate", self.base_url))
+            .bearer_auth(access_token)
+            .header("x-device-id", &device_id)
+            .header("x-license-id", license_id)
+            .send()
+            .await
+            .context("无法连接授权服务")?;
+        let activated: PendingLicenseActivationResponse = Self::parse(response).await?;
+        let month = Utc::now().format("%Y-%m").to_string();
+        let now = self.now();
+        self.vault.update(|bundle| {
+            ensure_packages(bundle);
+            let package = bundle
+                .packages
+                .iter_mut()
+                .find(|package| package.license.id.as_deref() == Some(license_id))
+                .context("待激活套餐不存在")?;
+            let mut existing_keys = std::mem::take(&mut package.keys)
+                .into_iter()
+                .map(|key| (key.api_key.clone(), key))
+                .collect::<HashMap<_, _>>();
+            package.license = merge_remote_license(&package.license, activated.license);
+            package.keys = activated
+                .api_keys
+                .into_iter()
+                .map(|api_key| {
+                    existing_keys.remove(&api_key).unwrap_or(KeyState {
+                        api_key,
+                        month: month.clone(),
+                        count: 0,
+                        invalid: false,
+                    })
+                })
+                .collect();
+            Ok(apply_observed_time(bundle, now, false)?.0)
         })
     }
 
@@ -1045,6 +1115,47 @@ mod tests {
         let (view, _) = apply_observed_time(&mut bundle, now, false).unwrap();
         assert_eq!(view.id.as_deref(), Some("newer"));
         assert_eq!(view.status, "active");
+    }
+
+    #[test]
+    fn manually_pending_package_stays_pending_and_sorts_after_active_package() {
+        let now = Utc::now();
+        let pending = LicenseView {
+            id: Some("pending".into()),
+            status: "pending".into(),
+            used: 0,
+            limit: 10,
+            token_count: 1,
+            starts_at: None,
+            expires_at: None,
+            scheduled_periods: Vec::new(),
+            packages: Vec::new(),
+            message: None,
+        };
+        let mut bundle = CredentialBundle {
+            packages: vec![
+                StoredLicense {
+                    license: pending,
+                    access_token: None,
+                    keys: Vec::new(),
+                    pending_reservations: Vec::new(),
+                    pending_usage_reports: Vec::new(),
+                },
+                StoredLicense {
+                    license: active_license("active", now, 0, 10),
+                    access_token: None,
+                    keys: Vec::new(),
+                    pending_reservations: Vec::new(),
+                    pending_usage_reports: Vec::new(),
+                },
+            ],
+            ..CredentialBundle::default()
+        };
+
+        let (view, _) = apply_observed_time(&mut bundle, now, false).unwrap();
+        assert_eq!(view.id.as_deref(), Some("active"));
+        assert_eq!(view.packages[0].id, "active");
+        assert_eq!(view.packages[1].status, "pending");
     }
 
     #[test]

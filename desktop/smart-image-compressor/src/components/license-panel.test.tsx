@@ -26,6 +26,7 @@ const base: LicenseView = {
 function view(overrides: Partial<LicenseView> = {}) {
   const onInspectUsage = vi.fn()
   const onDeletePackage = vi.fn()
+  const onActivatePendingPackage = vi.fn()
   const { packages: overridePackages, ...rootOverrides } = overrides
   const license = { ...base, ...rootOverrides }
   license.packages = overridePackages ?? [{
@@ -48,13 +49,15 @@ function view(overrides: Partial<LicenseView> = {}) {
       usageDisabled={false}
       onDeletePackage={onDeletePackage}
       deletingPackageId={null}
+      onActivatePendingPackage={onActivatePendingPackage}
+      activatingPackageId={null}
       onActivate={vi.fn()}
       outputMode="new_folder"
       outputDisabled={false}
       onOutputModeChange={vi.fn()}
     />,
   )
-  return { ...result, onInspectUsage, onDeletePackage }
+  return { ...result, onInspectUsage, onDeletePackage, onActivatePendingPackage }
 }
 
 describe('授权面板', () => {
@@ -116,8 +119,10 @@ describe('授权面板', () => {
         debugUsageEnabled={false}
         onInspectUsage={onInspectUsage}
         usageDisabled={false}
-        onDeletePackage={vi.fn()}
-        deletingPackageId={null}
+      onDeletePackage={vi.fn()}
+      deletingPackageId={null}
+      onActivatePendingPackage={vi.fn()}
+      activatingPackageId={null}
         onActivate={vi.fn()}
         outputMode="new_folder"
         outputDisabled={false}
@@ -165,5 +170,26 @@ describe('授权面板', () => {
   it('有效套餐不显示删除操作', () => {
     view()
     expect(screen.queryByRole('button', { name: /删除套餐/ })).not.toBeInTheDocument()
+  })
+
+  it('待激活的新套餐需要用户手动激活，且不会被当作续费排期', () => {
+    const { onActivatePendingPackage } = view({
+      packages: [
+        base.packages[0],
+        {
+          id: 'pending-license',
+          status: 'pending',
+          used: 0,
+          limit: 10000,
+          startsAt: null,
+          expiresAt: null,
+          scheduledPeriods: [],
+        },
+      ],
+    })
+    expect(screen.getByText('待激活')).toBeInTheDocument()
+    expect(screen.getByText('手动激活后开始计时')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: '激活套餐' }))
+    expect(onActivatePendingPackage).toHaveBeenCalledWith('pending-license')
   })
 })

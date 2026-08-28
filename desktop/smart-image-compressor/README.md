@@ -62,4 +62,18 @@ cargo test --manifest-path src-tauri/Cargo.toml
 
 推送 `desktop-v*` 标签会触发 GitHub Actions，分别生成 Apple Silicon DMG、Intel DMG 和 Windows x64 NSIS EXE；这三个手动安装包会以 ASCII 文件名发布到 GitHub 与 [Gitee 发布镜像](https://gitee.com/masongzhi1/tinypng-image-compressor-releases)。
 
-同一次构建还会生成 macOS `.app.tar.gz`、Windows `.exe.sig` 及 `latest.json`。Gitee 的版本化 Release 只同步两套 macOS 与 Windows 的 8 个安装包、更新包和签名；只有这些构建产物全部就绪后，才替换固定 `updater-latest` Release 中的 `latest.json`。源码仓库不保存安装包或更新清单。应用启动和每小时会检查该清单，左上角“检查更新”可手动检查；下载后由 Tauri 使用内置公钥验证签名再安装并重启。签名私钥只保存在 GitHub Actions Secret，不进入仓库或安装包。
+飞书等只能保留一个下载链接的场景，请使用固定的 [最新版安装包入口](https://gitee.com/masongzhi1/tinypng-image-compressor-releases/releases/tag/latest)。每次桌面端发布后，这个页面都会替换为最新的 macOS Apple Silicon、macOS Intel 与 Windows x64 安装包；用户在页面中按自己的系统选择下载即可。
+
+同一次构建还会生成 macOS `.app.tar.gz`、Windows `.exe.sig` 及 `latest.json`。Gitee 的版本化 Release 只同步两套 macOS 与 Windows 的 8 个安装包、更新包和签名；只有这些构建产物全部就绪后，才替换固定 `latest` Release 中的 3 个手动安装包，并更新固定 `updater-latest` Release 中的 `latest.json`。源码仓库不保存安装包或更新清单。应用启动和每小时会检查该清单，左上角“检查更新”可手动检查；下载后由 Tauri 使用内置公钥验证签名再安装并重启。签名私钥只保存在 GitHub Actions Secret，不进入仓库或安装包。
+
+## 闲鱼购买入口配置
+
+在 Gitee 发布镜像仓库的 `master` 分支新建或编辑 `purchase.json`，内容为：
+
+```json
+{
+  "purchaseUrl": "https://你的闲鱼商品链接"
+}
+```
+
+客户端启动时会读取该文件，并在首次未激活页面和“添加套餐或续费”弹窗显示“电脑打开闲鱼”按钮及由该链接即时生成的二维码。仅接受 HTTPS 链接；配置更新后，重新打开软件即可生效，无需重新发布客户端。

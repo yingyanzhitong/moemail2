@@ -2,16 +2,18 @@ import { useEffect, useState } from 'react'
 import { KeyRound, Loader2, ShieldCheck } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { PurchaseEntry } from '@/components/purchase-entry'
 import { extractActivationCode } from '@/lib/activation'
 
 interface ActivationDialogProps {
   open: boolean
   initialCode: string
+  hasActivePackage: boolean
   onOpenChange: (open: boolean) => void
   onRedeem: (code: string) => Promise<void>
 }
 
-export function ActivationDialog({ open, initialCode, onOpenChange, onRedeem }: ActivationDialogProps) {
+export function ActivationDialog({ open, initialCode, hasActivePackage, onOpenChange, onRedeem }: ActivationDialogProps) {
   const [value, setValue] = useState(initialCode)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -47,16 +49,17 @@ export function ActivationDialog({ open, initialCode, onOpenChange, onRedeem }: 
             <ShieldCheck className="h-5 w-5" />
           </div>
           <DialogTitle>添加套餐或续费</DialogTitle>
-          <DialogDescription>新套餐链接会添加独立的 Token 与有效期；续费链接只延长对应套餐。凭证会直接交给 Rust 层并加密保存。</DialogDescription>
+          <DialogDescription>购买后，请将拿到的授权码填写在下方输入框。</DialogDescription>
         </DialogHeader>
-        <label className="mt-5 block text-xs font-medium text-[#42506A]" htmlFor="activation-code">授权链接或授权码</label>
+        <PurchaseEntry />
+        <label className="mt-5 block text-xs font-medium text-[#42506A]" htmlFor="activation-code">授权码</label>
         <div className="relative mt-2">
           <KeyRound className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-[#8B96A9]" />
           <textarea
             id="activation-code"
             value={value}
             onChange={(event) => setValue(event.target.value)}
-            placeholder="https://…/activate/…"
+            placeholder="请输入授权码"
             rows={3}
             spellCheck={false}
             className="w-full resize-none rounded-[8px] border border-[#C8D1DF] bg-white py-2.5 pl-9 pr-3 font-mono text-xs leading-5 text-[#172033] outline-none focus:border-[#2956D8] focus:ring-2 focus:ring-[#2956D8]/15"
@@ -67,7 +70,7 @@ export function ActivationDialog({ open, initialCode, onOpenChange, onRedeem }: 
           <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={loading}>稍后处理</Button>
           <Button onClick={() => void submit()} disabled={loading || !value.trim()}>
             {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-            {loading ? '正在校验…' : '校验并激活'}
+            {loading ? '正在校验…' : hasActivePackage ? '添加套餐' : '添加并激活'}
           </Button>
         </div>
       </DialogContent>

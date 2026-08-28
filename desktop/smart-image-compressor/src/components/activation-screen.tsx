@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent, type ReactNode } from 'react'
 import { CalendarClock, ImageIcon, KeyRound, Loader2, LockKeyhole, ShieldCheck } from 'lucide-react'
 import appIcon from '@/assets/tinypng-compressor-icon.png'
 import { Button } from '@/components/ui/button'
+import { PurchaseEntry } from '@/components/purchase-entry'
 import { extractActivationCode } from '@/lib/activation'
 import type { ActivationPlanPreview } from '@/types'
 
@@ -87,6 +88,7 @@ export function ActivationScreen({ initialCode, serviceMessage, onPreview, onRed
           <p className="mt-5 text-[11px] font-medium tracking-[0.08em] text-[#86868B]">设备授权</p>
           <h1 id="activation-title" className="mt-1.5 text-[24px] font-semibold tracking-[-0.03em]">激活后进入压缩工作台</h1>
           <p className="mt-2.5 max-w-[470px] text-[13px] leading-6 text-[#6E6E73]">粘贴管理员提供的 Auth Link。验证成功后，套餐凭证和 TinyPNG Token 将加密保存到本机。</p>
+          <PurchaseEntry />
 
           <form className="mt-6" onSubmit={(event) => void submit(event)}>
             <label className="text-[12px] font-medium text-[#343438]" htmlFor="activation-link">Auth Link 或授权码</label>

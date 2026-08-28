@@ -5,6 +5,7 @@ import { isPublicDesktopApiPath } from '../app/lib/desktop-license-routes.ts'
 test('桌面激活预览和客户端授权接口不依赖网站登录会话', () => {
   assert.equal(isPublicDesktopApiPath('/api/tinypng/desktop/grants/preview'), true)
   assert.equal(isPublicDesktopApiPath('/api/tinypng/desktop/redeem'), true)
+  assert.equal(isPublicDesktopApiPath('/api/tinypng/desktop/activate'), true)
   assert.equal(isPublicDesktopApiPath('/api/tinypng/desktop/license'), true)
   assert.equal(isPublicDesktopApiPath('/api/tinypng/desktop/usage/reservations'), true)
   assert.equal(isPublicDesktopApiPath('/api/tinypng/desktop/usage/reports'), true)

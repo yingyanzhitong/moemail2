@@ -6,18 +6,23 @@ use std::{
 
 use anyhow::Result;
 use futures::{stream, StreamExt};
+use reqwest::StatusCode;
 use tauri::{AppHandle, Emitter, State};
 use tauri_plugin_dialog::DialogExt;
+use url::Url;
 
 use crate::{
     compression::{self, CompressionRuntime},
     models::{
-        ActivationPlanPreview, BootstrapView, CompressionStart, LicenseView, ScanComplete,
-        ThumbnailReady,
+        ActivationPlanPreview, BootstrapView, CompressionStart, LicenseView, PurchaseConfig,
+        ScanComplete, ThumbnailReady,
     },
     scanner::{generate_thumbnail, scan_paths_in_batches},
     vault::CredentialVault,
 };
+
+const PURCHASE_CONFIG_URL: &str =
+    "https://gitee.com/masongzhi1/tinypng-image-compressor-releases/raw/master/purchase.json";
 
 #[cfg(debug_assertions)]
 use crate::models::TokenUsageReport;
@@ -38,6 +43,17 @@ impl AppState {
 
 fn command_error(error: impl std::fmt::Display) -> String {
     serde_json::json!({ "message": error.to_string() }).to_string()
+}
+
+fn normalize_purchase_url(value: &str) -> Option<String> {
+    let url = Url::parse(value.trim()).ok()?;
+    (url.scheme() == "https" && url.host_str().is_some()).then(|| url.into())
+}
+
+#[derive(serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct PurchaseConfigFile {
+    purchase_url: String,
 }
 
 fn begin_import(app: AppHandle, runtime: CompressionRuntime, paths: Vec<PathBuf>) {
@@ -99,6 +115,19 @@ pub async fn redeem_activation(
 }
 
 #[tauri::command]
+pub async fn activate_pending_package(
+    license_id: String,
+    state: State<'_, AppState>,
+) -> std::result::Result<LicenseView, String> {
+    state
+        .runtime
+        .license_api
+        .activate_pending_package(&license_id)
+        .await
+        .map_err(command_error)
+}
+
+#[tauri::command]
 pub async fn preview_activation(
     code: String,
     state: State<'_, AppState>,
@@ -113,6 +142,52 @@ pub async fn preview_activation(
         .preview(code)
         .await
         .map_err(command_error)
+}
+
+#[tauri::command]
+pub async fn get_purchase_config(
+    state: State<'_, AppState>,
+) -> std::result::Result<Option<PurchaseConfig>, String> {
+    let response = state
+        .runtime
+        .http
+        .get(PURCHASE_CONFIG_URL)
+        .send()
+        .await
+        .map_err(command_error)?;
+    if response.status() == StatusCode::NOT_FOUND {
+        return Ok(None);
+    }
+    let response = response.error_for_status().map_err(command_error)?;
+    if response
+        .content_length()
+        .is_some_and(|length| length > 4 * 1024)
+    {
+        return Err(command_error("购买配置文件过大"));
+    }
+    let config = response
+        .json::<PurchaseConfigFile>()
+        .await
+        .map_err(command_error)?;
+    Ok(normalize_purchase_url(&config.purchase_url)
+        .map(|purchase_url| PurchaseConfig { purchase_url }))
+}
+
+#[tauri::command]
+pub fn open_purchase_url(url: String) -> std::result::Result<(), String> {
+    let url = normalize_purchase_url(&url).ok_or_else(|| command_error("购买链接无效"))?;
+    #[cfg(target_os = "macos")]
+    let mut command = Command::new("open");
+    #[cfg(target_os = "windows")]
+    let mut command = Command::new("explorer.exe");
+    #[cfg(target_os = "linux")]
+    let mut command = Command::new("xdg-open");
+
+    command
+        .arg(url)
+        .spawn()
+        .map_err(|error| command_error(format!("无法打开闲鱼：{error}")))?;
+    Ok(())
 }
 
 #[tauri::command]
@@ -342,4 +417,22 @@ pub fn cancel_compression(state: State<'_, AppState>) {
         .runtime
         .cancel
         .store(true, std::sync::atomic::Ordering::SeqCst);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::normalize_purchase_url;
+
+    #[test]
+    fn only_accepts_complete_https_purchase_urls() {
+        assert_eq!(
+            normalize_purchase_url(" https://www.goofish.com/item?id=1 "),
+            Some("https://www.goofish.com/item?id=1".into()),
+        );
+        assert_eq!(
+            normalize_purchase_url("http://www.goofish.com/item?id=1"),
+            None
+        );
+        assert_eq!(normalize_purchase_url("https://"), None);
+    }
 }

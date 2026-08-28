@@ -87,6 +87,12 @@ button { -webkit-tap-highlight-color: transparent; }
 .activation-field { display: flex; gap: 9px; border: 1px solid #c7c7cc; border-radius: 9px; background: #fff; padding-left: 11px; transition: border-color 120ms ease, box-shadow 120ms ease; }
 .activation-field:focus-within { border-color: #0a63c9; box-shadow: 0 0 0 3px rgba(10, 99, 201, 0.16); }
 .activation-error { margin-top: 10px; border: 1px solid #f1c5c7; border-radius: 8px; background: #fff5f5; padding: 8px 10px; color: #b4232b; font-size: 12px; line-height: 18px; }
+.purchase-entry { display: flex; align-items: center; gap: 12px; margin-top: 18px; border: 1px solid #D7E2F7; border-radius: 10px; background: #F5F8FF; padding: 10px; }
+.purchase-qr { display: flex; flex: none; align-items: center; justify-content: center; width: 140px; height: 140px; overflow: hidden; border: 1px solid #D2DCEB; border-radius: 7px; background: #fff; }
+.purchase-qr img { display: block; width: 132px; height: 132px; }
+.purchase-link { display: inline-flex; align-items: center; gap: 4px; margin-top: 7px; border: 0; background: transparent; padding: 0; color: #0A63C9; cursor: pointer; font-size: 11px; font-weight: 600; }
+.purchase-link:hover { color: #064D9A; text-decoration: underline; }
+.purchase-link:focus-visible { border-radius: 3px; outline: 2px solid #0A63C9; outline-offset: 2px; }
 
 @media (max-width: 1020px) {
   .workspace-layout { grid-template-columns: minmax(0, 1fr) 282px; }

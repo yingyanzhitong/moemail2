@@ -1,5 +1,5 @@
 import { invoke, isTauri } from '@tauri-apps/api/core'
-import type { ActivationPlanPreview, BootstrapView, CompressionStart, LicenseView, OutputMode } from '@/types'
+import type { ActivationPlanPreview, BootstrapView, CompressionStart, LicenseView, OutputMode, PurchaseConfig } from '@/types'
 
 const demoLicense: LicenseView = {
   id: 'preview',
@@ -34,6 +34,10 @@ export async function redeem(code: string): Promise<LicenseView> {
   return invoke<LicenseView>('redeem_activation', { code })
 }
 
+export async function activatePendingPackage(licenseId: string): Promise<LicenseView> {
+  return invoke<LicenseView>('activate_pending_package', { licenseId })
+}
+
 export async function previewActivation(code: string): Promise<ActivationPlanPreview> {
   if (!isTauri()) return {
     kind: 'new',
@@ -43,6 +47,16 @@ export async function previewActivation(code: string): Promise<ActivationPlanPre
     redeemExpiresAt: new Date(Date.now() + 86400000).toISOString(),
   }
   return invoke<ActivationPlanPreview>('preview_activation', { code })
+}
+
+export async function getPurchaseConfig(): Promise<PurchaseConfig | null> {
+  if (!isTauri()) return null
+  return invoke<PurchaseConfig | null>('get_purchase_config')
+}
+
+export async function openPurchaseUrl(url: string): Promise<void> {
+  if (!isTauri()) return
+  return invoke('open_purchase_url', { url })
 }
 
 export async function refreshLicense(): Promise<LicenseView> {

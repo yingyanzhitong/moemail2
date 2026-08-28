@@ -7,11 +7,11 @@ export const runtime = 'edge'
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json() as { code?: string; deviceId?: string }
+    const body = await request.json() as { code?: string; deviceId?: string; deferActivation?: boolean }
     if (!body.code || !body.deviceId) {
       return NextResponse.json({ error: '缺少授权码或设备标识' }, { status: 400 })
     }
-    const result = await redeemDesktopGrant(getRequestContext().env.DB, body.code, body.deviceId)
+    const result = await redeemDesktopGrant(getRequestContext().env.DB, body.code, body.deviceId, body.deferActivation === true)
     return NextResponse.json(result, {
       headers: { 'Cache-Control': 'no-store' },
     })

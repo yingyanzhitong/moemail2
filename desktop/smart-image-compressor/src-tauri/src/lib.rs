@@ -129,7 +129,10 @@ pub fn run() {
             commands::take_activation_code,
             commands::bootstrap,
             commands::preview_activation,
+            commands::get_purchase_config,
+            commands::open_purchase_url,
             commands::redeem_activation,
+            commands::activate_pending_package,
             commands::refresh_license,
             commands::delete_license_package,
             #[cfg(debug_assertions)]

@@ -311,6 +311,18 @@ export async function getDesktopLicenseView(
   const now = Date.now()
   const current = periods.find((period) => period.startsAt.getTime() <= now && period.expiresAt.getTime() > now)
   const scheduled = periods.filter((period) => period.startsAt.getTime() > now)
+  const pendingGrant = license.status === 'pending'
+    ? await db.select({ quotaTotal: desktopActivationGrants.quotaTotal })
+      .from(desktopActivationGrants)
+      .where(and(
+        eq(desktopActivationGrants.licenseId, licenseId),
+        eq(desktopActivationGrants.kind, 'new'),
+        eq(desktopActivationGrants.status, 'redeemed'),
+      ))
+      .orderBy(desc(desktopActivationGrants.redeemedAt))
+      .limit(1)
+      .get()
+    : null
 
   let status: DesktopLicenseView['status']
   if (license.status === 'revoked') status = 'revoked'
@@ -322,7 +334,7 @@ export async function getDesktopLicenseView(
     id: license.id,
     status,
     used: current?.usedCount ?? periods.at(-1)?.usedCount ?? 0,
-    limit: current?.quotaTotal ?? periods.at(-1)?.quotaTotal ?? 0,
+    limit: current?.quotaTotal ?? pendingGrant?.quotaTotal ?? periods.at(-1)?.quotaTotal ?? 0,
     tokenCount: license.initialKeyCount,
     startsAt: toIso(current?.startsAt ?? null),
     expiresAt: toIso(current?.expiresAt ?? periods.at(-1)?.expiresAt ?? null),
@@ -347,6 +359,7 @@ export async function redeemDesktopGrant(
   database: D1Database,
   code: string,
   deviceId: string,
+  deferActivation = false,
 ): Promise<{ accessToken: string; license: DesktopLicenseView; apiKeys: string[] }> {
   assertDeviceId(deviceId)
   await cleanupExpiredDesktopState(database)
@@ -392,9 +405,14 @@ export async function redeemDesktopGrant(
   const accessTokenHash = await sha256Hex(accessToken)
   const now = new Date()
   const expiresAt = getDesktopPeriodExpiry(now.getTime(), grant.durationDays)
+  const deferredNewActivation = grant.kind === 'new' && deferActivation
 
   try {
-    if (grant.kind === 'new') {
+    if (deferredNewActivation) {
+      await database.prepare(
+        "UPDATE desktop_licenses SET device_id = ?, access_token_hash = ?, updated_at = ? WHERE id = ? AND status = 'pending'",
+      ).bind(deviceId, accessTokenHash, now.getTime(), license.id).run()
+    } else if (grant.kind === 'new') {
       const periodId = crypto.randomUUID()
       await database.batch([
         database.prepare(
@@ -440,11 +458,15 @@ export async function redeemDesktopGrant(
   return {
     accessToken,
     license: await getDesktopLicenseView(database, license.id),
-    apiKeys: await getLicenseKeys(database, license.id),
+    apiKeys: deferredNewActivation ? [] : await getLicenseKeys(database, license.id),
   }
 }
 
-export async function authenticateDesktopLicense(request: Request, database: D1Database) {
+export async function authenticateDesktopLicense(
+  request: Request,
+  database: D1Database,
+  options: { allowPending?: boolean } = {},
+) {
   const authorization = request.headers.get('authorization')
   const deviceId = request.headers.get('x-device-id')
   const requestedLicenseId = request.headers.get('x-license-id')
@@ -472,8 +494,51 @@ export async function authenticateDesktopLicense(request: Request, database: D1D
     throw new DesktopLicenseError('桌面端凭证无效', 401, 'UNAUTHORIZED')
   }
   if (license.status === 'revoked') throw new DesktopLicenseError('授权已撤销', 403, 'LICENSE_REVOKED')
-  if (license.status !== 'active') throw new DesktopLicenseError('授权尚未激活', 403, 'LICENSE_NOT_ACTIVE')
+  if (license.status !== 'active' && !(options.allowPending && license.status === 'pending')) {
+    throw new DesktopLicenseError('授权尚未激活', 403, 'LICENSE_NOT_ACTIVE')
+  }
   return license
+}
+
+export async function activatePendingDesktopLicense(
+  request: Request,
+  database: D1Database,
+): Promise<{ license: DesktopLicenseView; apiKeys: string[] }> {
+  const license = await authenticateDesktopLicense(request, database, { allowPending: true })
+  if (license.status === 'active') {
+    return {
+      license: await getDesktopLicenseView(database, license.id),
+      apiKeys: await getLicenseKeys(database, license.id),
+    }
+  }
+
+  const db = getDb(database)
+  const grant = await db.select().from(desktopActivationGrants).where(and(
+    eq(desktopActivationGrants.licenseId, license.id),
+    eq(desktopActivationGrants.kind, 'new'),
+    eq(desktopActivationGrants.status, 'redeemed'),
+  )).orderBy(desc(desktopActivationGrants.redeemedAt)).limit(1).get()
+  if (!grant) throw new DesktopLicenseError('待激活套餐信息缺失', 409, 'PENDING_GRANT_MISSING')
+
+  const deviceId = request.headers.get('x-device-id')!
+  const now = Date.now()
+  const expiresAt = getDesktopPeriodExpiry(now, grant.durationDays)
+  await database.batch([
+    database.prepare(
+      "INSERT INTO desktop_license_periods (id, license_id, starts_at, expires_at, quota_total, used_count, reserved_count, created_at) SELECT ?, ?, ?, ?, ?, 0, 0, ? WHERE EXISTS (SELECT 1 FROM desktop_licenses WHERE id = ? AND device_id = ? AND status = 'pending')",
+    ).bind(crypto.randomUUID(), license.id, now, expiresAt, grant.quotaTotal, now, license.id, deviceId),
+    database.prepare(
+      "UPDATE desktop_licenses SET status = 'active', activated_at = ?, updated_at = ? WHERE id = ? AND device_id = ? AND status = 'pending'",
+    ).bind(now, now, license.id, deviceId),
+    database.prepare(
+      "UPDATE tinypng_key_pool SET status = 'assigned', updated_at = ? WHERE id IN (SELECT pool_key_id FROM desktop_license_keys WHERE license_id = ?) AND status = 'reserved'",
+    ).bind(now, license.id),
+  ])
+
+  return {
+    license: await getDesktopLicenseView(database, license.id),
+    apiKeys: await getLicenseKeys(database, license.id),
+  }
 }
 
 export async function createDesktopUsageSession(

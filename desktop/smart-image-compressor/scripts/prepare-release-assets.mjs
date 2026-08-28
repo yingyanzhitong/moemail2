@@ -9,6 +9,7 @@ const platforms = {}
 const installers = {}
 
 await mkdir(options.output, { recursive: true })
+await mkdir(options.latestOutput, { recursive: true })
 
 for (const { platform, label } of [
   { platform: 'darwin-aarch64', label: 'aarch64' },
@@ -21,6 +22,7 @@ for (const { platform, label } of [
   const updaterName = `${options.appName}_${options.version}_macOS_${label}-updater.app.tar.gz`
 
   await copyAsset(dmg, dmgName)
+  await copyLatestInstaller(dmg, `${options.appName}_latest_macOS_${label === 'aarch64' ? 'Apple-Silicon' : 'Intel'}.dmg`)
   await copyAsset(updater, updaterName)
   await copyAsset(signature, `${updaterName}.sig`)
   platforms[platform] = {
@@ -34,6 +36,7 @@ const windowsInstaller = findOne(files, (file) => file.endsWith('.exe'), 'Window
 const windowsSignature = findOne(files, (file) => file === `${windowsInstaller}.sig`, 'Windows x64 更新签名')
 const windowsName = `${options.appName}_${options.version}_Windows_x64-setup.exe`
 await copyAsset(windowsInstaller, windowsName)
+await copyLatestInstaller(windowsInstaller, `${options.appName}_latest_Windows_x64-setup.exe`)
 await copyAsset(windowsSignature, `${windowsName}.sig`)
 platforms['windows-x86_64'] = {
   signature: (await readFile(windowsSignature, 'utf8')).trim(),
@@ -53,6 +56,10 @@ console.log(`已准备 ${Object.keys(installers).length} 个安装包和 ${Objec
 
 async function copyAsset(source, name) {
   await cp(source, path.join(options.output, name))
+}
+
+async function copyLatestInstaller(source, name) {
+  await cp(source, path.join(options.latestOutput, name))
 }
 
 async function walk(directory) {
@@ -87,6 +94,7 @@ function parseArgs(args) {
   const parsed = {
     input: 'release-assets',
     output: 'normalized-release-assets',
+    latestOutput: 'latest-installers',
     owner: 'masongzhi1',
     repo: 'tinypng-image-compressor-releases',
     appName: 'tinypng-image-compressor',
@@ -102,6 +110,7 @@ function parseArgs(args) {
     switch (key) {
       case '--input': parsed.input = value; break
       case '--output': parsed.output = value; break
+      case '--latest-output': parsed.latestOutput = value; break
       case '--owner': parsed.owner = value; break
       case '--repo': parsed.repo = value; break
       case '--app-name': parsed.appName = value; break
