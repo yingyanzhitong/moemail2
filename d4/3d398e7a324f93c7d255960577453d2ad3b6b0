@@ -1,0 +1,32 @@
+CHANGELOG.md
+  s_12c74fb3f84a58::t_447de6dc0d4d95 5-15
+desktop/smart-image-compressor/package.json
+  s_12c74fb3f84a58::t_f87f8e5ef9c769 3
+desktop/smart-image-compressor/scripts/prepare-release-assets.node-test.mjs
+  s_12c74fb3f84a58::t_57b395cb6f4fc1 7,11,29
+desktop/smart-image-compressor/src-tauri/Cargo.lock
+  s_12c74fb3f84a58::t_abf39f9a6be1ca 4642
+desktop/smart-image-compressor/src-tauri/Cargo.toml
+  s_12c74fb3f84a58::t_010e6e4d2bbe24 3
+desktop/smart-image-compressor/src-tauri/tauri.conf.json
+  s_12c74fb3f84a58::t_fcf9b08f2c68b5 4
+package.json
+  s_12c74fb3f84a58::t_9b39dbebdac583 3
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "d43d398e7a324f93c7d255960577453d2ad3b6b0",
+  "prompts": {},
+  "logical_commit_id": "d43d398e7a324f93c7d255960577453d2ad3b6b0",
+  "sessions": {
+    "s_12c74fb3f84a58": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a04656-e33a-74c1-a835-3ea457c2614a",
+        "model": "unknown"
+      },
+      "human_author": "masongzhi <masongzhi@bigo.sg>"
+    }
+  }
+}
