@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.14.52] - 2026-08-28
+
+### Fixed
+
+- **Windows 发布测试**：发布脚本测试改用跨平台的本机 Node 路径，修复 Windows GitHub Runner 无法执行生成脚本的问题。
+- **桌面端版本**：TinyPNG 压缩助手升级至 `0.2.15`。
+
+### Tests
+
+- **发布回归**：桌面端 40 项前端测试与 6 项发布脚本测试通过。
+
 ## [1.14.51] - 2026-08-28
 
 ### Changed

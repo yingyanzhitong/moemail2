@@ -4,10 +4,11 @@ import { mkdir, mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promis
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import test from 'node:test'
+import { fileURLToPath } from 'node:url'
 import { promisify } from 'node:util'
 
 const execFileAsync = promisify(execFile)
-const script = new URL('./prepare-release-assets.mjs', import.meta.url)
+const script = fileURLToPath(new URL('./prepare-release-assets.mjs', import.meta.url))
 
 test('生成固定 latest 安装包名称，同时保持版本化更新清单', async () => {
   const root = await mkdtemp(path.join(tmpdir(), 'tinypng-release-assets-'))
@@ -25,7 +26,7 @@ test('生成固定 latest 安装包名称，同时保持版本化更新清单', 
     await writeFixture(input, 'tinypng_x86_64-pc-windows-msvc-setup.exe', 'windows-installer')
     await writeFixture(input, 'tinypng_x86_64-pc-windows-msvc-setup.exe.sig', 'windows-signature')
 
-    await execFileAsync('node', [script.pathname,
+    await execFileAsync(process.execPath, [script,
       '--input', input,
       '--output', output,
       '--latest-output', latestOutput,
