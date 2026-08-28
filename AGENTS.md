@@ -21,14 +21,14 @@
 
 推送 `v*` tag 后，GitHub Actions 会自动触发 `.github/workflows/deploy.yml` 完成网页部署；推送 `desktop-v*` tag 后，GitHub Actions 会构建桌面端并同步 GitHub 与 Gitee Release。
 
-### 桌面端发布后的飞书下载链接同步
+### 桌面端具体版本与 latest Release
 
-每次 `desktop-v*` 发布工作流成功、且 Gitee Release 的安装包已可匿名下载后，必须更新飞书文档《TinyPNG 压缩助手：安装与使用指南》：
+每次桌面端发布必须同时维护以下两个 Gitee Release：
 
-- 文档地址：`https://my.feishu.cn/docx/Jb3fdvkTYoR5HdxaBejcYDW0nRg`
-- 更新文档中的版本号、统一 Gitee 发行页链接，以及 Windows x64、macOS Apple 芯片（aarch64）和 macOS Intel（x64）三项安装包直达下载链接。
-- 仅指向 `.exe` 或 `.dmg` 安装包；不得把 Source code、`.sig` 或 `updater.app.tar.gz` 写为人工下载入口。
-- 更新完成后，使用匿名请求验证三个直达链接均可访问，再汇报发布完成。
+- **具体版本 Release**：使用 `desktop-vX.Y.Z` 标签，保留该版本的完整安装包，供版本追溯和问题排查。
+- **最新版本 Release**：使用固定标签 `latest`，始终只保留当前最新版本的 Windows x64、macOS Apple 芯片和 macOS Intel 三个安装包；文件名使用固定的 `tinypng-image-compressor_latest_*` 格式。
+
+`latest` 的固定下载页为 `https://gitee.com/masongzhi1/tinypng-image-compressor-releases/releases/tag/latest`。发布新版本后，必须用新安装包替换 `latest` Release 中的三个附件，并使用匿名请求验证固定下载页及三个安装包均可访问。
 
 ## TinyPNG 桌面端产品约束
 

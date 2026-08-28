@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.14.53] - 2026-08-28
+
+### Changed
+
+- **桌面端发布规则**：明确每次桌面端发布同时维护可追溯的 `desktop-vX.Y.Z` Release 与固定的 `latest` Release；`latest` 仅保留当前三平台安装包并需匿名验证可访问。
+
 ## [1.14.52] - 2026-08-28
 
 ### Fixed
