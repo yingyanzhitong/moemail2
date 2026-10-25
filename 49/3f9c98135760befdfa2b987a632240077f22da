@@ -1,0 +1,37 @@
+app/lib/desktop-license-service.ts
+  s_7d9ef26bf09238::t_38f355f7ec0d8c 20,230
+package.json
+  s_7d9ef26bf09238::t_38f355f7ec0d8c 3
+app/activate/[code]/activation-bridge.tsx
+  s_7d9ef26bf09238::t_38f355f7ec0d8c 52
+app/components/profile/tinypng-pool-stats-card.tsx
+  s_7d9ef26bf09238::t_38f355f7ec0d8c 826,888
+CHANGELOG.md
+  s_7d9ef26bf09238::t_38f355f7ec0d8c 5-12,14
+  s_7d9ef26bf09238::t_25e314dffdb1a9 13
+tests/desktop-license-domain.test.mjs
+  s_7d9ef26bf09238::t_38f355f7ec0d8c 13-30
+app/components/profile/desktop-license-admin.tsx
+  s_7d9ef26bf09238::t_38f355f7ec0d8c 171,198,447
+app/lib/desktop-license-types.ts
+  s_7d9ef26bf09238::t_38f355f7ec0d8c 9
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "493f9c98135760befdfa2b987a632240077f22da",
+  "prompts": {},
+  "logical_commit_id": "493f9c98135760befdfa2b987a632240077f22da",
+  "sessions": {
+    "s_7d9ef26bf09238": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a173e2-ab18-7023-a4a0-02571cf5ccfc",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "masongzhi <masongzhi@bigo.sg>",
+      "total_additions": 39,
+      "total_deletions": 11
+    }
+  }
+}
