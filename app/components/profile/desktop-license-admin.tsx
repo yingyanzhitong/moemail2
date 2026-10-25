@@ -168,7 +168,7 @@ export function DesktopLicenseAdmin() {
       setGeneratedToken(data.token)
       if (kind === 'renew') setRenewTarget(null)
       await loadLicenses()
-      toast({ title: kind === 'renew' ? '续费 Token 已生成' : '换机 Token 已生成', description: 'Token 将在 24 小时后失效。' })
+      toast({ title: kind === 'renew' ? '续费 Token 已生成' : '换机 Token 已生成', description: 'Token 将在 1 个月后失效。' })
     } catch (error) {
       toast({ title: '操作失败', description: error instanceof Error ? error.message : '请稍后重试', variant: 'destructive' })
     } finally {
@@ -195,7 +195,7 @@ export function DesktopLicenseAdmin() {
       setGeneratedToken(data.token)
       setCreateDialogOpen(false)
       await loadLicenses()
-      toast({ title: '授权 Token 已创建', description: 'Token 将在 24 小时后失效。' })
+      toast({ title: '授权 Token 已创建', description: 'Token 将在 1 个月后失效。' })
     } catch (error) {
       toast({ title: '创建失败', description: error instanceof Error ? error.message : '请稍后重试', variant: 'destructive' })
     } finally {
@@ -444,7 +444,7 @@ export function DesktopLicenseAdmin() {
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>创建 Auth Link</DialogTitle>
-            <DialogDescription>链接 24 小时内有效且只能兑换一次；创建时会预留对应数量的 Token。</DialogDescription>
+            <DialogDescription>链接 1 个月内有效且只能兑换一次；创建时会预留对应数量的 Token。</DialogDescription>
           </DialogHeader>
           <div className="grid grid-cols-3 gap-3">
             <div className="space-y-2">

@@ -10,6 +10,24 @@ import {
   decryptDesktopGrantCode,
   encryptDesktopGrantCode,
 } from '../app/lib/desktop-license-crypto.ts'
+import { DESKTOP_GRANT_TTL_DAYS } from '../app/lib/desktop-license-types.ts'
+
+test('Auth Link 激活期限为一个自然月，涵盖月末、闰年和跨年', () => {
+  const cases = [
+    [Date.UTC(2026, 9, 26, 9, 47, 52, 634), Date.UTC(2026, 10, 26, 9, 47, 52, 634)],
+    [Date.UTC(2026, 0, 31, 9, 47, 52, 634), Date.UTC(2026, 1, 28, 9, 47, 52, 634)],
+    [Date.UTC(2028, 0, 31, 9, 47, 52, 634), Date.UTC(2028, 1, 29, 9, 47, 52, 634)],
+    [Date.UTC(2026, 11, 31, 9, 47, 52, 634), Date.UTC(2027, 0, 31, 9, 47, 52, 634)],
+  ]
+  for (const [createdAt, expectedExpiresAt] of cases) {
+    const expiresAtMs = getDesktopPeriodExpiry(createdAt, DESKTOP_GRANT_TTL_DAYS)
+    assert.equal(expiresAtMs, expectedExpiresAt)
+    const grant = { kind: 'new', grantStatus: 'issued', expiresAtMs, licenseStatus: 'pending', boundDeviceId: null, requestDeviceId: 'device' }
+    assert.equal(getDesktopRedeemConflict({ ...grant, nowMs: createdAt + 24 * 60 * 60 * 1000 }), null)
+    assert.equal(getDesktopRedeemConflict({ ...grant, nowMs: expectedExpiresAt - 1 }), null)
+    assert.equal(getDesktopRedeemConflict({ ...grant, nowMs: expectedExpiresAt }), 'GRANT_EXPIRED')
+  }
+})
 
 test('30 天套餐按自然月到期，续费周期仍排在现有周期后', () => {
   const july27 = Date.UTC(2026, 6, 27, 9, 47, 52, 634)

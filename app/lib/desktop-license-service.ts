@@ -17,7 +17,7 @@ import {
 } from '@/lib/desktop-license-crypto'
 import { calculateEmergencyKeyCount, getDesktopPeriodExpiry, getDesktopRedeemConflict, getNextDesktopPeriodWindow } from '@/lib/desktop-license-domain'
 import {
-  DESKTOP_GRANT_TTL_MS,
+  DESKTOP_GRANT_TTL_DAYS,
   DESKTOP_EMERGENCY_KEY_COUNT,
   DESKTOP_INITIAL_KEY_COUNT,
   DESKTOP_MAX_GRANT_KEY_COUNT,
@@ -227,7 +227,7 @@ export async function createDesktopGrant(
   await cleanupExpiredDesktopState(database)
   const db = getDb(database)
   const now = new Date()
-  const expiresAt = new Date(now.getTime() + DESKTOP_GRANT_TTL_MS)
+  const expiresAt = new Date(getDesktopPeriodExpiry(now.getTime(), DESKTOP_GRANT_TTL_DAYS))
   const code = createDesktopSecret(30)
   const codeHash = await sha256Hex(code)
   const codeCiphertext = await encryptDesktopGrantCode(code, getGrantEncryptionSecret())

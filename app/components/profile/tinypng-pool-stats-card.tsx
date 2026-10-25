@@ -823,7 +823,7 @@ export function TinyPngPoolStatsCard() {
           <DialogHeader>
             <DialogTitle>生成“智能压缩工具”授权链接</DialogTitle>
             <DialogDescription>
-            Token 数量、压缩额度和授权有效期均写入本次授权 Token；Token 24 小时内有效且只能兑换一次。
+            Token 数量、压缩额度和授权有效期均写入本次授权 Token；Token 1 个月内有效且只能兑换一次。
             </DialogDescription>
           </DialogHeader>
           
@@ -885,7 +885,7 @@ export function TinyPngPoolStatsCard() {
                   </Button>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  直接粘贴到桌面端即可激活；Token 将在 24 小时后失效，且只能兑换一次。
+                  直接粘贴到桌面端即可激活；Token 将在 1 个月后失效，且只能兑换一次。
                 </p>
                 {generatedPlan ? (
                   <p className="rounded-md border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">

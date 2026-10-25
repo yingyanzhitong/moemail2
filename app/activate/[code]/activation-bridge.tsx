@@ -49,7 +49,7 @@ export function ActivationBridge({ code }: { code: string }) {
               {copied ? <Check className="h-4 w-4 text-[#15806A]" /> : <Copy className="h-4 w-4" />}
             </Button>
           </div>
-          <p className="mt-3 text-xs text-[#778196]">授权链接仅可使用一次，并会在生成 24 小时后失效。</p>
+          <p className="mt-3 text-xs text-[#778196]">授权链接仅可使用一次，并会在生成 1 个月后失效。</p>
         </div>
       </section>
     </main>
