@@ -1,7 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { Activity, Database, Link, Copy, Check, Loader2, Clock3, History, MapPin, Network, Play, Save, ScrollText, Server, Wrench } from "lucide-react"
+import { Activity, Database, Link, Loader2, Clock3, History, MapPin, Network, Play, Save, ScrollText, Server, Wrench } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useLocale } from "next-intl"
 import { Button } from "@/components/ui/button"
@@ -13,7 +13,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
+import { DesktopAuthLinkDialog } from "./desktop-auth-link-dialog"
 import {
   Select,
   SelectContent,
@@ -90,17 +90,6 @@ interface PoolStats {
   taskStatus: TinyPngTaskStatus
 }
 
-interface GenerateResponse {
-  token?: string
-  error?: string
-}
-
-interface GeneratedPlan {
-  tokenCount: number
-  compressionLimit: number
-  durationDays: number
-}
-
 const TASK_STATUS_META: Record<TinyPngTaskRunStatus, { label: string; className: string }> = {
   running: { label: '执行中', className: 'text-sky-600 dark:text-sky-400' },
   success: { label: '执行成功', className: 'text-emerald-600 dark:text-emerald-400' },
@@ -162,15 +151,7 @@ export function TinyPngPoolStatsCard() {
   const [savingWorkerRegistrationModeId, setSavingWorkerRegistrationModeId] = useState<string | null>(null)
   const [cronExpression, setCronExpression] = useState("0 * * * *")
   const [savingCronExpression, setSavingCronExpression] = useState(false)
-  const [generateLoading, setGenerateLoading] = useState(false)
   const [showDialog, setShowDialog] = useState(false)
-  const [tokenCount, setTokenCount] = useState(40)
-  const [compressionLimit, setCompressionLimit] = useState(10000)
-  const [durationDays, setDurationDays] = useState(30)
-  const [generatedToken, setGeneratedToken] = useState<string | null>(null)
-  const [generatedPlan, setGeneratedPlan] = useState<GeneratedPlan>()
-  const [copied, setCopied] = useState(false)
-  const [error, setError] = useState<string | null>(null)
   const [taskLogDialogOpen, setTaskLogDialogOpen] = useState(false)
   const [taskLogTitle, setTaskLogTitle] = useState('TinyPNG Pool 执行日志')
   const [taskLogs, setTaskLogs] = useState<string[]>([])
@@ -229,45 +210,6 @@ export function TinyPngPoolStatsCard() {
 
     return () => window.clearInterval(timer)
   }, [fetchStats, taskLogDialogOpen])
-
-  const handleGenerate = async () => {
-    setGenerateLoading(true)
-    setError(null)
-    try {
-      const res = await fetch("/api/tinypng/desktop/grants", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ kind: "new", tokenCount, compressionLimit, durationDays })
-      })
-      const data = await res.json() as GenerateResponse
-      if (res.ok && data.token) {
-        setGeneratedToken(data.token)
-        setGeneratedPlan({ tokenCount, compressionLimit, durationDays })
-        window.dispatchEvent(new CustomEvent('desktop-license-created'))
-      } else {
-        setError(data.error || "Failed to generate link")
-      }
-    } catch {
-      setError("Network error")
-    } finally {
-      setGenerateLoading(false)
-    }
-  }
-
-  const handleCopy = async () => {
-    if (generatedToken) {
-      await navigator.clipboard.writeText(generatedToken)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
-    }
-  }
-
-  const handleOpenDialog = () => {
-    setShowDialog(true)
-    setGeneratedToken(null)
-    setGeneratedPlan(undefined)
-    setError(null)
-  }
 
   const handleRunTask = async () => {
     const registrarCount = stats?.workers.filter((worker) => worker.enabled && worker.role === 'registrar').length ?? 0
@@ -490,7 +432,7 @@ export function TinyPngPoolStatsCard() {
             <Button 
               variant="outline" 
               size="sm"
-              onClick={handleOpenDialog}
+              onClick={() => setShowDialog(true)}
               className="auth-btn"
             >
               <Link className="w-4 h-4 mr-1" />
@@ -818,93 +760,15 @@ export function TinyPngPoolStatsCard() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={showDialog} onOpenChange={setShowDialog}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>生成“智能压缩工具”授权链接</DialogTitle>
-            <DialogDescription>
-            Token 数量、压缩额度和授权有效期均写入本次授权 Token；Token 1 个月内有效且只能兑换一次。
-            </DialogDescription>
-          </DialogHeader>
-          
-          {!generatedToken ? (
-            <div className="space-y-4">
-              <div className="grid grid-cols-3 gap-3">
-                <div className="space-y-2">
-                  <Label htmlFor="desktopTokenCount">Token 数量</Label>
-                  <Input id="desktopTokenCount" type="number" min={1} max={200} value={tokenCount} onChange={(event) => setTokenCount(Number(event.target.value))} />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="desktopCompressionLimit">可压缩张数</Label>
-                  <Input id="desktopCompressionLimit" type="number" min={1} max={1000000} value={compressionLimit} onChange={(event) => setCompressionLimit(Number(event.target.value))} />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="desktopDurationDays">有效天数</Label>
-                  <Input id="desktopDurationDays" type="number" min={1} max={365} value={durationDays} onChange={(event) => setDurationDays(Number(event.target.value))} />
-                </div>
-              </div>
-              <p className="text-xs text-muted-foreground">生成链接时将原子预留 {Number.isFinite(tokenCount) ? tokenCount : 0} 个 Token；兑换后创建对应额度与时长的授权周期。</p>
-              
-              {error && (
-                <div className="text-sm text-red-500 bg-red-500/10 p-3 rounded-lg">
-                  {error}
-                </div>
-              )}
-              
-              <Button 
-                onClick={handleGenerate} 
-                disabled={generateLoading || !Number.isInteger(tokenCount) || tokenCount < 1 || tokenCount > 200 || !Number.isInteger(compressionLimit) || compressionLimit < 1 || compressionLimit > 1000000 || !Number.isInteger(durationDays) || durationDays < 1 || durationDays > 365}
-                className="w-full"
-              >
-                {generateLoading ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    生成中…
-                  </>
-                ) : (
-                  "生成授权 Token"
-                )}
-              </Button>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label>授权 Token</Label>
-                <div className="flex gap-2">
-                  <Input
-                    readOnly
-                    value={generatedToken}
-                    className="font-mono text-xs"
-                  />
-                  <Button size="icon" variant="outline" onClick={handleCopy}>
-                    {copied ? (
-                      <Check className="w-4 h-4 text-green-500" />
-                    ) : (
-                      <Copy className="w-4 h-4" />
-                    )}
-                  </Button>
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  直接粘贴到桌面端即可激活；Token 将在 1 个月后失效，且只能兑换一次。
-                </p>
-                {generatedPlan ? (
-                  <p className="rounded-md border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
-                    {generatedPlan.tokenCount} Token · {generatedPlan.compressionLimit.toLocaleString()} 张 · 激活后 {generatedPlan.durationDays} 天有效
-                  </p>
-                ) : null}
-              </div>
-              
-              <Button 
-                variant="outline"
-                onClick={() => setGeneratedToken(null)}
-                className="w-full"
-              >
-                再生成一个
-              </Button>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
+      {showDialog ? (
+        <DesktopAuthLinkDialog
+          onClose={() => setShowDialog(false)}
+          onCreated={() => {
+            window.dispatchEvent(new CustomEvent('desktop-license-created'))
+            void fetchStats(false)
+          }}
+        />
+      ) : null}
     </>
   )
 }

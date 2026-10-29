@@ -25,6 +25,7 @@ import {
   DESKTOP_MAX_PERIOD_QUOTA,
   DESKTOP_PERIOD_DAYS,
   DESKTOP_PERIOD_QUOTA,
+  DESKTOP_TOKEN_CAPACITY,
   DESKTOP_RESERVATION_LIMIT,
   DESKTOP_RESERVATION_TTL_MS,
   type DesktopGrantKind,
@@ -64,17 +65,19 @@ function assertDeviceId(deviceId: string): void {
   }
 }
 
-function normalizeGrantPlan(input: Partial<DesktopGrantPlan> = {}): DesktopGrantPlan {
+function normalizeGrantPlan(input: Partial<DesktopGrantPlan> = {}, isNewGrant = false): DesktopGrantPlan {
+  const tokenCount = input.tokenCount ?? DESKTOP_INITIAL_KEY_COUNT
+  const maxQuota = isNewGrant ? tokenCount * DESKTOP_TOKEN_CAPACITY : DESKTOP_MAX_PERIOD_QUOTA
   const plan = {
-    tokenCount: input.tokenCount ?? DESKTOP_INITIAL_KEY_COUNT,
-    compressionLimit: input.compressionLimit ?? DESKTOP_PERIOD_QUOTA,
+    tokenCount,
+    compressionLimit: input.compressionLimit ?? (isNewGrant ? maxQuota / 2 : DESKTOP_PERIOD_QUOTA),
     durationDays: input.durationDays ?? DESKTOP_PERIOD_DAYS,
   }
   if (!Number.isInteger(plan.tokenCount) || plan.tokenCount < 1 || plan.tokenCount > DESKTOP_MAX_GRANT_KEY_COUNT) {
     throw new DesktopLicenseError(`Token 数量必须为 1 到 ${DESKTOP_MAX_GRANT_KEY_COUNT}`, 400, 'INVALID_TOKEN_COUNT')
   }
-  if (!Number.isInteger(plan.compressionLimit) || plan.compressionLimit < 1 || plan.compressionLimit > DESKTOP_MAX_PERIOD_QUOTA) {
-    throw new DesktopLicenseError(`压缩额度必须为 1 到 ${DESKTOP_MAX_PERIOD_QUOTA}`, 400, 'INVALID_COMPRESSION_LIMIT')
+  if (!Number.isInteger(plan.compressionLimit) || plan.compressionLimit < 1 || plan.compressionLimit > maxQuota) {
+    throw new DesktopLicenseError(`压缩额度必须为 1 到 ${maxQuota}`, 400, 'INVALID_COMPRESSION_LIMIT')
   }
   if (!Number.isInteger(plan.durationDays) || plan.durationDays < 1 || plan.durationDays > DESKTOP_MAX_PERIOD_DAYS) {
     throw new DesktopLicenseError(`授权天数必须为 1 到 ${DESKTOP_MAX_PERIOD_DAYS}`, 400, 'INVALID_DURATION_DAYS')
@@ -240,7 +243,7 @@ export async function createDesktopGrant(
   }
 
   if (kind === 'new') {
-    plan = normalizeGrantPlan(requestedPlan)
+    plan = normalizeGrantPlan(requestedPlan, true)
     const buyerId = normalizeBuyerId(requestedBuyerId)
     await insertNewGrantWithReservedKeys(database, {
       id: grantId,

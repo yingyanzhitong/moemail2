@@ -16,6 +16,7 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { useToast } from '@/components/ui/use-toast'
+import { DesktopAuthLinkDialog } from './desktop-auth-link-dialog'
 
 interface DesktopLicenseAdminItem {
   id: string
@@ -106,10 +107,6 @@ export function DesktopLicenseAdmin() {
   const [generatedToken, setGeneratedToken] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
   const [createDialogOpen, setCreateDialogOpen] = useState(false)
-  const [createTokenCount, setCreateTokenCount] = useState(40)
-  const [createLimit, setCreateLimit] = useState(10000)
-  const [createDays, setCreateDays] = useState(30)
-  const [createBuyerId, setCreateBuyerId] = useState('')
   const [renewTarget, setRenewTarget] = useState<DesktopLicenseAdminItem | null>(null)
   const [renewLimit, setRenewLimit] = useState(10000)
   const [renewDays, setRenewDays] = useState(30)
@@ -171,33 +168,6 @@ export function DesktopLicenseAdmin() {
       toast({ title: kind === 'renew' ? '续费 Token 已生成' : '换机 Token 已生成', description: 'Token 将在 1 个月后失效。' })
     } catch (error) {
       toast({ title: '操作失败', description: error instanceof Error ? error.message : '请稍后重试', variant: 'destructive' })
-    } finally {
-      setActionId(null)
-    }
-  }
-
-  const createAuthLink = async () => {
-    setActionId('create')
-    try {
-      const response = await fetch('/api/tinypng/desktop/grants', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          kind: 'new',
-          tokenCount: createTokenCount,
-          compressionLimit: createLimit,
-          durationDays: createDays,
-          buyer_id: createBuyerId.trim() || undefined,
-        }),
-      })
-      const data = await response.json() as { token?: string; error?: string }
-      if (!response.ok || !data.token) throw new Error(data.error || '创建 Token 失败')
-      setGeneratedToken(data.token)
-      setCreateDialogOpen(false)
-      await loadLicenses()
-      toast({ title: '授权 Token 已创建', description: 'Token 将在 1 个月后失效。' })
-    } catch (error) {
-      toast({ title: '创建失败', description: error instanceof Error ? error.message : '请稍后重试', variant: 'destructive' })
     } finally {
       setActionId(null)
     }
@@ -440,42 +410,9 @@ export function DesktopLicenseAdmin() {
         </Table>
       </div>
 
-      <Dialog open={createDialogOpen} onOpenChange={(open) => { if (!open && actionId === null) setCreateDialogOpen(false) }}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>创建 Auth Link</DialogTitle>
-            <DialogDescription>链接 1 个月内有效且只能兑换一次；创建时会预留对应数量的 Token。</DialogDescription>
-          </DialogHeader>
-          <div className="grid grid-cols-3 gap-3">
-            <div className="space-y-2">
-              <Label htmlFor="createTokenCount">Token 数量</Label>
-              <Input id="createTokenCount" type="number" min={1} max={200} value={createTokenCount} onChange={(event) => setCreateTokenCount(Number(event.target.value))} />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="createCompressionLimit">可压缩张数</Label>
-              <Input id="createCompressionLimit" type="number" min={1} max={1000000} value={createLimit} onChange={(event) => setCreateLimit(Number(event.target.value))} />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="createDurationDays">有效天数</Label>
-              <Input id="createDurationDays" type="number" min={1} max={365} value={createDays} onChange={(event) => setCreateDays(Number(event.target.value))} />
-            </div>
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="createBuyerId">买家 ID</Label>
-            <Input id="createBuyerId" maxLength={128} value={createBuyerId} onChange={(event) => setCreateBuyerId(event.target.value)} placeholder="创建接口会以 buyer_id 传入，可留空" />
-          </div>
-          <DialogFooter>
-            <Button variant="outline" disabled={actionId !== null} onClick={() => setCreateDialogOpen(false)}>取消</Button>
-            <Button
-              disabled={actionId !== null || !Number.isInteger(createTokenCount) || createTokenCount < 1 || createTokenCount > 200 || !Number.isInteger(createLimit) || createLimit < 1 || createLimit > 1000000 || !Number.isInteger(createDays) || createDays < 1 || createDays > 365}
-              onClick={() => void createAuthLink()}
-            >
-              {actionId === 'create' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-              创建链接
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {createDialogOpen ? (
+        <DesktopAuthLinkDialog onClose={() => setCreateDialogOpen(false)} onCreated={() => void loadLicenses()} />
+      ) : null}
 
       <Dialog open={Boolean(renewTarget)} onOpenChange={(open) => { if (!open && actionId === null) setRenewTarget(null) }}>
         <DialogContent className="sm:max-w-md">

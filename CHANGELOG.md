@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.14.55] - 2026-10-29
+
+### 变更
+
+- **统一 Auth Link 弹窗**：TinyPNG Pool 与桌面端授权管理共用创建弹窗，统一买家 ID、生成结果、复制和继续生成的交互。
+- **压缩张数联动**：修改 Token 数量后，默认可压缩张数同步为 Token 数量 × 250；最大张数限制为 Token 数量 × 500，前后端均校验创建额度。
+
+### 验证
+
+- **授权额度回归**：桌面授权后端 32 项测试、TypeScript 类型检查、修改文件的 ESLint 检查与网页生产构建通过；本地弹窗验证覆盖自动联动、上限限制、清空输入和自定义额度提交。
+
 ## [1.14.54] - 2026-10-26
 
 ### Changed
