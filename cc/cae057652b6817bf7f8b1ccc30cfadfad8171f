@@ -1,0 +1,37 @@
+app/components/profile/tinypng-pool-stats-card.tsx
+  s_d3693774362533::t_facbc78a5a6416 4,16,435,763-771
+app/components/profile/desktop-license-admin.tsx
+  s_d3693774362533::t_facbc78a5a6416 19,413-415
+tests/desktop-license-plan.test.mjs
+  s_d3693774362533::t_38016594ba03e4 1-81
+app/lib/desktop-license-service.ts
+  s_d3693774362533::t_57cedf8a51d697 28,68-70,72-73,79-80,246
+package.json
+  s_d3693774362533::t_84452728499b9d 3
+app/components/profile/desktop-auth-link-dialog.tsx
+  s_d3693774362533::t_1b623be358f362 1-139
+app/lib/desktop-license-types.ts
+  s_d3693774362533::t_1b623be358f362 4
+CHANGELOG.md
+  s_d3693774362533::t_84452728499b9d 5-13,15
+  s_d3693774362533::t_20eedf2e3d36f0 14
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "cccae057652b6817bf7f8b1ccc30cfadfad8171f",
+  "prompts": {},
+  "logical_commit_id": "cccae057652b6817bf7f8b1ccc30cfadfad8171f",
+  "sessions": {
+    "s_d3693774362533": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1867e-998f-71c3-bb2a-bc33c4797ccc",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "masongzhi <masongzhi@bigo.sg>",
+      "total_additions": 259,
+      "total_deletions": 223
+    }
+  }
+}
